@@ -1,26 +1,60 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Fixed brand palette — never changes with theme */
+  --albizia-cream: #f2ede5;
+  --albizia-cream-soft: #e9e2d6;
+  --albizia-taupe: #b9a98e;
+  --albizia-graphite: #55534e;
+  --albizia-black: #121212;
+  --albizia-black-soft: #1c1b19;
+
+  /* Semantic roles — flip when the Albizia closes for the night */
+  --surface: var(--albizia-cream);
+  --surface-soft: var(--albizia-cream-soft);
+  --content: var(--albizia-black);
+}
+
+[data-theme="dark"] {
+  --surface: var(--albizia-black);
+  --surface-soft: var(--albizia-black-soft);
+  --content: var(--albizia-cream);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-soft: var(--surface-soft);
+  --color-content: var(--content);
+  --color-taupe: var(--albizia-taupe);
+  --color-graphite: var(--albizia-graphite);
+  --font-sans: var(--font-montserrat);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--surface);
+  color: var(--content);
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+}
+
+/* The tree doesn't snap open or shut — it eases. Everything that carries
+   theme color crossfades slowly rather than cutting instantly. */
+body,
+header,
+footer,
+a,
+button,
+input {
+  transition:
+    background-color 1.1s ease,
+    border-color 1.1s ease,
+    color 1.1s ease;
+}
+
+::selection {
+  background: var(--content);
+  color: var(--surface);
 }
