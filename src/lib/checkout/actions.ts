@@ -5,7 +5,7 @@ import { eq, inArray } from "drizzle-orm";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
-import { orders, orderItems, productVariants } from "@/lib/db/schema";
+import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import type { CartItem } from "@/lib/cart-context";
 
 const checkoutSchema = z.object({
@@ -120,6 +120,11 @@ export async function createOrder(
       quantity: li.quantity,
     }))
   );
+
+  await db
+    .insert(analyticsEvents)
+    .values({ type: "order_created", valueCents: subtotalCents })
+    .catch(() => {});
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
   const mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! });

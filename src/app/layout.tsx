@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { CartProvider } from "@/lib/cart-context";
 import { ThemeProvider } from "@/lib/theme";
 import { getSiteSettings } from "@/lib/settings";
+import { Tracker } from "@/components/Tracker";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -57,6 +58,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="flex min-h-full flex-col bg-surface text-content">
         <ThemeProvider>
           <CartProvider>
+            <Tracker />
             <Header />
             <main className="flex-1">{children}</main>
             <Footer settings={settings} />

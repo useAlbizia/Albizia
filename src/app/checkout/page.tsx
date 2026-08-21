@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { useCart } from "@/lib/cart-context";
 import { createOrder, type CheckoutState } from "@/lib/checkout/actions";
+import { track } from "@/lib/analytics-client";
 
 const initialState: CheckoutState = {};
 
@@ -14,6 +15,11 @@ export default function CheckoutPage() {
   const { items, totalPrice } = useCart();
   const action = createOrder.bind(null, items);
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  const hasItems = items.length > 0;
+  useEffect(() => {
+    if (hasItems) track({ type: "checkout_start" });
+  }, [hasItems]);
 
   if (items.length === 0) {
     return (

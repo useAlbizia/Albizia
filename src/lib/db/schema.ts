@@ -140,6 +140,19 @@ export const legalPages = pgTable("legal_pages", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// First-party, cookie-light analytics. One flat event stream powering the
+// admin dashboard: page views, product views, cart adds, checkout starts,
+// and orders. sessionId is a random anonymous id (no PII).
+export const analyticsEvents = pgTable("analytics_events", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  type: text("type").notNull(), // page_view | product_view | add_to_cart | checkout_start | order_created | order_paid
+  path: text("path"),
+  productSlug: text("product_slug"),
+  sessionId: text("session_id"),
+  valueCents: integer("value_cents"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const collectionsRelations = relations(collections, ({ many }) => ({
   products: many(products),
 }));

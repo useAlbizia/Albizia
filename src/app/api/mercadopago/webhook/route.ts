@@ -7,7 +7,7 @@ import {
   InvalidWebhookSignatureError,
 } from "mercadopago";
 import { db } from "@/lib/db/client";
-import { orders, productVariants } from "@/lib/db/schema";
+import { orders, productVariants, analyticsEvents } from "@/lib/db/schema";
 import { sendOrderPaidEmails } from "@/lib/order-notify";
 
 // Mercado Pago is the only source of truth for payment status — this
@@ -104,6 +104,10 @@ export async function POST(request: NextRequest) {
     // Send confirmation emails only on the first transition to paid, and
     // outside the DB transaction (email must never hold or fail the tx).
     if (justPaid) {
+      await db
+        .insert(analyticsEvents)
+        .values({ type: "order_paid", valueCents: order.totalCents })
+        .catch(() => {});
       await sendOrderPaidEmails(order.id);
     }
   } else if (payment.status && payment.status !== order.mpStatus) {

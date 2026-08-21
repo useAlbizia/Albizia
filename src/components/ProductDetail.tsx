@@ -1,17 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import type { Product } from "@/lib/products";
 import { useCart } from "@/lib/cart-context";
 import { ProductCover } from "./ProductImage";
 import { converge } from "@/lib/motion";
+import { track } from "@/lib/analytics-client";
 
 export function ProductDetail({ product }: { product: Product }) {
   const inStock = product.variants.find((v) => v.stock > 0);
   const [size, setSize] = useState(inStock?.size ?? product.variants[0]?.size);
   const [added, setAdded] = useState(false);
   const { addItem } = useCart();
+
+  useEffect(() => {
+    track({ type: "product_view", productSlug: product.slug });
+  }, [product.slug]);
 
   const selectedVariant = product.variants.find((v) => v.size === size);
   const canAdd = !!selectedVariant && selectedVariant.stock > 0;
@@ -26,6 +31,7 @@ export function ProductDetail({ product }: { product: Product }) {
       variantId: selectedVariant.id,
       quantity: 1,
     });
+    track({ type: "add_to_cart", productSlug: product.slug });
     setAdded(true);
     setTimeout(() => setAdded(false), 2200);
   }
