@@ -35,15 +35,18 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isLoginPage = pathname === "/admin/login";
+  // Public admin auth pages: login + the password-recovery flow. The reset
+  // pages MUST stay reachable while logged out (that's the whole point).
+  const PUBLIC = ["/admin/login", "/admin/esqueci", "/admin/redefinir"];
+  const isPublic = PUBLIC.includes(pathname);
 
-  if (!user && pathname.startsWith("/admin") && !isLoginPage) {
+  if (!user && pathname.startsWith("/admin") && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/admin/login";
     return NextResponse.redirect(url);
   }
 
-  if (user && isLoginPage) {
+  if (user && pathname === "/admin/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/admin";
     return NextResponse.redirect(url);

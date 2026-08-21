@@ -1,0 +1,60 @@
+import "server-only";
+import { eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { orders } from "./db/schema";
+import { sendEmail, emailShell, money } from "./email";
+
+// Sends the "payment confirmed" emails for an order: a receipt to the
+// customer and an alert to the founders. Called from the Mercado Pago
+// webhook once an order flips to paid. Never throws.
+export async function sendOrderPaidEmails(orderId: string): Promise<void> {
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+    with: { items: true },
+  });
+  if (!order) return;
+
+  const itemsRows = order.items
+    .map(
+      (i) =>
+        `<tr><td style="padding:6px 0;color:#55534e;">${i.productName} (${i.size}) × ${i.quantity}</td>
+         <td style="padding:6px 0;text-align:right;">${money(i.unitPriceCents * i.quantity)}</td></tr>`
+    )
+    .join("");
+
+  const summary = `
+    <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;">
+      ${itemsRows}
+      <tr><td style="padding-top:12px;border-top:1px solid #d9d2c6;text-transform:uppercase;letter-spacing:1px;color:#55534e;">Total</td>
+      <td style="padding-top:12px;border-top:1px solid #d9d2c6;text-align:right;font-size:16px;">${money(order.totalCents)}</td></tr>
+    </table>`;
+
+  // Customer receipt (delivers once a domain is verified in Resend)
+  await sendEmail({
+    to: order.customerEmail,
+    subject: `Pedido #${order.orderNumber} confirmado — ALBIZIA`,
+    html: emailShell(
+      "Pagamento confirmado",
+      `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${order.customerName}. Recebemos a confirmação do seu pagamento — seu pedido está sendo preparado.</p>
+       ${summary}
+       <p style="font-size:13px;color:#8a857c;margin-top:20px;">Você receberá uma nova mensagem quando o pedido for enviado.</p>`
+    ),
+  });
+
+  // Founder alert
+  const notify = process.env.ORDER_NOTIFICATION_EMAIL;
+  if (notify) {
+    const addr = order.shippingAddress as Record<string, string>;
+    await sendEmail({
+      to: notify,
+      replyTo: order.customerEmail,
+      subject: `Novo pedido pago #${order.orderNumber} — ${money(order.totalCents)}`,
+      html: emailShell(
+        `Novo pedido #${order.orderNumber}`,
+        `<p style="font-size:14px;color:#55534e;">${order.customerName} · ${order.customerEmail} · ${order.customerPhone}</p>
+         <p style="font-size:13px;color:#8a857c;">${addr.street}, ${addr.number}${addr.complement ? " — " + addr.complement : ""} · ${addr.neighborhood} · ${addr.city}/${addr.state} · ${addr.zip}</p>
+         ${summary}`
+      ),
+    });
+  }
+}

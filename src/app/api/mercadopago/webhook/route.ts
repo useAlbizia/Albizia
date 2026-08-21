@@ -8,6 +8,7 @@ import {
 } from "mercadopago";
 import { db } from "@/lib/db/client";
 import { orders, productVariants } from "@/lib/db/schema";
+import { sendOrderPaidEmails } from "@/lib/order-notify";
 
 // Mercado Pago is the only source of truth for payment status — this
 // endpoint never trusts anything the customer's browser reports back.
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
   }
 
   if (payment.status === "approved") {
-    await db.transaction(async (tx) => {
+    const justPaid = await db.transaction(async (tx) => {
       // Guard is part of the WHERE clause, not a separate check-then-act —
       // makes the "only the first approval wins" rule atomic even if two
       // webhook deliveries for the same payment land at the same time
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
         .where(and(eq(orders.id, order.id), ne(orders.status, "paid")))
         .returning({ id: orders.id });
 
-      if (updated.length === 0) return; // already marked paid by a prior delivery
+      if (updated.length === 0) return false; // already marked paid by a prior delivery
 
       for (const item of order.items) {
         if (!item.productVariantId) continue;
@@ -97,7 +98,14 @@ export async function POST(request: NextRequest) {
           .set({ stock: sql`${productVariants.stock} - ${item.quantity}` })
           .where(eq(productVariants.id, item.productVariantId));
       }
+      return true;
     });
+
+    // Send confirmation emails only on the first transition to paid, and
+    // outside the DB transaction (email must never hold or fail the tx).
+    if (justPaid) {
+      await sendOrderPaidEmails(order.id);
+    }
   } else if (payment.status && payment.status !== order.mpStatus) {
     // Track cancelled/rejected/pending transitions for the admin order view
     // without touching stock.

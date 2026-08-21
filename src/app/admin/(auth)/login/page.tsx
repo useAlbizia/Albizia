@@ -45,6 +45,13 @@ export default function AdminLoginPage() {
         >
           {pending ? "Entrando..." : "Entrar"}
         </button>
+
+        <a
+          href="/admin/esqueci"
+          className="text-center text-[12px] uppercase tracking-[0.15em] text-content/50 hover:text-content"
+        >
+          Esqueci a senha
+        </a>
       </form>
     </div>
   );
