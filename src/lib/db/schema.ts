@@ -117,6 +117,29 @@ export const orderItems = pgTable("order_items", {
   quantity: integer("quantity").notNull(),
 });
 
+// Singleton row (id = 1) holding brand/company/contact data shown in the
+// footer and used as sender identity. Edited from /admin/conteudo.
+export const siteSettings = pgTable("site_settings", {
+  id: integer("id").primaryKey().default(1),
+  companyName: text("company_name").notNull().default(""),
+  cnpj: text("cnpj").notNull().default(""),
+  contactEmail: text("contact_email").notNull().default(""),
+  contactPhone: text("contact_phone").notNull().default(""),
+  address: text("address").notNull().default(""),
+  instagram: text("instagram").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Editable legal/informational pages (Termos, Privacidade, Trocas). Body is
+// plain text with blank-line paragraphs; rendered on public /[slug] routes.
+export const legalPages = pgTable("legal_pages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(), // termos | privacidade | trocas
+  title: text("title").notNull(),
+  body: text("body").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const collectionsRelations = relations(collections, ({ many }) => ({
   products: many(products),
 }));

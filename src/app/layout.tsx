@@ -5,6 +5,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartProvider } from "@/lib/cart-context";
 import { ThemeProvider } from "@/lib/theme";
+import { getSiteSettings } from "@/lib/settings";
 
 const montserrat = Montserrat({
   variable: "--font-montserrat",
@@ -12,9 +13,29 @@ const montserrat = Montserrat({
   weight: ["300", "400", "500", "600"],
 });
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "ALBIZIA",
-  description: "ALBIZIA — moda premium. Silence becomes style.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "ALBIZIA",
+    template: "%s",
+  },
+  description:
+    "ALBIZIA — moda premium. Camisetas e moda praia de alto padrão. Silence becomes style.",
+  keywords: ["ALBIZIA", "moda premium", "camisetas", "moda praia", "luxo silencioso"],
+  openGraph: {
+    type: "website",
+    siteName: "ALBIZIA",
+    title: "ALBIZIA",
+    description: "Moda premium. Silence becomes style.",
+    locale: "pt_BR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ALBIZIA",
+    description: "Moda premium. Silence becomes style.",
+  },
 };
 
 // Runs before paint, straight from each visitor's own local clock — no
@@ -22,7 +43,8 @@ export const metadata: Metadata = {
 // attribute early so the page never flashes the wrong one.
 const THEME_INIT_SCRIPT = `(function(){try{var h=new Date().getHours();var t=(h>=18||h<6)?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const settings = await getSiteSettings();
   return (
     <html
       lang="pt-BR"
@@ -37,7 +59,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <CartProvider>
             <Header />
             <main className="flex-1">{children}</main>
-            <Footer />
+            <Footer settings={settings} />
           </CartProvider>
         </ThemeProvider>
       </body>
