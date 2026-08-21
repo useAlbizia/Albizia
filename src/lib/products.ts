@@ -26,6 +26,8 @@ export type CollectionInfo = {
   tagline: string;
   description: string;
   fabric: string;
+  /** A representative product photo used as the collection's editorial cover */
+  coverUrl?: string;
 };
 
 function toProduct(row: {
@@ -55,14 +57,33 @@ function toProduct(row: {
 export async function getCollections(): Promise<CollectionInfo[]> {
   const rows = await db.query.collections.findMany({
     orderBy: asc(collectionsTable.sortOrder),
+    with: {
+      products: {
+        where: (products, { eq: eqOp }) => eqOp(products.active, true),
+        with: { images: true },
+      },
+    },
   });
-  return rows.map((c) => ({
-    slug: c.slug,
-    name: c.name,
-    tagline: c.tagline,
-    description: c.description,
-    fabric: c.fabric,
-  }));
+
+  return rows.map((c) => {
+    // Pick a representative photo: prefer a studio shot, else any image, from
+    // the first product in the collection that has one.
+    let coverUrl: string | undefined;
+    for (const p of c.products) {
+      if (!p.images.length) continue;
+      const studio = p.images.find((img) => img.role === "studio");
+      coverUrl = (studio ?? p.images[0]).url;
+      break;
+    }
+    return {
+      slug: c.slug,
+      name: c.name,
+      tagline: c.tagline,
+      description: c.description,
+      fabric: c.fabric,
+      coverUrl,
+    };
+  });
 }
 
 export async function getCollection(slug: string): Promise<CollectionInfo | undefined> {
@@ -108,4 +129,16 @@ export async function getAllProductSlugs(): Promise<string[]> {
     columns: { slug: true },
   });
   return rows.map((r) => r.slug);
+}
+
+// Products that have at least one photo — used to showcase real pieces on
+// the home page. Falls back to any active product if none have photos yet.
+export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
+  const rows = await db.query.products.findMany({
+    where: eq(productsTable.active, true),
+    with: { collection: true, variants: true, images: true },
+  });
+  const withPhotos = rows.filter((r) => r.images.length > 0).map(toProduct);
+  const source = withPhotos.length ? withPhotos : rows.map(toProduct);
+  return source.slice(0, limit);
 }

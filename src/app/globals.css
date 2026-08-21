@@ -58,3 +58,30 @@ input {
   background: var(--content);
   color: var(--surface);
 }
+
+/* The brand mark growing into being — revealed bottom-up (trunk first,
+   branches last). Pure CSS so it always runs on mount, independent of any
+   parent animation. The symbol art itself is transparent and recolours
+   with the theme, so this needs no background of its own. */
+@keyframes albizia-grow {
+  from {
+    clip-path: inset(100% 0 0 0);
+    opacity: 0.3;
+    transform: scale(1.03);
+  }
+  to {
+    clip-path: inset(0% 0 0 0);
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.albizia-grow {
+  animation: albizia-grow 2.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .albizia-grow {
+    animation: none;
+  }
+}

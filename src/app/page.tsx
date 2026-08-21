@@ -1,7 +1,10 @@
 import { HomeHero } from "@/components/HomeHero";
-import { getCollections } from "@/lib/products";
+import { getCollections, getFeaturedProducts } from "@/lib/products";
 
 export default async function Home() {
-  const collections = await getCollections();
-  return <HomeHero collections={collections} />;
+  const [collections, featured] = await Promise.all([
+    getCollections(),
+    getFeaturedProducts(6),
+  ]);
+  return <HomeHero collections={collections} featured={featured} />;
 }
