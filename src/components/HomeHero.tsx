@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { Wordmark } from "@/components/logo/Wordmark";
-import { AnimatedSymbol } from "@/components/AnimatedSymbol";
+import { AnimatedSymbolDraw } from "@/components/AnimatedSymbolDraw";
 import { ProductCover } from "@/components/ProductImage";
 import { CollectionRow } from "@/components/CollectionRow";
 import type { CollectionInfo, Product } from "@/lib/products";
@@ -27,7 +27,7 @@ export function HomeHero({
           variants={staggerChildren(0.3)}
           className="flex flex-col items-center gap-5"
         >
-          <AnimatedSymbol className="h-32 w-auto sm:h-40" />
+          <AnimatedSymbolDraw className="h-32 sm:h-40" />
 
           <motion.div variants={riseIn}>
             <Wordmark className="h-7 w-auto text-content sm:h-9" />
