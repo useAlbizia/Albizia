@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { asc, eq, or, ilike } from "drizzle-orm";
 import { db } from "./db/client";
 import { collections as collectionsTable, products as productsTable } from "./db/schema";
 
@@ -121,6 +121,46 @@ export async function getProductBySlug(slug: string): Promise<Product | undefine
   });
   if (!row) return undefined;
   return toProduct(row);
+}
+
+export type ProductFilters = {
+  q?: string;
+  line?: string;
+  category?: string;
+  sort?: "recentes" | "menor-preco" | "maior-preco";
+};
+
+// Catalog search + filter for the /produtos page. Matches name/description,
+// optionally narrows by collection line and category, and sorts.
+export async function getFilteredProducts(filters: ProductFilters): Promise<Product[]> {
+  let collectionId: string | undefined;
+  if (filters.line) {
+    const c = await db.query.collections.findFirst({
+      where: eq(collectionsTable.slug, filters.line as ProductLine),
+    });
+    collectionId = c?.id;
+    if (!collectionId) return [];
+  }
+
+  const rows = await db.query.products.findMany({
+    where: (p, { eq: eqOp, and: andOp }) => {
+      const conds = [eqOp(p.active, true)];
+      if (collectionId) conds.push(eqOp(p.collectionId, collectionId));
+      if (filters.category) conds.push(eqOp(p.category, filters.category));
+      if (filters.q?.trim()) {
+        const term = `%${filters.q.trim()}%`;
+        conds.push(or(ilike(p.name, term), ilike(p.description, term))!);
+      }
+      return andOp(...conds);
+    },
+    with: { collection: true, variants: true, images: true },
+    orderBy: (p, { asc: ascOp, desc }) => {
+      if (filters.sort === "menor-preco") return ascOp(p.priceCents);
+      if (filters.sort === "maior-preco") return desc(p.priceCents);
+      return desc(p.createdAt);
+    },
+  });
+  return rows.map(toProduct);
 }
 
 export async function getAllProductSlugs(): Promise<string[]> {

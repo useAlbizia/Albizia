@@ -9,6 +9,7 @@ import { converge } from "@/lib/motion";
 import { useCart } from "@/lib/cart-context";
 
 const NAV = [
+  { href: "/produtos", label: "Produtos" },
   { href: "/colecoes/essential", label: "Essential" },
   { href: "/colecoes/signature", label: "Signature" },
   { href: "/colecoes/studio", label: "Studio" },
