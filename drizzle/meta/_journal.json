@@ -22,6 +22,13 @@
       "when": 1787353982335,
       "tag": "0002_pink_taskmaster",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787360100707,
+      "tag": "0003_dapper_maverick",
+      "breakpoints": true
     }
   ]
 }

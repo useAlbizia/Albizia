@@ -140,6 +140,27 @@ export const legalPages = pgTable("legal_pages", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Newsletter subscribers captured on the storefront.
+export const subscribers = pgTable("subscribers", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  status: text("status").notNull().default("active"), // active | unsubscribed
+  source: text("source").notNull().default("site"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  unsubscribedAt: timestamp("unsubscribed_at", { withTimezone: true }),
+});
+
+// Email marketing campaigns sent from the admin.
+export const campaigns = pgTable("campaigns", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  subject: text("subject").notNull(),
+  body: text("body").notNull(),
+  status: text("status").notNull().default("draft"), // draft | sent
+  recipientCount: integer("recipient_count").notNull().default(0),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // First-party, cookie-light analytics. One flat event stream powering the
 // admin dashboard: page views, product views, cart adds, checkout starts,
 // and orders. sessionId is a random anonymous id (no PII).

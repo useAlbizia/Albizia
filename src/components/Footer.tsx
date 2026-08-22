@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Symbol } from "./logo/Symbol";
+import { NewsletterForm } from "./NewsletterForm";
 import type { SiteSettings } from "@/lib/settings";
 
 export function Footer({ settings }: { settings: SiteSettings }) {
@@ -13,7 +14,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
 
   return (
     <footer className="mt-32 border-t border-content/10">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-14 sm:grid-cols-3">
+      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-6 py-14 sm:grid-cols-4">
         <div className="flex flex-col gap-3 text-content/70">
           <Symbol className="h-6 w-6" />
           <span className="text-[11px] uppercase tracking-[0.25em]">Silence becomes style.</span>
@@ -57,6 +58,8 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             </a>
           )}
         </div>
+
+        <NewsletterForm />
       </div>
 
       <div className="mx-auto max-w-6xl px-6 pb-10 text-[11px] leading-relaxed tracking-wide text-content/40">
