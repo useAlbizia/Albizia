@@ -30,6 +30,9 @@ export function Footer({ settings }: { settings: SiteSettings }) {
           <Link href="/carrinho" className="hover:text-content">
             Carrinho
           </Link>
+          <Link href="/acompanhar" className="hover:text-content">
+            Acompanhar pedido
+          </Link>
           {instaHandle && (
             <a
               href={`https://instagram.com/${instaHandle}`}

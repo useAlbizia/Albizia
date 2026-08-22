@@ -21,14 +21,22 @@ export default function ConfirmacaoPage() {
       </h1>
       <p className="mt-4 max-w-sm text-sm leading-relaxed text-content/60">
         Assim que o pagamento for confirmado pelo Mercado Pago, você recebe a atualização por
-        e-mail.
+        e-mail. Você também pode acompanhar o status a qualquer momento.
       </p>
-      <Link
-        href="/colecoes"
-        className="mt-10 border border-content px-8 py-3 text-[13px] uppercase tracking-[0.2em] transition-colors hover:bg-content hover:text-surface"
-      >
-        Continuar navegando
-      </Link>
+      <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+        <Link
+          href="/acompanhar"
+          className="border border-content px-8 py-3 text-[13px] uppercase tracking-[0.2em] transition-colors hover:bg-content hover:text-surface"
+        >
+          Acompanhar pedido
+        </Link>
+        <Link
+          href="/colecoes"
+          className="border border-content/30 px-8 py-3 text-[13px] uppercase tracking-[0.2em] text-content/70 transition-colors hover:border-content hover:text-content"
+        >
+          Continuar navegando
+        </Link>
+      </div>
     </section>
   );
 }
