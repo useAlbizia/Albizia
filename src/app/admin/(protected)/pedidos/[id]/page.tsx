@@ -72,14 +72,36 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
             </div>
           ))}
         </div>
-        <div className="mt-4 flex justify-between text-sm">
-          <span className="uppercase tracking-[0.15em] text-content/60">Total</span>
-          <span className="text-lg">
-            {(order.totalCents / 100).toLocaleString("pt-BR", {
-              style: "currency",
-              currency: "BRL",
-            })}
-          </span>
+        <div className="mt-4 flex flex-col gap-1 text-sm">
+          <div className="flex justify-between text-content/60">
+            <span>Subtotal</span>
+            <span>
+              {(order.subtotalCents / 100).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </span>
+          </div>
+          <div className="flex justify-between text-content/60">
+            <span>Frete</span>
+            <span>
+              {order.shippingCents === 0
+                ? "Grátis"
+                : (order.shippingCents / 100).toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "BRL",
+                  })}
+            </span>
+          </div>
+          <div className="mt-1 flex justify-between border-t border-content/10 pt-2">
+            <span className="uppercase tracking-[0.15em] text-content/60">Total</span>
+            <span className="text-lg">
+              {(order.totalCents / 100).toLocaleString("pt-BR", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </span>
+          </div>
         </div>
       </div>
 

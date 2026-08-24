@@ -80,9 +80,19 @@ export default async function AcompanharPage(props: PageProps<"/acompanhar">) {
               </div>
             ))}
           </div>
-          <div className="mt-4 flex justify-between">
-            <span className="text-sm uppercase tracking-[0.15em] text-content/60">Total</span>
-            <span className="text-lg">{money(order.totalCents)}</span>
+          <div className="mt-4 flex flex-col gap-1 text-sm">
+            <div className="flex justify-between text-content/60">
+              <span>Subtotal</span>
+              <span>{money(order.subtotalCents)}</span>
+            </div>
+            <div className="flex justify-between text-content/60">
+              <span>Frete</span>
+              <span>{order.shippingCents === 0 ? "Grátis" : money(order.shippingCents)}</span>
+            </div>
+            <div className="mt-1 flex justify-between border-t border-content/10 pt-2">
+              <span className="uppercase tracking-[0.15em] text-content/60">Total</span>
+              <span className="text-lg">{money(order.totalCents)}</span>
+            </div>
           </div>
         </div>
       )}

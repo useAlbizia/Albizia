@@ -9,6 +9,8 @@ export type SiteSettings = {
   contactPhone: string;
   address: string;
   instagram: string;
+  shippingFlatCents: number;
+  freeShippingThresholdCents: number;
 };
 
 const DEFAULTS: SiteSettings = {
@@ -18,6 +20,8 @@ const DEFAULTS: SiteSettings = {
   contactPhone: "",
   address: "",
   instagram: "",
+  shippingFlatCents: 0,
+  freeShippingThresholdCents: 0,
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -30,6 +34,8 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     contactPhone: row.contactPhone,
     address: row.address,
     instagram: row.instagram,
+    shippingFlatCents: row.shippingFlatCents,
+    freeShippingThresholdCents: row.freeShippingThresholdCents,
   };
 }
 

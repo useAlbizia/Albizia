@@ -16,6 +16,8 @@ export type TrackedOrder = {
   status: string;
   statusLabel: string;
   createdAt: Date;
+  subtotalCents: number;
+  shippingCents: number;
   totalCents: number;
   items: { productName: string; size: string; quantity: number; unitPriceCents: number }[];
 };
@@ -43,6 +45,8 @@ export async function getOrderForTracking(
     status: order.status,
     statusLabel: ORDER_STATUS_LABEL[order.status] ?? order.status,
     createdAt: order.createdAt,
+    subtotalCents: order.subtotalCents,
+    shippingCents: order.shippingCents,
     totalCents: order.totalCents,
     items: order.items.map((i) => ({
       productName: i.productName,

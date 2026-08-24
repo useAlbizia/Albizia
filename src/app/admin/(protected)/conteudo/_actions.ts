@@ -16,6 +16,9 @@ const settingsSchema = z.object({
   contactPhone: z.string().max(40).default(""),
   address: z.string().max(240).default(""),
   instagram: z.string().max(60).default(""),
+  // Reais in the form → cents in the DB.
+  shippingFlat: z.coerce.number().min(0).default(0),
+  freeShippingThreshold: z.coerce.number().min(0).default(0),
 });
 
 export async function saveSettings(
@@ -30,13 +33,23 @@ export async function saveSettings(
     contactPhone: formData.get("contactPhone") ?? "",
     address: formData.get("address") ?? "",
     instagram: formData.get("instagram") ?? "",
+    shippingFlat: formData.get("shippingFlat") ?? 0,
+    freeShippingThreshold: formData.get("freeShippingThreshold") ?? 0,
   });
   if (!parsed.success) return { error: "Dados inválidos." };
 
+  const { shippingFlat, freeShippingThreshold, ...company } = parsed.data;
+  const values = {
+    ...company,
+    shippingFlatCents: Math.round(shippingFlat * 100),
+    freeShippingThresholdCents: Math.round(freeShippingThreshold * 100),
+    updatedAt: new Date(),
+  };
+
   await db
     .insert(siteSettings)
-    .values({ id: 1, ...parsed.data, updatedAt: new Date() })
-    .onConflictDoUpdate({ target: siteSettings.id, set: { ...parsed.data, updatedAt: new Date() } });
+    .values({ id: 1, ...values })
+    .onConflictDoUpdate({ target: siteSettings.id, set: values });
 
   revalidatePath("/", "layout"); // footer shows everywhere
   return { ok: true };

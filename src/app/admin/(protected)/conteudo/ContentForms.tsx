@@ -26,6 +26,27 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
       <input name="contactEmail" defaultValue={settings.contactEmail} placeholder="E-mail de contato" className={input} />
       <input name="contactPhone" defaultValue={settings.contactPhone} placeholder="Telefone" className={input} />
       <input name="instagram" defaultValue={settings.instagram} placeholder="Instagram (ex: @albizia)" className={input} />
+
+      <label className="mt-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Frete</label>
+      <input
+        name="shippingFlat"
+        type="number"
+        step="0.01"
+        min="0"
+        defaultValue={(settings.shippingFlatCents / 100).toFixed(2)}
+        placeholder="Frete fixo (R$) — 0 = grátis"
+        className={input}
+      />
+      <input
+        name="freeShippingThreshold"
+        type="number"
+        step="0.01"
+        min="0"
+        defaultValue={(settings.freeShippingThresholdCents / 100).toFixed(2)}
+        placeholder="Frete grátis acima de (R$) — 0 = desativado"
+        className={input}
+      />
+
       <div className="mt-2 flex items-center gap-4">
         <button type="submit" disabled={pending} className="border border-content px-6 py-3 text-[13px] uppercase tracking-[0.2em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50">
           {pending ? "Salvando..." : "Salvar dados"}

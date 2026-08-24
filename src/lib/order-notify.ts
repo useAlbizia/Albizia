@@ -22,11 +22,16 @@ export async function sendOrderPaidEmails(orderId: string): Promise<void> {
     )
     .join("");
 
+  const shippingLabel = order.shippingCents === 0 ? "Grátis" : money(order.shippingCents);
   const summary = `
     <table style="width:100%;border-collapse:collapse;font-size:14px;margin-top:8px;">
       ${itemsRows}
-      <tr><td style="padding-top:12px;border-top:1px solid #d9d2c6;text-transform:uppercase;letter-spacing:1px;color:#55534e;">Total</td>
-      <td style="padding-top:12px;border-top:1px solid #d9d2c6;text-align:right;font-size:16px;">${money(order.totalCents)}</td></tr>
+      <tr><td style="padding-top:12px;border-top:1px solid #d9d2c6;color:#8a857c;">Subtotal</td>
+      <td style="padding-top:12px;border-top:1px solid #d9d2c6;text-align:right;color:#8a857c;">${money(order.subtotalCents)}</td></tr>
+      <tr><td style="padding:4px 0;color:#8a857c;">Frete</td>
+      <td style="padding:4px 0;text-align:right;color:#8a857c;">${shippingLabel}</td></tr>
+      <tr><td style="padding-top:8px;text-transform:uppercase;letter-spacing:1px;color:#55534e;">Total</td>
+      <td style="padding-top:8px;text-align:right;font-size:16px;">${money(order.totalCents)}</td></tr>
     </table>`;
 
   // Customer receipt (delivers once a domain is verified in Resend)

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import type { CartItem } from "@/lib/cart-context";
+import { getShippingConfig, computeShipping } from "@/lib/shipping";
 
 const checkoutSchema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
@@ -88,6 +89,11 @@ export async function createOrder(
 
   const subtotalCents = lineItems.reduce((sum, i) => sum + i.unitPriceCents * i.quantity, 0);
 
+  // Shipping is computed server-side (never trust a client-sent amount).
+  const shippingConfig = await getShippingConfig();
+  const shippingCents = computeShipping(subtotalCents, shippingConfig, data.zip);
+  const totalCents = subtotalCents + shippingCents;
+
   const [order] = await db
     .insert(orders)
     .values({
@@ -105,7 +111,8 @@ export async function createOrder(
         zip: data.zip,
       },
       subtotalCents,
-      totalCents: subtotalCents,
+      shippingCents,
+      totalCents,
     })
     .returning();
 
@@ -133,13 +140,26 @@ export async function createOrder(
   try {
     const preference = await new Preference(mpClient).create({
       body: {
-        items: lineItems.map((li) => ({
-          id: li.variantId,
-          title: `${li.productName} (${li.size})`,
-          quantity: li.quantity,
-          unit_price: li.unitPriceCents / 100,
-          currency_id: "BRL",
-        })),
+        items: [
+          ...lineItems.map((li) => ({
+            id: li.variantId,
+            title: `${li.productName} (${li.size})`,
+            quantity: li.quantity,
+            unit_price: li.unitPriceCents / 100,
+            currency_id: "BRL",
+          })),
+          ...(shippingCents > 0
+            ? [
+                {
+                  id: "frete",
+                  title: "Frete",
+                  quantity: 1,
+                  unit_price: shippingCents / 100,
+                  currency_id: "BRL",
+                },
+              ]
+            : []),
+        ],
         payer: { name: data.name, email: data.email },
         external_reference: order.id,
         back_urls: {

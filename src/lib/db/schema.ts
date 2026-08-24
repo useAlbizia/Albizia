@@ -90,6 +90,7 @@ export const orders = pgTable("orders", {
   customerPhone: text("customer_phone").notNull(),
   shippingAddress: jsonb("shipping_address").notNull(),
   subtotalCents: integer("subtotal_cents").notNull(),
+  shippingCents: integer("shipping_cents").notNull().default(0),
   totalCents: integer("total_cents").notNull(),
   mpPreferenceId: text("mp_preference_id"),
   mpPaymentId: text("mp_payment_id"),
@@ -127,6 +128,11 @@ export const siteSettings = pgTable("site_settings", {
   contactPhone: text("contact_phone").notNull().default(""),
   address: text("address").notNull().default(""),
   instagram: text("instagram").notNull().default(""),
+  // Shipping config (swappable strategy — see lib/shipping.ts). Flat national
+  // rate in cents; free above the threshold (0 threshold = no free shipping;
+  // 0 flat = always free).
+  shippingFlatCents: integer("shipping_flat_cents").notNull().default(0),
+  freeShippingThresholdCents: integer("free_shipping_threshold_cents").notNull().default(0),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
