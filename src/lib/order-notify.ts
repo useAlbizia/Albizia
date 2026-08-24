@@ -41,9 +41,13 @@ export async function sendOrderPaidEmails(orderId: string): Promise<void> {
     ),
   });
 
-  // Founder alert
-  const notify = process.env.ORDER_NOTIFICATION_EMAIL;
-  if (notify) {
+  // Founder alert — ORDER_NOTIFICATION_EMAIL may list several recipients,
+  // comma-separated (e.g. both founders).
+  const notify = (process.env.ORDER_NOTIFICATION_EMAIL ?? "")
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  if (notify.length > 0) {
     const addr = order.shippingAddress as Record<string, string>;
     await sendEmail({
       to: notify,

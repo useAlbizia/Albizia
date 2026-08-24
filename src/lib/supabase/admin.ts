@@ -41,3 +41,31 @@ export async function adminCreateUser(params: {
 
   return {};
 }
+
+export type AdminUser = {
+  id: string;
+  email: string;
+  createdAt: string | null;
+  lastSignInAt: string | null;
+};
+
+export async function adminListUsers(): Promise<AdminUser[]> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users?page=1&per_page=100`,
+    { headers: adminHeaders(), cache: "no-store" }
+  );
+  if (!res.ok) return [];
+  const body = await res.json().catch(() => ({ users: [] }));
+  const users = (body.users ?? []) as Array<{
+    id: string;
+    email?: string;
+    created_at?: string;
+    last_sign_in_at?: string;
+  }>;
+  return users.map((u) => ({
+    id: u.id,
+    email: u.email ?? "—",
+    createdAt: u.created_at ?? null,
+    lastSignInAt: u.last_sign_in_at ?? null,
+  }));
+}
