@@ -50,6 +50,13 @@ export function Header() {
 
         <div className="flex items-center gap-6">
           <Link
+            href="/conta"
+            aria-label="Minha conta"
+            className="hidden text-[13px] uppercase tracking-[0.18em] text-content/70 transition-colors hover:text-content sm:inline"
+          >
+            Conta
+          </Link>
+          <Link
             href="/carrinho"
             className="text-[13px] uppercase tracking-[0.18em] text-content/70 transition-colors hover:text-content"
           >
@@ -90,6 +97,13 @@ export function Header() {
                 {item.label}
               </Link>
             ))}
+            <Link
+              href="/conta"
+              onClick={() => setOpen(false)}
+              className="py-3 text-sm uppercase tracking-[0.18em] text-content/80"
+            >
+              Conta
+            </Link>
           </motion.nav>
         )}
       </AnimatePresence>

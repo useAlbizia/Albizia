@@ -25,6 +25,29 @@ export type TrackedOrder = {
   items: { productName: string; size: string; quantity: number; unitPriceCents: number }[];
 };
 
+// A customer's own order history, keyed by the email on their account. Used by
+// the logged-in account area (/conta).
+export async function getCustomerOrders(email: string) {
+  const clean = email.trim().toLowerCase();
+  if (!clean) return [];
+  const rows = await db.query.orders.findMany({
+    where: eq(sql`lower(${orders.customerEmail})`, clean),
+    orderBy: (o, { desc }) => desc(o.createdAt),
+    columns: {
+      id: true,
+      orderNumber: true,
+      status: true,
+      totalCents: true,
+      trackingCode: true,
+      createdAt: true,
+    },
+  });
+  return rows.map((o) => ({
+    ...o,
+    statusLabel: ORDER_STATUS_LABEL[o.status] ?? o.status,
+  }));
+}
+
 // Looks up an order for public tracking. Requires BOTH the order number and
 // the matching email (case-insensitive) — the email is what stops anyone
 // from browsing other people's orders by guessing sequential numbers.

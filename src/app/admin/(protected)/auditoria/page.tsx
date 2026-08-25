@@ -15,6 +15,9 @@ const ACTION_LABEL: Record<string, string> = {
   "product.update": "Editou produto",
   "product.delete": "Excluiu produto",
   "user.create": "Criou usuário admin",
+  "review.approved": "Aprovou avaliação",
+  "review.rejected": "Rejeitou avaliação",
+  "review.delete": "Excluiu avaliação",
 };
 
 function detailText(detail: unknown): string {

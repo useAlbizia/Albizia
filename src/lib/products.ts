@@ -8,6 +8,7 @@ export type ProductVariant = { id: string; size: string; stock: number };
 export type ProductImage = { id: string; url: string; role: string | null; sortOrder: number };
 
 export type Product = {
+  id: string;
   slug: string;
   name: string;
   category: string;
@@ -31,6 +32,7 @@ export type CollectionInfo = {
 };
 
 function toProduct(row: {
+  id: string;
   slug: string;
   name: string;
   category: string;
@@ -42,6 +44,7 @@ function toProduct(row: {
   images: { id: string; url: string; role: string | null; sortOrder: number }[];
 }): Product {
   return {
+    id: row.id,
     slug: row.slug,
     name: row.name,
     category: row.category,

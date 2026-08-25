@@ -164,6 +164,22 @@ export const coupons = pgTable("coupons", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Customer product reviews. Created as "pending" and only shown on the
+// storefront once an admin approves them (moderation guards against spam and
+// abuse). rating is 1–5.
+export const reviews = pgTable("reviews", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  productId: uuid("product_id")
+    .notNull()
+    .references(() => products.id, { onDelete: "cascade" }),
+  authorName: text("author_name").notNull(),
+  authorEmail: text("author_email"),
+  rating: integer("rating").notNull(),
+  comment: text("comment").notNull().default(""),
+  status: text("status").notNull().default("pending"), // pending | approved | rejected
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Append-only trail of admin actions — who (which founder) changed what and
 // when. Written from server actions; never edited or deleted from the app.
 export const auditLog = pgTable("audit_log", {
@@ -231,6 +247,11 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   images: many(productImages),
   variants: many(productVariants),
+  reviews: many(reviews),
+}));
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  product: one(products, { fields: [reviews.productId], references: [products.id] }),
 }));
 
 export const productImagesRelations = relations(productImages, ({ one }) => ({
