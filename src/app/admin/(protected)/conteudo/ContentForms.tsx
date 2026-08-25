@@ -47,6 +47,20 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
         className={input}
       />
 
+      <label className="mt-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Estoque</label>
+      <input
+        name="lowStockThreshold"
+        type="number"
+        step="1"
+        min="0"
+        defaultValue={settings.lowStockThreshold}
+        placeholder="Alerta de estoque baixo (unidades)"
+        className={input}
+      />
+      <p className="-mt-1 text-[11px] text-content/40">
+        Tamanhos com esta quantidade ou menos aparecem como “estoque baixo” no painel e no alerta diário.
+      </p>
+
       <div className="mt-2 flex items-center gap-4">
         <button type="submit" disabled={pending} className="border border-content px-6 py-3 text-[13px] uppercase tracking-[0.2em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50">
           {pending ? "Salvando..." : "Salvar dados"}

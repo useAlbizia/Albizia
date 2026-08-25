@@ -18,7 +18,10 @@ export type TrackedOrder = {
   createdAt: Date;
   subtotalCents: number;
   shippingCents: number;
+  discountCents: number;
+  couponCode: string | null;
   totalCents: number;
+  trackingCode: string | null;
   items: { productName: string; size: string; quantity: number; unitPriceCents: number }[];
 };
 
@@ -47,7 +50,10 @@ export async function getOrderForTracking(
     createdAt: order.createdAt,
     subtotalCents: order.subtotalCents,
     shippingCents: order.shippingCents,
+    discountCents: order.discountCents,
+    couponCode: order.couponCode,
     totalCents: order.totalCents,
+    trackingCode: order.trackingCode,
     items: order.items.map((i) => ({
       productName: i.productName,
       size: i.size,

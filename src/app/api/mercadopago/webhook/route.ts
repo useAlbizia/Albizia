@@ -9,6 +9,7 @@ import {
 import { db } from "@/lib/db/client";
 import { orders, productVariants, analyticsEvents } from "@/lib/db/schema";
 import { sendOrderPaidEmails } from "@/lib/order-notify";
+import { incrementCouponUse } from "@/lib/coupons";
 
 // Mercado Pago is the only source of truth for payment status — this
 // endpoint never trusts anything the customer's browser reports back.
@@ -108,6 +109,9 @@ export async function POST(request: NextRequest) {
         .insert(analyticsEvents)
         .values({ type: "order_paid", valueCents: order.totalCents })
         .catch(() => {});
+      if (order.couponCode) {
+        await incrementCouponUse(order.couponCode).catch(() => {});
+      }
       await sendOrderPaidEmails(order.id);
     }
   } else if (payment.status && payment.status !== order.mpStatus) {

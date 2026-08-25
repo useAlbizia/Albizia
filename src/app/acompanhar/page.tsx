@@ -70,6 +70,15 @@ export default async function AcompanharPage(props: PageProps<"/acompanhar">) {
           <p className="mt-6 text-[11px] uppercase tracking-[0.2em] text-content/50">Status</p>
           <p className="mt-1 text-xl">{order.statusLabel}</p>
 
+          {order.trackingCode && (
+            <div className="mt-4">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">
+                Código de rastreio
+              </p>
+              <p className="mt-1 font-mono text-sm">{order.trackingCode}</p>
+            </div>
+          )}
+
           <div className="mt-8 divide-y divide-content/10 border-y border-content/10">
             {order.items.map((i, idx) => (
               <div key={idx} className="flex justify-between py-3 text-sm">
@@ -85,6 +94,12 @@ export default async function AcompanharPage(props: PageProps<"/acompanhar">) {
               <span>Subtotal</span>
               <span>{money(order.subtotalCents)}</span>
             </div>
+            {order.discountCents > 0 && (
+              <div className="flex justify-between text-content/60">
+                <span>Desconto{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+                <span>−{money(order.discountCents)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-content/60">
               <span>Frete</span>
               <span>{order.shippingCents === 0 ? "Grátis" : money(order.shippingCents)}</span>

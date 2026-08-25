@@ -11,6 +11,7 @@ export type SiteSettings = {
   instagram: string;
   shippingFlatCents: number;
   freeShippingThresholdCents: number;
+  lowStockThreshold: number;
 };
 
 const DEFAULTS: SiteSettings = {
@@ -22,6 +23,7 @@ const DEFAULTS: SiteSettings = {
   instagram: "",
   shippingFlatCents: 0,
   freeShippingThresholdCents: 0,
+  lowStockThreshold: 3,
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -36,6 +38,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     instagram: row.instagram,
     shippingFlatCents: row.shippingFlatCents,
     freeShippingThresholdCents: row.freeShippingThresholdCents,
+    lowStockThreshold: row.lowStockThreshold,
   };
 }
 

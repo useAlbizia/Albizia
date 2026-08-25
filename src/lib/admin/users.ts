@@ -5,6 +5,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
 import { adminCreateUser } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { logAudit } from "@/lib/audit";
 
 export type CreateAdminState = { error?: string; success?: { email: string; password: string } };
 
@@ -38,6 +39,7 @@ export async function createAdminUser(
     return { error };
   }
 
+  await logAudit({ action: "user.create", entity: "user", entityId: email.data });
   return { success: { email: email.data, password: tempPassword } };
 }
 

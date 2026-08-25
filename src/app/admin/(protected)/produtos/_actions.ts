@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { products, productVariants, productImages, collections } from "@/lib/db/schema";
+import { logAudit } from "@/lib/audit";
 
 const SIZES_BY_CATEGORY: Record<string, string[]> = {
   camiseta: ["P", "M", "G", "GG"],
@@ -89,6 +90,7 @@ export async function createProduct(
     .insert(productVariants)
     .values(sizes.map((size) => ({ productId: created.id, size, stock: 0 })));
 
+  await logAudit({ action: "product.create", entity: "product", entityId: created.id, detail: { name: data.name } });
   revalidatePath("/colecoes");
   revalidatePath(`/colecoes/${data.collectionSlug}`);
   revalidatePath("/admin/produtos");
@@ -145,6 +147,7 @@ export async function updateProduct(
     })
     .where(eq(products.id, productId));
 
+  await logAudit({ action: "product.update", entity: "product", entityId: productId, detail: { name: data.name } });
   revalidatePath("/colecoes");
   revalidatePath(`/colecoes/${current.slug}`);
   revalidatePath(`/colecoes/${data.collectionSlug}`);

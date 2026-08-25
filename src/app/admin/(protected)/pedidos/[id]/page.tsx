@@ -2,7 +2,9 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { orders } from "@/lib/db/schema";
+import { brl } from "@/lib/format";
 import { StatusControl } from "./StatusControl";
+import { TrackingForm } from "./TrackingForm";
 
 type ShippingAddress = {
   street: string;
@@ -63,46 +65,44 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
               <span className="text-content/70">
                 {item.productName} ({item.size}) × {item.quantity}
               </span>
-              <span>
-                {((item.unitPriceCents * item.quantity) / 100).toLocaleString("pt-BR", {
-                  style: "currency",
-                  currency: "BRL",
-                })}
-              </span>
+              <span>{brl(item.unitPriceCents * item.quantity)}</span>
             </div>
           ))}
         </div>
         <div className="mt-4 flex flex-col gap-1 text-sm">
           <div className="flex justify-between text-content/60">
             <span>Subtotal</span>
-            <span>
-              {(order.subtotalCents / 100).toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
-            </span>
+            <span>{brl(order.subtotalCents)}</span>
           </div>
+          {order.discountCents > 0 && (
+            <div className="flex justify-between text-content/60">
+              <span>Desconto{order.couponCode ? ` (${order.couponCode})` : ""}</span>
+              <span>−{brl(order.discountCents)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-content/60">
             <span>Frete</span>
-            <span>
-              {order.shippingCents === 0
-                ? "Grátis"
-                : (order.shippingCents / 100).toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })}
-            </span>
+            <span>{order.shippingCents === 0 ? "Grátis" : brl(order.shippingCents)}</span>
           </div>
           <div className="mt-1 flex justify-between border-t border-content/10 pt-2">
             <span className="uppercase tracking-[0.15em] text-content/60">Total</span>
-            <span className="text-lg">
-              {(order.totalCents / 100).toLocaleString("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              })}
-            </span>
+            <span className="text-lg">{brl(order.totalCents)}</span>
           </div>
         </div>
+      </div>
+
+      {/* Shipping / tracking */}
+      <div className="mt-10">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">
+          Rastreio {order.trackingCode ? "" : "— marcar como enviado"}
+        </p>
+        {order.trackingCode && (
+          <p className="mt-2 font-mono text-sm">{order.trackingCode}</p>
+        )}
+        <TrackingForm orderId={order.id} currentCode={order.trackingCode} />
+        <p className="mt-2 text-[11px] text-content/40">
+          Ao salvar, o pedido é marcado como “Enviado” e o cliente recebe o código por e-mail.
+        </p>
       </div>
 
       {order.mpPaymentId && (

@@ -6,6 +6,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { siteSettings, legalPages } from "@/lib/db/schema";
+import { logAudit } from "@/lib/audit";
 
 export type ContentState = { ok?: boolean; error?: string };
 
@@ -19,6 +20,7 @@ const settingsSchema = z.object({
   // Reais in the form → cents in the DB.
   shippingFlat: z.coerce.number().min(0).default(0),
   freeShippingThreshold: z.coerce.number().min(0).default(0),
+  lowStockThreshold: z.coerce.number().int().min(0).default(3),
 });
 
 export async function saveSettings(
@@ -35,14 +37,16 @@ export async function saveSettings(
     instagram: formData.get("instagram") ?? "",
     shippingFlat: formData.get("shippingFlat") ?? 0,
     freeShippingThreshold: formData.get("freeShippingThreshold") ?? 0,
+    lowStockThreshold: formData.get("lowStockThreshold") ?? 3,
   });
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { shippingFlat, freeShippingThreshold, ...company } = parsed.data;
+  const { shippingFlat, freeShippingThreshold, lowStockThreshold, ...company } = parsed.data;
   const values = {
     ...company,
     shippingFlatCents: Math.round(shippingFlat * 100),
     freeShippingThresholdCents: Math.round(freeShippingThreshold * 100),
+    lowStockThreshold,
     updatedAt: new Date(),
   };
 
@@ -51,6 +55,7 @@ export async function saveSettings(
     .values({ id: 1, ...values })
     .onConflictDoUpdate({ target: siteSettings.id, set: values });
 
+  await logAudit({ action: "settings.save", entity: "site_settings", entityId: "1" });
   revalidatePath("/", "layout"); // footer shows everywhere
   return { ok: true };
 }

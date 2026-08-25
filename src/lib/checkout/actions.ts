@@ -8,6 +8,13 @@ import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import type { CartItem } from "@/lib/cart-context";
 import { getShippingConfig, computeShipping } from "@/lib/shipping";
+import { validateCoupon, type CouponResult } from "@/lib/coupons";
+
+// Checkout preview: re-checks a coupon against the true server-side subtotal so
+// the customer sees the real discount before paying.
+export async function applyCoupon(code: string, subtotalCents: number): Promise<CouponResult> {
+  return validateCoupon(code, subtotalCents);
+}
 
 const checkoutSchema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
@@ -92,7 +99,21 @@ export async function createOrder(
   // Shipping is computed server-side (never trust a client-sent amount).
   const shippingConfig = await getShippingConfig();
   const shippingCents = computeShipping(subtotalCents, shippingConfig, data.zip);
-  const totalCents = subtotalCents + shippingCents;
+
+  // Coupon is re-validated here against the true subtotal — the client preview
+  // is never trusted. If it's no longer valid we stop rather than silently
+  // charging full price after the customer saw a discounted total.
+  const rawCoupon = ((formData.get("couponCode") as string | null) ?? "").trim();
+  let discountCents = 0;
+  let couponCode: string | null = null;
+  if (rawCoupon) {
+    const result = await validateCoupon(rawCoupon, subtotalCents);
+    if (!result.ok) return { error: `Cupom: ${result.message}` };
+    discountCents = result.discountCents;
+    couponCode = result.code;
+  }
+
+  const totalCents = subtotalCents - discountCents + shippingCents;
 
   const [order] = await db
     .insert(orders)
@@ -112,6 +133,8 @@ export async function createOrder(
       },
       subtotalCents,
       shippingCents,
+      discountCents,
+      couponCode,
       totalCents,
     })
     .returning();
@@ -138,28 +161,44 @@ export async function createOrder(
 
   let checkoutUrl: string | undefined;
   try {
+    // With a discount we send a single consolidated line equal to the exact
+    // amount charged (MP rejects negative line items, so we can't itemize +
+    // subtract). Without one, we keep the itemized breakdown + a Frete line.
+    const mpItems =
+      discountCents > 0
+        ? [
+            {
+              id: `order-${order.id}`,
+              title: `ALBIZIA — Pedido${couponCode ? ` (cupom ${couponCode})` : ""}`,
+              quantity: 1,
+              unit_price: totalCents / 100,
+              currency_id: "BRL",
+            },
+          ]
+        : [
+            ...lineItems.map((li) => ({
+              id: li.variantId,
+              title: `${li.productName} (${li.size})`,
+              quantity: li.quantity,
+              unit_price: li.unitPriceCents / 100,
+              currency_id: "BRL",
+            })),
+            ...(shippingCents > 0
+              ? [
+                  {
+                    id: "frete",
+                    title: "Frete",
+                    quantity: 1,
+                    unit_price: shippingCents / 100,
+                    currency_id: "BRL",
+                  },
+                ]
+              : []),
+          ];
+
     const preference = await new Preference(mpClient).create({
       body: {
-        items: [
-          ...lineItems.map((li) => ({
-            id: li.variantId,
-            title: `${li.productName} (${li.size})`,
-            quantity: li.quantity,
-            unit_price: li.unitPriceCents / 100,
-            currency_id: "BRL",
-          })),
-          ...(shippingCents > 0
-            ? [
-                {
-                  id: "frete",
-                  title: "Frete",
-                  quantity: 1,
-                  unit_price: shippingCents / 100,
-                  currency_id: "BRL",
-                },
-              ]
-            : []),
-        ],
+        items: mpItems,
         payer: { name: data.name, email: data.email },
         external_reference: order.id,
         back_urls: {

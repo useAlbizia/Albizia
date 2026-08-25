@@ -91,7 +91,16 @@ export const orders = pgTable("orders", {
   shippingAddress: jsonb("shipping_address").notNull(),
   subtotalCents: integer("subtotal_cents").notNull(),
   shippingCents: integer("shipping_cents").notNull().default(0),
+  // Coupon discount applied at checkout (0 = none). couponCode is a snapshot
+  // of the code used, so a later coupon edit/delete doesn't rewrite history.
+  discountCents: integer("discount_cents").notNull().default(0),
+  couponCode: text("coupon_code"),
   totalCents: integer("total_cents").notNull(),
+  // Carrier tracking code, set when the order is marked shipped.
+  trackingCode: text("tracking_code"),
+  // When a cart-recovery email was last sent for this (still pending) order —
+  // stops us from spamming the same abandoned checkout.
+  recoveryEmailSentAt: timestamp("recovery_email_sent_at", { withTimezone: true }),
   mpPreferenceId: text("mp_preference_id"),
   mpPaymentId: text("mp_payment_id"),
   mpStatus: text("mp_status"),
@@ -133,7 +142,38 @@ export const siteSettings = pgTable("site_settings", {
   // 0 flat = always free).
   shippingFlatCents: integer("shipping_flat_cents").notNull().default(0),
   freeShippingThresholdCents: integer("free_shipping_threshold_cents").notNull().default(0),
+  // A variant at or below this stock count is flagged "low" on the dashboard
+  // and in the daily low-stock alert email.
+  lowStockThreshold: integer("low_stock_threshold").notNull().default(3),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Discount coupons applied at checkout. type "percent" → value is 1–100;
+// type "fixed" → value is a discount in cents. usedCount increments only when
+// an order that used the code is actually PAID (see the MP webhook).
+export const coupons = pgTable("coupons", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  code: text("code").notNull().unique(), // stored uppercase
+  type: text("type").notNull(), // percent | fixed
+  value: integer("value").notNull(),
+  minSubtotalCents: integer("min_subtotal_cents").notNull().default(0),
+  maxUses: integer("max_uses"), // null = unlimited
+  usedCount: integer("used_count").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Append-only trail of admin actions — who (which founder) changed what and
+// when. Written from server actions; never edited or deleted from the app.
+export const auditLog = pgTable("audit_log", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  actorEmail: text("actor_email").notNull(),
+  action: text("action").notNull(), // e.g. order.status, product.update, coupon.create
+  entity: text("entity"),
+  entityId: text("entity_id"),
+  detail: jsonb("detail"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 // Editable legal/informational pages (Termos, Privacidade, Trocas). Body is

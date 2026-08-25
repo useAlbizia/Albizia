@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState, useTransition } from "react";
 import { useCart } from "@/lib/cart-context";
-import { createOrder, type CheckoutState } from "@/lib/checkout/actions";
+import { createOrder, applyCoupon, type CheckoutState } from "@/lib/checkout/actions";
 import { track } from "@/lib/analytics-client";
 import { computeShipping, type ShippingConfig } from "@/lib/shipping-calc";
 
@@ -20,6 +20,12 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
   const { items, totalPrice } = useCart();
   const action = createOrder.bind(null, items);
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  const [couponInput, setCouponInput] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [discountCents, setDiscountCents] = useState(0);
+  const [couponMsg, setCouponMsg] = useState<string | null>(null);
+  const [couponPending, startCoupon] = useTransition();
 
   const hasItems = items.length > 0;
   useEffect(() => {
@@ -44,7 +50,23 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
 
   const subtotalCents = Math.round(totalPrice * 100);
   const shippingCents = computeShipping(subtotalCents, shipping);
-  const totalCents = subtotalCents + shippingCents;
+  const effectiveDiscount = Math.min(discountCents, subtotalCents);
+  const totalCents = subtotalCents - effectiveDiscount + shippingCents;
+
+  function handleApply() {
+    startCoupon(async () => {
+      const r = await applyCoupon(couponInput, subtotalCents);
+      if (r.ok) {
+        setDiscountCents(r.discountCents);
+        setCouponCode(r.code);
+        setCouponMsg(`${r.code} — ${money(r.discountCents / 100)} de desconto`);
+      } else {
+        setDiscountCents(0);
+        setCouponCode("");
+        setCouponMsg(r.message);
+      }
+    });
+  }
 
   return (
     <section className="mx-auto max-w-xl px-6 py-20">
@@ -63,11 +85,36 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
         ))}
       </div>
 
+      {/* Coupon */}
+      <div className="mt-6 flex gap-2">
+        <input
+          value={couponInput}
+          onChange={(e) => setCouponInput(e.target.value)}
+          placeholder="Cupom de desconto"
+          className={`${inputClass} flex-1 uppercase`}
+        />
+        <button
+          type="button"
+          onClick={handleApply}
+          disabled={couponPending || !couponInput.trim()}
+          className="border border-content px-5 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-40"
+        >
+          {couponPending ? "..." : "Aplicar"}
+        </button>
+      </div>
+      {couponMsg && <p className="mt-2 text-[12px] text-content/50">{couponMsg}</p>}
+
       <div className="mt-6 flex flex-col gap-2 text-sm">
         <div className="flex justify-between text-content/60">
           <span>Subtotal</span>
           <span>{money(subtotalCents / 100)}</span>
         </div>
+        {effectiveDiscount > 0 && (
+          <div className="flex justify-between text-content/60">
+            <span>Desconto{couponCode ? ` (${couponCode})` : ""}</span>
+            <span>−{money(effectiveDiscount / 100)}</span>
+          </div>
+        )}
         <div className="flex justify-between text-content/60">
           <span>Frete</span>
           <span>{shippingCents === 0 ? "Grátis" : money(shippingCents / 100)}</span>
@@ -79,6 +126,7 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
       </div>
 
       <form action={formAction} className="mt-10 flex flex-col gap-4">
+        <input type="hidden" name="couponCode" value={couponCode} />
         <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Seus dados</p>
         <input name="name" placeholder="Nome completo" required className={inputClass} />
         <input name="email" type="email" placeholder="E-mail" required className={inputClass} />
