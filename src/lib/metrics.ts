@@ -15,8 +15,14 @@ export function brtDayStartUtc(d = new Date()): Date {
   return new Date(`${ymd}T03:00:00.000Z`);
 }
 
-// coalesce(paid_at, created_at): manually-marked-paid orders may lack paidAt.
-const revenueDate = sql`coalesce(${orders.paidAt}, ${orders.createdAt})`;
+// "Revenue date >= since" as an explicit SQL predicate. We compare against a
+// raw coalesce(paid_at, created_at) — manually-marked-paid orders may lack
+// paidAt — so drizzle has no column type to encode a JS Date from. Binding an
+// ISO string with an explicit ::timestamptz cast avoids that (a bare Date here
+// throws "argument must be of type string ... Received an instance of Date").
+function paidSince(since: Date) {
+  return sql`coalesce(${orders.paidAt}, ${orders.createdAt}) >= ${since.toISOString()}::timestamptz`;
+}
 
 async function revenueSince(since: Date): Promise<{ cents: number; n: number }> {
   const [r] = await db
@@ -25,7 +31,7 @@ async function revenueSince(since: Date): Promise<{ cents: number; n: number }> 
       n: count(),
     })
     .from(orders)
-    .where(and(inArray(orders.status, [...REVENUE_STATUSES]), gte(revenueDate, since)));
+    .where(and(inArray(orders.status, [...REVENUE_STATUSES]), paidSince(since)));
   return { cents: Number(r.cents), n: Number(r.n) };
 }
 
@@ -116,7 +122,7 @@ export async function getFinanceReport(days: number): Promise<FinanceReport> {
     db
       .select({ cents: sql<number>`coalesce(sum(${orders.totalCents}), 0)`, n: count() })
       .from(orders)
-      .where(and(inArray(orders.status, [...REVENUE_STATUSES]), gte(revenueDate, since))),
+      .where(and(inArray(orders.status, [...REVENUE_STATUSES]), paidSince(since))),
     db
       .select({ cents: sql<number>`coalesce(sum(${orders.totalCents}), 0)`, n: count() })
       .from(orders)
@@ -133,7 +139,7 @@ export async function getFinanceReport(days: number): Promise<FinanceReport> {
       })
       .from(orderItems)
       .innerJoin(orders, sql`${orders.id} = ${orderItems.orderId}`)
-      .where(and(inArray(orders.status, [...REVENUE_STATUSES]), gte(revenueDate, since)))
+      .where(and(inArray(orders.status, [...REVENUE_STATUSES]), paidSince(since)))
       .groupBy(orderItems.productName)
       .orderBy(desc(sql`sum(${orderItems.unitPriceCents} * ${orderItems.quantity})`))
       .limit(10),
