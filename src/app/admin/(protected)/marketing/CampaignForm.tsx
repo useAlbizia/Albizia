@@ -20,6 +20,13 @@ export function CampaignForm({ activeCount }: { activeCount: number }) {
         required
         className={input}
       />
+      <p className="mt-1 text-[11px] uppercase tracking-[0.2em] text-content/50">
+        Botão (opcional)
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        <input name="ctaText" placeholder="Texto do botão (ex: Ver coleção)" className={input} />
+        <input name="ctaUrl" placeholder="Link (https://...)" className={input} />
+      </div>
       {state.error && <p className="text-[13px] text-content/70">{state.error}</p>}
       {state.ok && (
         <p className="text-[13px] text-content/60">

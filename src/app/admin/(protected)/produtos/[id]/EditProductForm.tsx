@@ -52,7 +52,7 @@ export function EditProductForm({
           defaultValue={product.slug}
           placeholder="slug-do-produto"
           required
-          pattern="[a-z0-9-]+"
+          pattern="[-a-z0-9]+"
           className={inputClass}
         />
 

@@ -5,13 +5,15 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { subscribers, campaigns } from "@/lib/db/schema";
-import { sendEmail, emailShell } from "@/lib/email";
+import { sendEmail, emailShell, emailButton } from "@/lib/email";
 
 export type CampaignState = { ok?: boolean; error?: string; sent?: number };
 
 const schema = z.object({
   subject: z.string().min(1, "Assunto obrigatório"),
   body: z.string().min(1, "Mensagem obrigatória"),
+  ctaText: z.string().optional(),
+  ctaUrl: z.string().optional(),
 });
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -29,9 +31,17 @@ export async function sendCampaign(
   const parsed = schema.safeParse({
     subject: formData.get("subject"),
     body: formData.get("body"),
+    ctaText: formData.get("ctaText") || undefined,
+    ctaUrl: formData.get("ctaUrl") || undefined,
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
-  const { subject, body } = parsed.data;
+  const { subject, body, ctaText, ctaUrl } = parsed.data;
+
+  // Optional call-to-action button (only if both text and a valid URL given).
+  const ctaHtml =
+    ctaText?.trim() && ctaUrl?.trim() && /^https?:\/\//.test(ctaUrl.trim())
+      ? emailButton(ctaText.trim(), ctaUrl.trim())
+      : "";
 
   const list = await db.query.subscribers.findMany({
     where: eq(subscribers.status, "active"),
@@ -60,6 +70,7 @@ export async function sendCampaign(
         const html = emailShell(
           subject,
           `${paragraphs}
+           ${ctaHtml}
            <p style="font-size:11px;color:#8a857c;margin-top:24px;">
              Você recebe este e-mail por ter assinado a newsletter da ALBIZIA.
              <a href="${unsub}" style="color:#8a857c;">Cancelar inscrição</a>.

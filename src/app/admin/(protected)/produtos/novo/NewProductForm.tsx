@@ -24,7 +24,7 @@ export function NewProductForm({ collections }: { collections: CollectionInfo[] 
         name="slug"
         placeholder="slug-do-produto (ex: camiseta-nova-preta)"
         required
-        pattern="[a-z0-9-]+"
+        pattern="[-a-z0-9]+"
         className={inputClass}
       />
 
