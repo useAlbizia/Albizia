@@ -1,22 +1,31 @@
 "use client";
 
-// Anonymous, cookie-light visitor tracking. A random session id lives in
-// localStorage (no personal data). Events are sent with sendBeacon when
-// available so they don't delay navigation, falling back to fetch.
+// Anonymous, cookie-light visitor tracking (no personal data).
+// - visitorId: persistent (localStorage) → the same person across visits,
+//   so we can count UNIQUE and RETURNING visitors.
+// - sessionId: per-visit (sessionStorage) → resets when the tab/browser
+//   closes, so we can count SESSIONS (individual visits).
+// Bot filtering and device detection happen server-side (see /api/track).
 
-const SESSION_KEY = "albizia-sid";
+const VISITOR_KEY = "albizia-vid";
+const SESSION_KEY = "albizia-ses";
 
-function sessionId(): string {
-  if (typeof window === "undefined") return "";
+function ids(): { visitorId: string; sessionId: string } {
+  if (typeof window === "undefined") return { visitorId: "", sessionId: "" };
   try {
-    let id = window.localStorage.getItem(SESSION_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      window.localStorage.setItem(SESSION_KEY, id);
+    let visitorId = window.localStorage.getItem(VISITOR_KEY);
+    if (!visitorId) {
+      visitorId = crypto.randomUUID();
+      window.localStorage.setItem(VISITOR_KEY, visitorId);
     }
-    return id;
+    let sessionId = window.sessionStorage.getItem(SESSION_KEY);
+    if (!sessionId) {
+      sessionId = crypto.randomUUID();
+      window.sessionStorage.setItem(SESSION_KEY, sessionId);
+    }
+    return { visitorId, sessionId };
   } catch {
-    return "";
+    return { visitorId: "", sessionId: "" };
   }
 }
 
@@ -28,7 +37,7 @@ type TrackPayload = {
 
 export function track(payload: TrackPayload): void {
   if (typeof window === "undefined") return;
-  const body = JSON.stringify({ ...payload, sessionId: sessionId() });
+  const body = JSON.stringify({ ...payload, ...ids() });
   try {
     if (navigator.sendBeacon) {
       navigator.sendBeacon("/api/track", new Blob([body], { type: "application/json" }));

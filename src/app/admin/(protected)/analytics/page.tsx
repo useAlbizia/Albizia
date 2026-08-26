@@ -14,12 +14,21 @@ export default async function AnalyticsPage() {
   const maxDay = Math.max(1, ...a.daily.map((d) => d.views));
 
   const kpis = [
-    { label: "Visitas", value: a.pageViews },
-    { label: "Visitantes", value: a.sessions },
+    { label: "Visitantes únicos", value: a.uniqueVisitors },
+    { label: "Retornantes", value: a.returningVisitors },
+    { label: "Sessões (visitas)", value: a.sessions },
+    { label: "Páginas vistas", value: a.pageViews },
     { label: "Produtos vistos", value: a.productViews },
     { label: "Adições ao carrinho", value: a.addToCart },
     { label: "Pedidos pagos", value: a.ordersPaid },
-    { label: "Receita", value: money(a.revenueCents), wide: true },
+    { label: "Receita", value: money(a.revenueCents) },
+  ];
+
+  const totalDevices = a.devices.mobile + a.devices.tablet + a.devices.desktop;
+  const deviceRows = [
+    { label: "Celular", n: a.devices.mobile },
+    { label: "Computador", n: a.devices.desktop },
+    { label: "Tablet", n: a.devices.tablet },
   ];
 
   const funnel = [
@@ -41,7 +50,7 @@ export default async function AnalyticsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 gap-px overflow-hidden bg-content/10 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-px overflow-hidden bg-content/10 sm:grid-cols-4">
         {kpis.map((k) => (
           <div key={k.label} className="bg-surface p-6">
             <p className="text-2xl">{k.value}</p>
@@ -51,6 +60,28 @@ export default async function AnalyticsPage() {
           </div>
         ))}
       </div>
+
+      {/* Devices */}
+      {totalDevices > 0 && (
+        <div className="mt-10">
+          <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/50">
+            Dispositivos (visitantes únicos)
+          </p>
+          <div className="flex flex-col gap-2">
+            {deviceRows.map((d) => (
+              <div key={d.label} className="flex items-center gap-4">
+                <span className="w-28 text-sm text-content/70">{d.label}</span>
+                <div className="h-5 flex-1 bg-content/5">
+                  <div className="h-full bg-content/40" style={{ width: pct(d.n, totalDevices) }} />
+                </div>
+                <span className="w-24 text-right text-sm text-content/60">
+                  {d.n} · {pct(d.n, totalDevices)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Visits chart (14 days) */}
       <div className="mt-12">
@@ -112,8 +143,10 @@ export default async function AnalyticsPage() {
       </div>
 
       <p className="mt-10 text-[11px] leading-relaxed text-content/40">
-        Dados coletados de forma anônima (sem dados pessoais), diretamente no seu banco. Visitas do
-        próprio painel admin não são contadas.
+        Dados 100% reais e anônimos (sem dados pessoais), coletados direto no seu banco. Bots,
+        rastreadores, ferramentas e acessos de desenvolvimento (localhost) são descartados
+        automaticamente. Visitante único = pessoa (persistente); sessão = uma visita; retornante =
+        visto em mais de uma visita.
       </p>
     </div>
   );

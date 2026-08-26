@@ -242,7 +242,11 @@ export const analyticsEvents = pgTable("analytics_events", {
   type: text("type").notNull(), // page_view | product_view | add_to_cart | checkout_start | order_created | order_paid
   path: text("path"),
   productSlug: text("product_slug"),
+  // sessionId = one visit (per-tab, sessionStorage). visitorId = the same
+  // person across visits (persistent, localStorage) → unique/returning visitors.
   sessionId: text("session_id"),
+  visitorId: text("visitor_id"),
+  device: text("device"), // mobile | tablet | desktop
   valueCents: integer("value_cents"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
