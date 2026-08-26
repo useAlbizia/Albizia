@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { Product } from "@/lib/products";
 import { useCart } from "@/lib/cart-context";
 import { ProductCover } from "./ProductImage";
+import { SizeGuide } from "./SizeGuide";
 import { track } from "@/lib/analytics-client";
 
 export function ProductDetail({ product }: { product: Product }) {
@@ -70,7 +71,10 @@ export function ProductDetail({ product }: { product: Product }) {
         </p>
 
         <div className="mt-10">
-          <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Tamanho</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Tamanho</p>
+            <SizeGuide category={product.category} />
+          </div>
           <div className="flex flex-wrap gap-2">
             {product.variants.map((v) => {
               const outOfStock = v.stock <= 0;
