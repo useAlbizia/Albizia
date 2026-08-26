@@ -140,12 +140,21 @@ export function Header({ menu }: { menu: MenuEntry[] }) {
                 <Link
                   href={active.featured.href}
                   onClick={() => setOpenId(null)}
-                  className="relative hidden aspect-[4/5] w-52 shrink-0 overflow-hidden lg:block"
+                  className="group relative hidden aspect-[3/4] w-64 shrink-0 overflow-hidden md:block"
                 >
-                  <Image src={active.featured.img} alt={active.featured.label} fill sizes="208px" className="object-cover transition-transform duration-500 hover:scale-105" />
-                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 text-[12px] uppercase tracking-[0.15em] text-white">
-                    {active.featured.label}
-                  </span>
+                  <Image src={active.featured.img} alt={active.featured.label} fill sizes="256px" className="object-cover transition-transform duration-700 group-hover:scale-110" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-4">
+                    <span className="block text-[13px] uppercase tracking-[0.18em] text-white">
+                      {active.featured.label}
+                    </span>
+                    <span className="mt-1.5 inline-flex items-center gap-1.5 text-[11px] uppercase tracking-[0.15em] text-white/85">
+                      Explorar
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                  </div>
                 </Link>
               )}
             </div>

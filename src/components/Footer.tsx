@@ -17,15 +17,38 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
 
 const linkClass = "transition-colors hover:text-content";
 
-// Small monochrome payment/security seals — text-based on purpose (we don't
-// reproduce third-party brand logos). Only claims that are actually true.
-function Seal({ children }: { children: React.ReactNode }) {
+// A card-shaped payment badge (brand name styled inside a card outline) — a
+// clean, on-brand alternative to reproducing third-party logo artwork.
+function CardBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1.5 border border-content/15 px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] text-content/50">
+    <span className="inline-flex h-7 min-w-[46px] items-center justify-center rounded-[5px] border border-content/15 bg-content/[0.04] px-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-content/60">
       {children}
     </span>
   );
 }
+
+// A trust seal: small line icon + label in a pill.
+function TrustBadge({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-2 border border-content/15 px-3.5 py-1.5 text-[10px] uppercase tracking-[0.12em] text-content/60">
+      <span className="text-content/70">{icon}</span>
+      {children}
+    </span>
+  );
+}
+
+const LockIcon = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <rect x="4" y="10" width="16" height="11" rx="1.5" />
+    <path d="M8 10V7a4 4 0 0 1 8 0v3" />
+  </svg>
+);
+const ShieldIcon = (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+    <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" strokeLinejoin="round" />
+    <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 export function Footer({ settings }: { settings: SiteSettings }) {
   const pathname = usePathname();
@@ -101,23 +124,22 @@ export function Footer({ settings }: { settings: SiteSettings }) {
         </div>
       </div>
 
-      {/* Trust / payment seals */}
+      {/* Trust + payment badges */}
       <div className="border-t border-content/10">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-center gap-3 px-6 py-6">
-          <Seal>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <rect x="4" y="10" width="16" height="10" rx="1.5" />
-              <path d="M8 10V7a4 4 0 0 1 8 0v3" />
-            </svg>
-            Site seguro · SSL
-          </Seal>
-          <Seal>Pagamento via Mercado Pago</Seal>
-          <Seal>Pix</Seal>
-          <Seal>Visa</Seal>
-          <Seal>Mastercard</Seal>
-          <Seal>Elo</Seal>
-          <Seal>Amex</Seal>
-          <Seal>Compra garantida</Seal>
+        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 py-7">
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <TrustBadge icon={LockIcon}>Site 100% seguro · SSL</TrustBadge>
+            <TrustBadge icon={ShieldIcon}>Compra garantida</TrustBadge>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <span className="mr-1 text-[10px] uppercase tracking-[0.18em] text-content/40">Pagamento</span>
+            <CardBadge>Pix</CardBadge>
+            <CardBadge>Visa</CardBadge>
+            <CardBadge>Master</CardBadge>
+            <CardBadge>Elo</CardBadge>
+            <CardBadge>Amex</CardBadge>
+            <CardBadge>Mercado&nbsp;Pago</CardBadge>
+          </div>
         </div>
       </div>
 
