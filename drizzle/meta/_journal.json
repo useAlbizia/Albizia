@@ -71,6 +71,13 @@
       "when": 1787728378549,
       "tag": "0009_lowly_maria_hill",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1787729065499,
+      "tag": "0010_careless_queen_noir",
+      "breakpoints": true
     }
   ]
 }

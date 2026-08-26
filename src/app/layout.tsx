@@ -9,6 +9,7 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { CartProvider } from "@/lib/cart-context";
 import { ThemeProvider } from "@/lib/theme";
 import { getSiteSettings } from "@/lib/settings";
+import { getMenu } from "@/lib/menu";
 import { Tracker } from "@/components/Tracker";
 
 const montserrat = Montserrat({
@@ -48,7 +49,7 @@ export const metadata: Metadata = {
 const THEME_INIT_SCRIPT = `(function(){try{var h=new Date().getHours();var t=(h>=18||h<6)?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const settings = await getSiteSettings();
+  const [settings, menu] = await Promise.all([getSiteSettings(), getMenu()]);
   return (
     <html
       lang="pt-BR"
@@ -65,7 +66,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             {settings.announcementActive && (
               <AnnouncementBar text={settings.announcementText} />
             )}
-            <Header />
+            <Header menu={menu} />
             <main className="flex-1">{children}</main>
             <Footer settings={settings} />
             <CartDrawer />

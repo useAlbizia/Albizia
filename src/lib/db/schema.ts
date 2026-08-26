@@ -191,6 +191,41 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Configurable storefront navigation (mega-menu). Each menu_items row is a
+// top-level entry in the header; its menu_links are the sub-links shown in the
+// drop panel, grouped into columns by columnTitle. An optional featured image
+// gives the Reserva-style visual block on the right of the panel.
+export const menuItems = pgTable("menu_items", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  label: text("label").notNull(),
+  href: text("href"), // the top entry may link somewhere itself (optional)
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  featuredImageUrl: text("featured_image_url"),
+  featuredHref: text("featured_href"),
+  featuredLabel: text("featured_label"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const menuLinks = pgTable("menu_links", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  menuItemId: uuid("menu_item_id")
+    .notNull()
+    .references(() => menuItems.id, { onDelete: "cascade" }),
+  columnTitle: text("column_title").notNull().default(""), // groups links into columns
+  label: text("label").notNull(),
+  href: text("href").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+});
+
+export const menuItemsRelations = relations(menuItems, ({ many }) => ({
+  links: many(menuLinks),
+}));
+
+export const menuLinksRelations = relations(menuLinks, ({ one }) => ({
+  item: one(menuItems, { fields: [menuLinks.menuItemId], references: [menuItems.id] }),
+}));
+
 // Append-only trail of admin actions — who (which founder) changed what and
 // when. Written from server actions; never edited or deleted from the app.
 export const auditLog = pgTable("audit_log", {

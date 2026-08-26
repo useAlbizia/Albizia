@@ -1,51 +1,62 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Wordmark } from "./logo/Wordmark";
 import { converge } from "@/lib/motion";
 import { useCart } from "@/lib/cart-context";
+import type { MenuEntry } from "@/lib/menu";
 
-const NAV = [
-  { href: "/produtos", label: "Produtos" },
-  { href: "/colecoes/essential", label: "Essential" },
-  { href: "/colecoes/signature", label: "Signature" },
-  { href: "/colecoes/studio", label: "Studio" },
-  { href: "/colecoes/moda-praia", label: "Moda Praia" },
-  { href: "/sobre", label: "Sobre" },
-];
-
-export function Header() {
-  const [open, setOpen] = useState(false);
+export function Header({ menu }: { menu: MenuEntry[] }) {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const { totalCount, openCart } = useCart();
   const pathname = usePathname();
 
   if (pathname?.startsWith("/admin")) return null;
 
+  const hasPanel = (m: MenuEntry) => m.columns.length > 0 || !!m.featured;
+  const active = menu.find((m) => m.id === openId && hasPanel(m)) ?? null;
+
+  const topLink =
+    "text-[13px] uppercase tracking-[0.18em] text-content/70 transition-colors hover:text-content";
+
   return (
-    <header className="sticky top-0 z-40 border-b border-content/10 bg-surface/90 backdrop-blur">
+    <header
+      className="sticky top-0 z-40 border-b border-content/10 bg-surface/95 backdrop-blur"
+      onMouseLeave={() => setOpenId(null)}
+    >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link
-          href="/"
-          aria-label="ALBIZIA"
-          className="text-content"
-          onClick={() => setOpen(false)}
-        >
+        <Link href="/" aria-label="ALBIZIA" className="text-content" onClick={() => setMobileOpen(false)}>
           <Wordmark className="h-4 w-auto sm:h-5" />
         </Link>
 
         <nav className="hidden gap-8 md:flex">
-          {NAV.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-[13px] uppercase tracking-[0.18em] text-content/70 transition-colors hover:text-content"
-            >
-              {item.label}
-            </Link>
-          ))}
+          {menu.map((m) =>
+            m.href ? (
+              <Link
+                key={m.id}
+                href={m.href}
+                className={topLink}
+                onMouseEnter={() => setOpenId(hasPanel(m) ? m.id : null)}
+              >
+                {m.label}
+              </Link>
+            ) : (
+              <button
+                key={m.id}
+                type="button"
+                className={topLink}
+                onMouseEnter={() => setOpenId(hasPanel(m) ? m.id : null)}
+              >
+                {m.label}
+              </button>
+            )
+          )}
         </nav>
 
         <div className="flex items-center gap-5">
@@ -78,45 +89,118 @@ export function Header() {
             )}
           </button>
           <button
-            aria-label={open ? "Fechar menu" : "Abrir menu"}
-            aria-expanded={open}
-            onClick={() => setOpen((v) => !v)}
+            aria-label={mobileOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={mobileOpen}
+            onClick={() => setMobileOpen((v) => !v)}
             className="flex h-8 w-6 flex-col items-center justify-center gap-1.5 md:hidden"
           >
-            <span
-              className={`h-px w-5 bg-content transition-transform ${open ? "translate-y-[3.5px] rotate-45" : ""}`}
-            />
-            <span
-              className={`h-px w-5 bg-content transition-transform ${open ? "-translate-y-[3.5px] -rotate-45" : ""}`}
-            />
+            <span className={`h-px w-5 bg-content transition-transform ${mobileOpen ? "translate-y-[3.5px] rotate-45" : ""}`} />
+            <span className={`h-px w-5 bg-content transition-transform ${mobileOpen ? "-translate-y-[3.5px] -rotate-45" : ""}`} />
           </button>
         </div>
       </div>
 
+      {/* Desktop mega-panel */}
       <AnimatePresence>
-        {open && (
+        {active && (
+          <motion.div
+            key={active.id}
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.18 }}
+            onMouseEnter={() => setOpenId(active.id)}
+            className="absolute inset-x-0 top-full hidden border-t border-content/10 bg-surface shadow-lg md:block"
+          >
+            <div className="mx-auto flex max-w-6xl gap-12 px-6 py-9">
+              <div className="flex flex-1 gap-14">
+                {active.columns.map((col) => (
+                  <div key={col.title || "geral"}>
+                    {col.title && (
+                      <p className="mb-4 text-[11px] uppercase tracking-[0.2em] text-content/40">
+                        {col.title}
+                      </p>
+                    )}
+                    <div className="flex flex-col gap-2.5">
+                      {col.links.map((l) => (
+                        <Link
+                          key={`${l.href}-${l.label}`}
+                          href={l.href}
+                          onClick={() => setOpenId(null)}
+                          className="text-sm text-content/70 transition-colors hover:text-content"
+                        >
+                          {l.label}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {active.featured && (
+                <Link
+                  href={active.featured.href}
+                  onClick={() => setOpenId(null)}
+                  className="relative hidden aspect-[4/5] w-52 shrink-0 overflow-hidden lg:block"
+                >
+                  <Image src={active.featured.img} alt={active.featured.label} fill sizes="208px" className="object-cover transition-transform duration-500 hover:scale-105" />
+                  <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-3 text-[12px] uppercase tracking-[0.15em] text-white">
+                    {active.featured.label}
+                  </span>
+                </Link>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile menu */}
+      <AnimatePresence>
+        {mobileOpen && (
           <motion.nav
             variants={converge}
             initial="hidden"
             animate="visible"
             exit="exit"
-            className="flex flex-col gap-1 border-t border-content/10 px-6 pb-6 pt-2 md:hidden"
+            className="border-t border-content/10 px-6 pb-6 pt-2 md:hidden"
           >
-            {NAV.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                className="py-3 text-sm uppercase tracking-[0.18em] text-content/80"
-              >
-                {item.label}
-              </Link>
-            ))}
-            <Link
-              href="/conta"
-              onClick={() => setOpen(false)}
-              className="py-3 text-sm uppercase tracking-[0.18em] text-content/80"
-            >
+            {menu.map((m) =>
+              m.columns.length > 0 ? (
+                <div key={m.id} className="border-b border-content/5">
+                  <button
+                    type="button"
+                    onClick={() => setExpanded((e) => (e === m.id ? null : m.id))}
+                    className="flex w-full items-center justify-between py-3 text-sm uppercase tracking-[0.18em] text-content/80"
+                  >
+                    {m.label}
+                    <span className="text-content/40">{expanded === m.id ? "−" : "+"}</span>
+                  </button>
+                  {expanded === m.id && (
+                    <div className="flex flex-col gap-2 pb-4 pl-3">
+                      {m.columns.flatMap((c) => c.links).map((l) => (
+                        <Link
+                          key={`${l.href}-${l.label}`}
+                          href={l.href}
+                          onClick={() => setMobileOpen(false)}
+                          className="text-[13px] text-content/60"
+                        >
+                          {l.label}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  key={m.id}
+                  href={m.href ?? "/"}
+                  onClick={() => setMobileOpen(false)}
+                  className="block border-b border-content/5 py-3 text-sm uppercase tracking-[0.18em] text-content/80"
+                >
+                  {m.label}
+                </Link>
+              )
+            )}
+            <Link href="/conta" onClick={() => setMobileOpen(false)} className="block py-3 text-sm uppercase tracking-[0.18em] text-content/80">
               Conta
             </Link>
           </motion.nav>
