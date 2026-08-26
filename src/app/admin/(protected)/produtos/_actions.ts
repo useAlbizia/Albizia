@@ -7,6 +7,28 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { products, productVariants, productImages, collections } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
+import { generateProductDescription, type AiText } from "@/lib/ai";
+
+// Generates a brand-voice product description with Claude from the current form
+// values — the admin can regenerate before saving.
+export async function aiGenerateDescription(input: {
+  name: string;
+  category: string;
+  collectionSlug: string;
+  fabric: string;
+}): Promise<AiText> {
+  await requireAdmin();
+  if (!input.name.trim()) return { error: "Preencha o nome do produto primeiro." };
+  const collection = await db.query.collections.findFirst({
+    where: eq(collections.slug, input.collectionSlug as "essential"),
+  });
+  return generateProductDescription({
+    name: input.name,
+    category: input.category || "camiseta",
+    collection: collection?.name ?? input.collectionSlug,
+    fabric: input.fabric,
+  });
+}
 
 const SIZES_BY_CATEGORY: Record<string, string[]> = {
   camiseta: ["P", "M", "G", "GG"],

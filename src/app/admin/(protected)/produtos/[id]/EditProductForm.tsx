@@ -1,7 +1,12 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { updateProduct, toggleProductActive, type ProductFormState } from "../_actions";
+import { useActionState, useRef, useState, useTransition } from "react";
+import {
+  updateProduct,
+  toggleProductActive,
+  aiGenerateDescription,
+  type ProductFormState,
+} from "../_actions";
 import type { CollectionInfo } from "@/lib/products";
 
 const initialState: ProductFormState = {};
@@ -31,15 +36,35 @@ export function EditProductForm({
   const [state, formAction, pending] = useActionState(boundUpdate, initialState);
   const [active, setActive] = useState(product.active);
 
+  const formRef = useRef<HTMLFormElement>(null);
+  const [description, setDescription] = useState(product.description);
+  const [aiPending, startAi] = useTransition();
+  const [aiError, setAiError] = useState<string | null>(null);
+
   async function handleToggleActive() {
     const next = !active;
     setActive(next);
     await toggleProductActive(product.id, next);
   }
 
+  function handleGenerate() {
+    const fd = new FormData(formRef.current!);
+    setAiError(null);
+    startAi(async () => {
+      const r = await aiGenerateDescription({
+        name: String(fd.get("name") ?? ""),
+        category: String(fd.get("category") ?? ""),
+        collectionSlug: String(fd.get("collectionSlug") ?? ""),
+        fabric: String(fd.get("fabric") ?? ""),
+      });
+      if ("text" in r) setDescription(r.text);
+      else setAiError(r.error);
+    });
+  }
+
   return (
     <div className="flex max-w-lg flex-col gap-6">
-      <form action={formAction} className="flex flex-col gap-4">
+      <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         <input
           name="name"
           defaultValue={product.name}
@@ -91,13 +116,29 @@ export function EditProductForm({
           required
           className={inputClass}
         />
-        <textarea
-          name="description"
-          defaultValue={product.description}
-          required
-          rows={3}
-          className={inputClass}
-        />
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-[0.2em] text-content/50">Descrição</span>
+            <button
+              type="button"
+              onClick={handleGenerate}
+              disabled={aiPending}
+              className="flex items-center gap-1.5 text-[11px] uppercase tracking-[0.1em] text-content/60 transition-colors hover:text-content disabled:opacity-50"
+            >
+              <span aria-hidden="true">✦</span>
+              {aiPending ? "Gerando..." : "Gerar com IA"}
+            </button>
+          </div>
+          <textarea
+            name="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            required
+            rows={3}
+            className={inputClass}
+          />
+          {aiError && <p className="text-[12px] text-content/70">{aiError}</p>}
+        </div>
 
         {state.error && (
           <p className="text-[13px] text-content/70" role="alert">
