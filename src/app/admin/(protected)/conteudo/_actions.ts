@@ -22,9 +22,6 @@ const settingsSchema = z.object({
   whatsapp: z.string().max(30).default(""),
   announcementText: z.string().max(160).default(""),
   announcementActive: z.coerce.boolean().default(false),
-  // Reais in the form → cents in the DB.
-  shippingFlat: z.coerce.number().min(0).default(0),
-  freeShippingThreshold: z.coerce.number().min(0).default(0),
   lowStockThreshold: z.coerce.number().int().min(0).default(3),
 });
 
@@ -45,20 +42,11 @@ export async function saveSettings(
     whatsapp: formData.get("whatsapp") ?? "",
     announcementText: formData.get("announcementText") ?? "",
     announcementActive: formData.get("announcementActive") ? true : false,
-    shippingFlat: formData.get("shippingFlat") ?? 0,
-    freeShippingThreshold: formData.get("freeShippingThreshold") ?? 0,
     lowStockThreshold: formData.get("lowStockThreshold") ?? 3,
   });
   if (!parsed.success) return { error: "Dados inválidos." };
 
-  const { shippingFlat, freeShippingThreshold, lowStockThreshold, ...company } = parsed.data;
-  const values = {
-    ...company,
-    shippingFlatCents: Math.round(shippingFlat * 100),
-    freeShippingThresholdCents: Math.round(freeShippingThreshold * 100),
-    lowStockThreshold,
-    updatedAt: new Date(),
-  };
+  const values = { ...parsed.data, updatedAt: new Date() };
 
   await db
     .insert(siteSettings)

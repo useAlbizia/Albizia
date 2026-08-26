@@ -47,25 +47,9 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
         Exibir a barra de aviso no topo do site
       </label>
 
-      <label className="mt-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Frete</label>
-      <input
-        name="shippingFlat"
-        type="number"
-        step="0.01"
-        min="0"
-        defaultValue={(settings.shippingFlatCents / 100).toFixed(2)}
-        placeholder="Frete fixo (R$) — 0 = grátis"
-        className={input}
-      />
-      <input
-        name="freeShippingThreshold"
-        type="number"
-        step="0.01"
-        min="0"
-        defaultValue={(settings.freeShippingThresholdCents / 100).toFixed(2)}
-        placeholder="Frete grátis acima de (R$) — 0 = desativado"
-        className={input}
-      />
+      <p className="mt-3 text-[11px] text-content/40">
+        O frete (fixo ou Melhor Envio) agora é configurado na aba <strong>Frete</strong>.
+      </p>
 
       <label className="mt-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Estoque</label>
       <input

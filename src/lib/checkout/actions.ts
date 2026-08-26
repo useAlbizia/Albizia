@@ -7,8 +7,18 @@ import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import type { CartItem } from "@/lib/cart-context";
-import { getShippingConfig, computeShipping } from "@/lib/shipping";
+import { quoteShipping } from "@/lib/shipping";
 import { validateCoupon, type CouponResult } from "@/lib/coupons";
+
+// Live shipping quote for the checkout preview (Melhor Envio method). The order
+// re-computes the authoritative price server-side, so this is display-only.
+export async function quoteFreteAction(
+  cep: string,
+  subtotalCents: number,
+  qty: number
+): Promise<{ cents: number }> {
+  return { cents: await quoteShipping(cep, subtotalCents, qty) };
+}
 
 // Checkout preview: re-checks a coupon against the true server-side subtotal so
 // the customer sees the real discount before paying.
@@ -95,10 +105,11 @@ export async function createOrder(
   }
 
   const subtotalCents = lineItems.reduce((sum, i) => sum + i.unitPriceCents * i.quantity, 0);
+  const totalQty = lineItems.reduce((sum, i) => sum + i.quantity, 0);
 
-  // Shipping is computed server-side (never trust a client-sent amount).
-  const shippingConfig = await getShippingConfig();
-  const shippingCents = computeShipping(subtotalCents, shippingConfig, data.zip);
+  // Shipping is computed server-side (never trust a client-sent amount). For
+  // the Melhor Envio method this is a live carrier quote for the CEP.
+  const shippingCents = await quoteShipping(data.zip, subtotalCents, totalQty);
 
   // Coupon is re-validated here against the true subtotal — the client preview
   // is never trusted. If it's no longer valid we stop rather than silently

@@ -1,9 +1,15 @@
-import { getShippingConfig } from "@/lib/shipping";
+import { getShippingSettings } from "@/lib/shipping";
 import { CheckoutClient } from "./CheckoutClient";
 
 export const metadata = { title: "Checkout — ALBIZIA" };
 
 export default async function CheckoutPage() {
-  const shipping = await getShippingConfig();
-  return <CheckoutClient shipping={shipping} />;
+  const s = await getShippingSettings();
+  // Only the non-secret bits reach the client (never the Melhor Envio token).
+  return (
+    <CheckoutClient
+      method={s.method}
+      shipping={{ flatCents: s.flatCents, freeThresholdCents: s.freeThresholdCents }}
+    />
+  );
 }

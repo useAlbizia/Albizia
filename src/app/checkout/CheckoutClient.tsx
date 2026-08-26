@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useCart } from "@/lib/cart-context";
-import { createOrder, applyCoupon, type CheckoutState } from "@/lib/checkout/actions";
+import { createOrder, applyCoupon, quoteFreteAction, type CheckoutState } from "@/lib/checkout/actions";
 import { track } from "@/lib/analytics-client";
 import { computeShipping, type ShippingConfig } from "@/lib/shipping-calc";
 
@@ -16,7 +16,13 @@ function money(reais: number): string {
   return reais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
+export function CheckoutClient({
+  method,
+  shipping,
+}: {
+  method: "flat" | "melhor_envio";
+  shipping: ShippingConfig;
+}) {
   const { items, totalPrice } = useCart();
   const action = createOrder.bind(null, items);
   const [state, formAction, pending] = useActionState(action, initialState);
@@ -26,6 +32,10 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
   const [discountCents, setDiscountCents] = useState(0);
   const [couponMsg, setCouponMsg] = useState<string | null>(null);
   const [couponPending, startCoupon] = useTransition();
+
+  const [zip, setZip] = useState("");
+  const [quotedCents, setQuotedCents] = useState<number | null>(null);
+  const [fretePending, startFrete] = useTransition();
 
   const hasItems = items.length > 0;
   useEffect(() => {
@@ -49,9 +59,19 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
   }
 
   const subtotalCents = Math.round(totalPrice * 100);
-  const shippingCents = computeShipping(subtotalCents, shipping);
+  const isME = method === "melhor_envio";
+  // Flat: computed instantly. Melhor Envio: null until the customer quotes a CEP.
+  const shippingCents = isME ? quotedCents : computeShipping(subtotalCents, shipping);
   const effectiveDiscount = Math.min(discountCents, subtotalCents);
-  const totalCents = subtotalCents - effectiveDiscount + shippingCents;
+  const totalCents = subtotalCents - effectiveDiscount + (shippingCents ?? 0);
+  const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+
+  function calcFrete() {
+    startFrete(async () => {
+      const r = await quoteFreteAction(zip, subtotalCents, totalQty);
+      setQuotedCents(r.cents);
+    });
+  }
 
   function handleApply() {
     startCoupon(async () => {
@@ -117,7 +137,13 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
         )}
         <div className="flex justify-between text-content/60">
           <span>Frete</span>
-          <span>{shippingCents === 0 ? "Grátis" : money(shippingCents / 100)}</span>
+          <span>
+            {isME && shippingCents === null
+              ? "Calcule pelo CEP"
+              : shippingCents === 0
+                ? "Grátis"
+                : money((shippingCents ?? 0) / 100)}
+          </span>
         </div>
         <div className="mt-2 flex items-center justify-between border-t border-content/10 pt-3">
           <span className="uppercase tracking-[0.15em] text-content/60">Total</span>
@@ -143,7 +169,29 @@ export function CheckoutClient({ shipping }: { shipping: ShippingConfig }) {
           <input name="city" placeholder="Cidade" required className={`${inputClass} col-span-2`} />
           <input name="state" placeholder="UF" maxLength={2} required className={inputClass} />
         </div>
-        <input name="zip" placeholder="CEP" required className={inputClass} />
+        <div className="flex gap-2">
+          <input
+            name="zip"
+            value={zip}
+            onChange={(e) => {
+              setZip(e.target.value);
+              setQuotedCents(null);
+            }}
+            placeholder="CEP"
+            required
+            className={`${inputClass} flex-1`}
+          />
+          {isME && (
+            <button
+              type="button"
+              onClick={calcFrete}
+              disabled={fretePending || zip.replace(/\D/g, "").length !== 8}
+              className="shrink-0 border border-content px-4 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-40"
+            >
+              {fretePending ? "..." : "Calcular frete"}
+            </button>
+          )}
+        </div>
 
         {state.error && (
           <p className="text-[13px] text-content/70" role="alert">

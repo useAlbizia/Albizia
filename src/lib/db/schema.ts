@@ -153,6 +153,16 @@ export const siteSettings = pgTable("site_settings", {
   // 0 flat = always free).
   shippingFlatCents: integer("shipping_flat_cents").notNull().default(0),
   freeShippingThresholdCents: integer("free_shipping_threshold_cents").notNull().default(0),
+  // Shipping method: "flat" (admin rate above) or "melhor_envio" (live rates
+  // by CEP). meToken is a secret — it is read ONLY server-side and is never
+  // included in the client-facing getSiteSettings().
+  shippingMethod: text("shipping_method").notNull().default("flat"),
+  meToken: text("me_token").notNull().default(""),
+  meFromCep: text("me_from_cep").notNull().default(""),
+  meWeightGrams: integer("me_weight_grams").notNull().default(300),
+  meLengthCm: integer("me_length_cm").notNull().default(20),
+  meWidthCm: integer("me_width_cm").notNull().default(20),
+  meHeightCm: integer("me_height_cm").notNull().default(4),
   // A variant at or below this stock count is flagged "low" on the dashboard
   // and in the daily low-stock alert email.
   lowStockThreshold: integer("low_stock_threshold").notNull().default(3),
