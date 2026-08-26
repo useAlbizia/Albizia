@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import type { Product } from "@/lib/products";
 import { useCart } from "@/lib/cart-context";
-import { ProductCover } from "./ProductImage";
+import { ProductGallery } from "./ProductGallery";
 import { SizeGuide } from "./SizeGuide";
 import { track } from "@/lib/analytics-client";
 
@@ -37,28 +37,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
   return (
     <div className="mx-auto grid max-w-6xl grid-cols-1 gap-14 px-6 py-20 lg:grid-cols-2">
-      <div className="grid grid-cols-2 gap-3">
-        <ProductCover
-          name={product.name}
-          images={product.images}
-          role="studio"
-          className="col-span-2 aspect-[4/5] w-full"
-        />
-        <ProductCover
-          name={`${product.name} — detalhe`}
-          images={product.images}
-          role="detail"
-          tone="taupe"
-          className="aspect-square w-full"
-        />
-        <ProductCover
-          name={`${product.name} — lifestyle`}
-          images={product.images}
-          role="lifestyle"
-          tone="graphite"
-          className="aspect-square w-full"
-        />
-      </div>
+      <ProductGallery images={product.images} name={product.name} />
 
       <div className="lg:pt-6">
         <p className="text-[11px] uppercase tracking-[0.25em] text-content/40">{product.fabric}</p>
