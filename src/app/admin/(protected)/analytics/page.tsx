@@ -21,6 +21,7 @@ export default async function AnalyticsPage() {
     { label: "Produtos vistos", value: a.productViews },
     { label: "Adições ao carrinho", value: a.addToCart },
     { label: "Pedidos pagos", value: a.ordersPaid },
+    { label: "Taxa de conversão", value: pct(a.ordersPaid, a.uniqueVisitors) },
     { label: "Receita", value: money(a.revenueCents) },
   ];
 

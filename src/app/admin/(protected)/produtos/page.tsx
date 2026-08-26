@@ -14,6 +14,9 @@ export default async function AdminProdutosPage() {
     orderBy: (p, { desc }) => desc(p.createdAt),
   });
 
+  // Active products with no photo are hidden from the storefront — flag them.
+  const noPhoto = rows.filter((p) => p.active && p.images.length === 0);
+
   return (
     <div>
       <div className="mb-8 flex items-center justify-between">
@@ -25,6 +28,14 @@ export default async function AdminProdutosPage() {
           Novo produto
         </Link>
       </div>
+
+      {noPhoto.length > 0 && (
+        <div className="mb-6 border border-amber-500/40 bg-amber-500/10 p-4 text-[13px] text-amber-700 dark:text-amber-300">
+          <strong>{noPhoto.length} produto(s) ativo(s) sem foto</strong> — estão{" "}
+          <strong>ocultos no site</strong> até receberem ao menos uma imagem:{" "}
+          {noPhoto.map((p) => p.name).join(", ")}. Adicione fotos ou desative-os.
+        </div>
+      )}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-left text-sm">

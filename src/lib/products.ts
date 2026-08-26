@@ -143,7 +143,8 @@ export async function getProductsByLine(line: ProductLine): Promise<Product[]> {
       and(eqOp(products.active, true), eqOp(products.collectionId, collection.id)),
     with: { collection: true, variants: true, images: true },
   });
-  return rows.map(toProduct);
+  // Never show a product without photos on the storefront.
+  return rows.map(toProduct).filter((p) => p.images.length > 0);
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
@@ -192,7 +193,7 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<Prod
       return desc(p.createdAt);
     },
   });
-  return rows.map(toProduct);
+  return rows.map(toProduct).filter((p) => p.images.length > 0);
 }
 
 export async function getAllProductSlugs(): Promise<string[]> {
@@ -211,6 +212,5 @@ export async function getFeaturedProducts(limit = 6): Promise<Product[]> {
     with: { collection: true, variants: true, images: true },
   });
   const withPhotos = rows.filter((r) => r.images.length > 0).map(toProduct);
-  const source = withPhotos.length ? withPhotos : rows.map(toProduct);
-  return source.slice(0, limit);
+  return withPhotos.slice(0, limit);
 }

@@ -14,7 +14,9 @@ type ProductCoverProps = {
 // back to ProductPlaceholder otherwise — same className contract as
 // ProductPlaceholder so callers can swap between them freely.
 export function ProductCover({ name, images, role, className, tone }: ProductCoverProps) {
-  const match = role ? images.find((img) => img.role === role) : images[0];
+  // Prefer the requested role, but never show an empty cover when the product
+  // has any photo — fall back to the first image; placeholder only if none.
+  const match = (role ? images.find((img) => img.role === role) : undefined) ?? images[0];
 
   if (!match) {
     return <ProductPlaceholder name={name} className={className} tone={tone} />;
