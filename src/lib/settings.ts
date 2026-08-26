@@ -9,6 +9,11 @@ export type SiteSettings = {
   contactPhone: string;
   address: string;
   instagram: string;
+  facebook: string;
+  tiktok: string;
+  whatsapp: string;
+  announcementText: string;
+  announcementActive: boolean;
   shippingFlatCents: number;
   freeShippingThresholdCents: number;
   lowStockThreshold: number;
@@ -21,6 +26,11 @@ const DEFAULTS: SiteSettings = {
   contactPhone: "",
   address: "",
   instagram: "",
+  facebook: "",
+  tiktok: "",
+  whatsapp: "",
+  announcementText: "",
+  announcementActive: false,
   shippingFlatCents: 0,
   freeShippingThresholdCents: 0,
   lowStockThreshold: 3,
@@ -36,6 +46,11 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     contactPhone: row.contactPhone,
     address: row.address,
     instagram: row.instagram,
+    facebook: row.facebook,
+    tiktok: row.tiktok,
+    whatsapp: row.whatsapp,
+    announcementText: row.announcementText,
+    announcementActive: row.announcementActive,
     shippingFlatCents: row.shippingFlatCents,
     freeShippingThresholdCents: row.freeShippingThresholdCents,
     lowStockThreshold: row.lowStockThreshold,

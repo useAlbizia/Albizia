@@ -4,6 +4,8 @@ import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { CartDrawer } from "@/components/CartDrawer";
+import { AnnouncementBar } from "@/components/AnnouncementBar";
+import { CookieConsent } from "@/components/CookieConsent";
 import { CartProvider } from "@/lib/cart-context";
 import { ThemeProvider } from "@/lib/theme";
 import { getSiteSettings } from "@/lib/settings";
@@ -60,10 +62,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <ThemeProvider>
           <CartProvider>
             <Tracker />
+            {settings.announcementActive && (
+              <AnnouncementBar text={settings.announcementText} />
+            )}
             <Header />
             <main className="flex-1">{children}</main>
             <Footer settings={settings} />
             <CartDrawer />
+            <CookieConsent />
           </CartProvider>
         </ThemeProvider>
       </body>

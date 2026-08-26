@@ -137,6 +137,12 @@ export const siteSettings = pgTable("site_settings", {
   contactPhone: text("contact_phone").notNull().default(""),
   address: text("address").notNull().default(""),
   instagram: text("instagram").notNull().default(""),
+  facebook: text("facebook").notNull().default(""),
+  tiktok: text("tiktok").notNull().default(""),
+  whatsapp: text("whatsapp").notNull().default(""),
+  // Top announcement bar (e.g. "Frete grátis acima de R$X"), toggleable.
+  announcementText: text("announcement_text").notNull().default(""),
+  announcementActive: boolean("announcement_active").notNull().default(false),
   // Shipping config (swappable strategy — see lib/shipping.ts). Flat national
   // rate in cents; free above the threshold (0 threshold = no free shipping;
   // 0 flat = always free).

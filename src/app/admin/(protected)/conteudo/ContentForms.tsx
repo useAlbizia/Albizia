@@ -26,6 +26,26 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
       <input name="contactEmail" defaultValue={settings.contactEmail} placeholder="E-mail de contato" className={input} />
       <input name="contactPhone" defaultValue={settings.contactPhone} placeholder="Telefone" className={input} />
       <input name="instagram" defaultValue={settings.instagram} placeholder="Instagram (ex: @albizia)" className={input} />
+      <input name="facebook" defaultValue={settings.facebook} placeholder="Facebook (URL ou usuário)" className={input} />
+      <input name="tiktok" defaultValue={settings.tiktok} placeholder="TikTok (ex: @albizia)" className={input} />
+      <input name="whatsapp" defaultValue={settings.whatsapp} placeholder="WhatsApp (só números, ex: 5511999999999)" className={input} />
+
+      <label className="mt-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Barra de aviso (topo)</label>
+      <input
+        name="announcementText"
+        defaultValue={settings.announcementText}
+        placeholder="Ex: Frete grátis nas compras acima de R$299"
+        className={input}
+      />
+      <label className="flex items-center gap-2 text-[13px] text-content/70">
+        <input
+          type="checkbox"
+          name="announcementActive"
+          defaultChecked={settings.announcementActive}
+          className="h-4 w-4 accent-content"
+        />
+        Exibir a barra de aviso no topo do site
+      </label>
 
       <label className="mt-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Frete</label>
       <input
