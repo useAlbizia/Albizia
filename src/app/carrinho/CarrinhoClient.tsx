@@ -37,7 +37,7 @@ function FreeShippingBar({ subtotalCents, shipping }: { subtotalCents: number; s
 }
 
 export function CarrinhoClient({ shipping }: { shipping: ShippingConfig }) {
-  const { items, removeItem, totalPrice } = useCart();
+  const { items, removeItem, setQuantity, totalPrice } = useCart();
 
   if (items.length === 0) {
     return (
@@ -67,25 +67,55 @@ export function CarrinhoClient({ shipping }: { shipping: ShippingConfig }) {
 
       <div className="divide-y divide-content/10 border-y border-content/10">
         {items.map((item) => (
-          <div
-            key={`${item.slug}-${item.size}`}
-            className="flex items-center justify-between py-6"
-          >
-            <div>
-              <p className="text-sm uppercase tracking-[0.05em]">{item.name}</p>
-              <p className="mt-1 text-xs text-content/50">
-                Tamanho {item.size} · Qtd {item.quantity}
-              </p>
-            </div>
-            <div className="flex items-center gap-6">
-              <p className="text-sm text-content/70">{money(item.price * item.quantity)}</p>
-              <button
-                onClick={() => removeItem(item.slug, item.size)}
-                aria-label={`Remover ${item.name}`}
-                className="text-xs uppercase tracking-[0.1em] text-content/40 hover:text-content"
-              >
-                Remover
-              </button>
+          <div key={`${item.slug}-${item.size}`} className="flex gap-4 py-6 sm:gap-6">
+            {item.image ? (
+              // eslint-disable-next-line @next/next/no-img-element -- cart thumbnail
+              <img
+                src={item.image}
+                alt={item.name}
+                className="h-28 w-24 shrink-0 object-cover ring-1 ring-content/10"
+              />
+            ) : (
+              <div className="flex h-28 w-24 shrink-0 items-center justify-center bg-content/5 text-[9px] uppercase tracking-wider text-content/30 ring-1 ring-content/10">
+                ALBIZIA
+              </div>
+            )}
+
+            <div className="flex flex-1 flex-col justify-between">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.05em]">{item.name}</p>
+                  <p className="mt-1 text-xs text-content/50">Tamanho {item.size}</p>
+                </div>
+                <p className="text-sm text-content/70">{money(item.price * item.quantity)}</p>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center border border-content/20">
+                  <button
+                    onClick={() => setQuantity(item.slug, item.size, item.quantity - 1)}
+                    aria-label="Diminuir"
+                    className="px-3 py-1.5 text-content/60 transition-colors hover:text-content"
+                  >
+                    −
+                  </button>
+                  <span className="min-w-[2ch] text-center text-sm">{item.quantity}</span>
+                  <button
+                    onClick={() => setQuantity(item.slug, item.size, item.quantity + 1)}
+                    aria-label="Aumentar"
+                    className="px-3 py-1.5 text-content/60 transition-colors hover:text-content"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  onClick={() => removeItem(item.slug, item.size)}
+                  aria-label={`Remover ${item.name}`}
+                  className="text-xs uppercase tracking-[0.1em] text-content/40 hover:text-content"
+                >
+                  Remover
+                </button>
+              </div>
             </div>
           </div>
         ))}

@@ -19,7 +19,7 @@ const NAV = [
 
 export function Header() {
   const [open, setOpen] = useState(false);
-  const { totalCount } = useCart();
+  const { totalCount, openCart } = useCart();
   const pathname = usePathname();
 
   if (pathname?.startsWith("/admin")) return null;
@@ -48,25 +48,40 @@ export function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-6">
-          <Link
-            href="/conta"
-            aria-label="Minha conta"
-            className="hidden text-[13px] uppercase tracking-[0.18em] text-content/70 transition-colors hover:text-content sm:inline"
-          >
-            Conta
+        <div className="flex items-center gap-5">
+          <Link href="/produtos" aria-label="Buscar" className="text-content/70 transition-colors hover:text-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="M21 21l-4.3-4.3" strokeLinecap="round" />
+            </svg>
           </Link>
-          <Link
-            href="/carrinho"
-            className="text-[13px] uppercase tracking-[0.18em] text-content/70 transition-colors hover:text-content"
-          >
-            Carrinho{totalCount > 0 ? ` (${totalCount})` : ""}
+          <Link href="/conta" aria-label="Minha conta" className="text-content/70 transition-colors hover:text-content">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" strokeLinecap="round" />
+            </svg>
           </Link>
+          <button
+            type="button"
+            onClick={openCart}
+            aria-label={`Sacola${totalCount > 0 ? ` (${totalCount})` : ""}`}
+            className="relative text-content/70 transition-colors hover:text-content"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+              <path d="M6 8h12l-1 12H7L6 8z" strokeLinejoin="round" />
+              <path d="M9 8V6a3 3 0 0 1 6 0v2" strokeLinecap="round" />
+            </svg>
+            {totalCount > 0 && (
+              <span className="absolute -right-2 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-content px-1 text-[10px] font-medium text-surface">
+                {totalCount}
+              </span>
+            )}
+          </button>
           <button
             aria-label={open ? "Fechar menu" : "Abrir menu"}
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}
-            className="flex h-8 w-8 flex-col items-center justify-center gap-1.5 md:hidden"
+            className="flex h-8 w-6 flex-col items-center justify-center gap-1.5 md:hidden"
           >
             <span
               className={`h-px w-5 bg-content transition-transform ${open ? "translate-y-[3.5px] rotate-45" : ""}`}

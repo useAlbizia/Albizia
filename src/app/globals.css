@@ -13,12 +13,25 @@
   --surface: var(--albizia-cream);
   --surface-soft: var(--albizia-cream-soft);
   --content: var(--albizia-black);
+
+  /* Makes native controls (select popups, date pickers, scrollbars) follow
+     the theme — without this a dark-theme <select> opened a white popup with
+     light text (invisible). */
+  color-scheme: light;
 }
 
 [data-theme="dark"] {
   --surface: var(--albizia-black);
   --surface-soft: var(--albizia-black-soft);
   --content: var(--albizia-cream);
+  color-scheme: dark;
+}
+
+/* Belt-and-suspenders: force legible colors on <option>s regardless of how a
+   given browser paints the native dropdown. */
+select option {
+  background-color: var(--surface);
+  color: var(--content);
 }
 
 @theme inline {

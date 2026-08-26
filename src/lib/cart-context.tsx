@@ -11,15 +11,21 @@ export type CartItem = {
    * the exact stock row without a re-lookup join. */
   variantId: string;
   quantity: number;
+  /** First product photo URL, for the cart thumbnail (optional). */
+  image?: string;
 };
 
 type CartContextValue = {
   items: CartItem[];
   addItem: (item: CartItem) => void;
   removeItem: (slug: string, size: string) => void;
+  setQuantity: (slug: string, size: string, quantity: number) => void;
   clear: () => void;
   totalPrice: number;
   totalCount: number;
+  isOpen: boolean;
+  openCart: () => void;
+  closeCart: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -28,6 +34,7 @@ const STORAGE_KEY = "albizia-cart";
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     // Reads browser-only storage after mount, intentionally after the
@@ -59,10 +66,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, item];
     });
+    setIsOpen(true); // open the drawer so it's obvious the item landed
   }
 
   function removeItem(slug: string, size: string) {
     setItems((prev) => prev.filter((i) => !(i.slug === slug && i.size === size)));
+  }
+
+  function setQuantity(slug: string, size: string, quantity: number) {
+    setItems((prev) =>
+      quantity <= 0
+        ? prev.filter((i) => !(i.slug === slug && i.size === size))
+        : prev.map((i) => (i.slug === slug && i.size === size ? { ...i, quantity } : i))
+    );
   }
 
   function clear() {
@@ -76,7 +92,20 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const totalCount = useMemo(() => items.reduce((sum, i) => sum + i.quantity, 0), [items]);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, clear, totalPrice, totalCount }}>
+    <CartContext.Provider
+      value={{
+        items,
+        addItem,
+        removeItem,
+        setQuantity,
+        clear,
+        totalPrice,
+        totalCount,
+        isOpen,
+        openCart: () => setIsOpen(true),
+        closeCart: () => setIsOpen(false),
+      }}
+    >
       {children}
     </CartContext.Provider>
   );

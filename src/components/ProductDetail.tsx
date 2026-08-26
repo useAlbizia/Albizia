@@ -1,17 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
 import type { Product } from "@/lib/products";
 import { useCart } from "@/lib/cart-context";
 import { ProductCover } from "./ProductImage";
-import { converge } from "@/lib/motion";
 import { track } from "@/lib/analytics-client";
 
 export function ProductDetail({ product }: { product: Product }) {
   const inStock = product.variants.find((v) => v.stock > 0);
   const [size, setSize] = useState(inStock?.size ?? product.variants[0]?.size);
-  const [added, setAdded] = useState(false);
+  const [qty, setQty] = useState(1);
   const { addItem } = useCart();
 
   useEffect(() => {
@@ -20,6 +18,7 @@ export function ProductDetail({ product }: { product: Product }) {
 
   const selectedVariant = product.variants.find((v) => v.size === size);
   const canAdd = !!selectedVariant && selectedVariant.stock > 0;
+  const maxQty = selectedVariant?.stock ?? 1;
 
   function handleAdd() {
     if (!selectedVariant || selectedVariant.stock <= 0) return;
@@ -29,11 +28,10 @@ export function ProductDetail({ product }: { product: Product }) {
       price: product.price,
       size: selectedVariant.size,
       variantId: selectedVariant.id,
-      quantity: 1,
+      quantity: Math.min(qty, selectedVariant.stock),
+      image: product.images[0]?.url,
     });
     track({ type: "add_to_cart", productSlug: product.slug });
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2200);
   }
 
   return (
@@ -97,24 +95,40 @@ export function ProductDetail({ product }: { product: Product }) {
           </div>
         </div>
 
+        {canAdd && (
+          <div className="mt-10">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Quantidade</p>
+            <div className="inline-flex items-center border border-content/30">
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                aria-label="Diminuir quantidade"
+                className="px-4 py-2.5 text-content/60 transition-colors hover:text-content disabled:opacity-30"
+                disabled={qty <= 1}
+              >
+                −
+              </button>
+              <span className="min-w-[3ch] text-center text-sm">{qty}</span>
+              <button
+                type="button"
+                onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                aria-label="Aumentar quantidade"
+                className="px-4 py-2.5 text-content/60 transition-colors hover:text-content disabled:opacity-30"
+                disabled={qty >= maxQty}
+              >
+                +
+              </button>
+            </div>
+          </div>
+        )}
+
         <button
           onClick={handleAdd}
           disabled={!canAdd}
-          className="mt-10 w-full border border-content py-4 text-[13px] uppercase tracking-[0.2em] text-content transition-colors hover:bg-content hover:text-surface disabled:cursor-not-allowed disabled:border-content/20 disabled:text-content/30 disabled:hover:bg-transparent sm:w-auto sm:px-12"
+          className="mt-8 w-full border border-content bg-content py-4 text-[13px] uppercase tracking-[0.2em] text-surface transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:border-content/20 disabled:bg-transparent disabled:text-content/30 sm:w-auto sm:px-12"
         >
           {canAdd ? "Adicionar ao carrinho" : "Esgotado"}
         </button>
-
-        {added && (
-          <motion.p
-            initial="hidden"
-            animate="visible"
-            variants={converge}
-            className="mt-4 text-[12px] uppercase tracking-[0.15em] text-content/60"
-          >
-            Adicionado — {size}
-          </motion.p>
-        )}
       </div>
     </div>
   );
