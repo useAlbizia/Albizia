@@ -22,6 +22,9 @@ type Product = {
   fabric: string;
   description: string;
   active: boolean;
+  colorGroup: string | null;
+  colorName: string;
+  colorHex: string;
   collection: { slug: string };
 };
 
@@ -138,6 +141,25 @@ export function EditProductForm({
             className={inputClass}
           />
           {aiError && <p className="text-[12px] text-content/70">{aiError}</p>}
+        </div>
+
+        <span className="mt-1 text-[11px] uppercase tracking-[0.2em] text-content/50">Cor</span>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <input
+            name="colorGroup"
+            defaultValue={product.colorGroup ?? ""}
+            placeholder="Grupo (ex: essential-tee)"
+            className={inputClass}
+            title="Produtos com o mesmo grupo aparecem como opções de cor"
+          />
+          <input name="colorName" defaultValue={product.colorName} placeholder="Nome (ex: Preto)" className={inputClass} />
+          <input
+            name="colorHex"
+            type="color"
+            defaultValue={product.colorHex || "#141414"}
+            className="h-[46px] w-full border border-content/30 bg-transparent px-1"
+            title="Cor da amostra"
+          />
         </div>
 
         {state.error && (

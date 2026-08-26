@@ -17,8 +17,18 @@ export type Product = {
   price: number;
   fabric: string;
   description: string;
+  colorGroup: string | null;
+  colorName: string;
+  colorHex: string;
   variants: ProductVariant[];
   images: ProductImage[];
+};
+
+/** One color option within a color group (used for the swatch selector). */
+export type ColorOption = {
+  slug: string;
+  colorName: string;
+  colorHex: string;
 };
 
 export type CollectionInfo = {
@@ -39,6 +49,9 @@ function toProduct(row: {
   priceCents: number;
   fabric: string;
   description: string;
+  colorGroup: string | null;
+  colorName: string;
+  colorHex: string;
   collection: { slug: string };
   variants: { id: string; size: string; stock: number }[];
   images: { id: string; url: string; role: string | null; sortOrder: number }[];
@@ -52,9 +65,25 @@ function toProduct(row: {
     price: row.priceCents / 100,
     fabric: row.fabric,
     description: row.description,
+    colorGroup: row.colorGroup,
+    colorName: row.colorName,
+    colorHex: row.colorHex,
     variants: row.variants,
     images: [...row.images].sort((a, b) => a.sortOrder - b.sortOrder),
   };
+}
+
+// Other active products in the same color group — the color options shown as
+// swatches on a product page. Returns [] when the product has no group.
+export async function getColorSiblings(colorGroup: string | null): Promise<ColorOption[]> {
+  if (!colorGroup) return [];
+  const rows = await db.query.products.findMany({
+    where: (p, { eq: eqOp, and }) =>
+      and(eqOp(p.active, true), eqOp(p.colorGroup, colorGroup)),
+    columns: { slug: true, colorName: true, colorHex: true, priceCents: true },
+    orderBy: (p, { asc: ascOp }) => ascOp(p.priceCents),
+  });
+  return rows.map((r) => ({ slug: r.slug, colorName: r.colorName, colorHex: r.colorHex }));
 }
 
 export async function getCollections(): Promise<CollectionInfo[]> {

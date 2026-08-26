@@ -57,6 +57,13 @@
       "when": 1787705596531,
       "tag": "0007_worthless_gamora",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1787710919110,
+      "tag": "0008_magenta_leo",
+      "breakpoints": true
     }
   ]
 }

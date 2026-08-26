@@ -46,6 +46,9 @@ const productSchema = z.object({
   price: z.coerce.number().positive("Preço deve ser maior que zero"),
   fabric: z.string().min(1, "Tecido obrigatório"),
   description: z.string().min(1, "Descrição obrigatória"),
+  colorGroup: z.string().optional(),
+  colorName: z.string().max(40).optional(),
+  colorHex: z.string().max(9).optional(),
   sizesText: z.string().optional(),
 });
 
@@ -75,6 +78,9 @@ export async function createProduct(
     price: formData.get("price"),
     fabric: formData.get("fabric"),
     description: formData.get("description"),
+    colorGroup: formData.get("colorGroup") || undefined,
+    colorName: formData.get("colorName") || undefined,
+    colorHex: formData.get("colorHex") || undefined,
     sizesText: formData.get("sizesText"),
   });
   if (!parsed.success) {
@@ -104,6 +110,9 @@ export async function createProduct(
       priceCents: Math.round(data.price * 100),
       fabric: data.fabric,
       description: data.description,
+      colorGroup: data.colorGroup || null,
+      colorName: data.colorName ?? "",
+      colorHex: data.colorHex ?? "",
     })
     .returning();
 
@@ -137,6 +146,9 @@ export async function updateProduct(
       price: formData.get("price"),
       fabric: formData.get("fabric"),
       description: formData.get("description"),
+      colorGroup: formData.get("colorGroup") || undefined,
+      colorName: formData.get("colorName") || undefined,
+      colorHex: formData.get("colorHex") || undefined,
     });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -165,6 +177,9 @@ export async function updateProduct(
       priceCents: Math.round(data.price * 100),
       fabric: data.fabric,
       description: data.description,
+      colorGroup: data.colorGroup || null,
+      colorName: data.colorName ?? "",
+      colorHex: data.colorHex ?? "",
       updatedAt: new Date(),
     })
     .where(eq(products.id, productId));

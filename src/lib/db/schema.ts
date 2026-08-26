@@ -50,6 +50,11 @@ export const products = pgTable("products", {
   fabric: text("fabric").notNull(),
   description: text("description").notNull(),
   active: boolean("active").notNull().default(true),
+  // Color grouping: products sharing a colorGroup are the same piece in
+  // different colors, shown as selectable swatches on each other's pages.
+  colorGroup: text("color_group"),
+  colorName: text("color_name").notNull().default(""),
+  colorHex: text("color_hex").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

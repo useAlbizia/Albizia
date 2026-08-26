@@ -1,13 +1,20 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Product } from "@/lib/products";
+import Link from "next/link";
+import type { Product, ColorOption } from "@/lib/products";
 import { useCart } from "@/lib/cart-context";
 import { ProductGallery } from "./ProductGallery";
 import { SizeGuide } from "./SizeGuide";
 import { track } from "@/lib/analytics-client";
 
-export function ProductDetail({ product }: { product: Product }) {
+export function ProductDetail({
+  product,
+  colorOptions = [],
+}: {
+  product: Product;
+  colorOptions?: ColorOption[];
+}) {
   const inStock = product.variants.find((v) => v.stock > 0);
   const [size, setSize] = useState(inStock?.size ?? product.variants[0]?.size);
   const [qty, setQty] = useState(1);
@@ -48,6 +55,34 @@ export function ProductDetail({ product }: { product: Product }) {
         <p className="mt-6 max-w-md text-sm leading-relaxed text-content/60">
           {product.description}
         </p>
+
+        {colorOptions.length > 1 && (
+          <div className="mt-8">
+            <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/50">
+              Cor: <span className="text-content/80">{product.colorName}</span>
+            </p>
+            <div className="flex flex-wrap gap-2.5">
+              {colorOptions.map((c) => {
+                const current = c.slug === product.slug;
+                return (
+                  <Link
+                    key={c.slug}
+                    href={`/produto/${c.slug}`}
+                    aria-label={c.colorName}
+                    title={c.colorName}
+                    aria-current={current ? "true" : undefined}
+                    className={`h-8 w-8 rounded-full border transition-transform hover:scale-110 ${
+                      current
+                        ? "border-content ring-1 ring-content ring-offset-2 ring-offset-surface"
+                        : "border-content/25"
+                    }`}
+                    style={{ backgroundColor: c.colorHex }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="mt-10">
           <div className="mb-3 flex items-center justify-between">

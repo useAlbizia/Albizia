@@ -22,7 +22,7 @@ export function ProductGallery({ images, name }: { images: ProductImage[]; name:
   return (
     <div className="flex flex-col gap-3 sm:flex-row">
       {images.length > 1 && (
-        <div className="order-2 flex gap-2 overflow-x-auto sm:order-1 sm:flex-col sm:overflow-visible">
+        <div className="order-2 flex gap-2 overflow-x-auto pb-1 sm:order-1 sm:max-h-[560px] sm:flex-col sm:overflow-y-auto sm:pb-0">
           {images.map((img, i) => (
             <button
               key={img.id}

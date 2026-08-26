@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getAllProductSlugs, getProductBySlug } from "@/lib/products";
+import { getAllProductSlugs, getProductBySlug, getColorSiblings } from "@/lib/products";
 import { getProductReviews } from "@/lib/reviews";
 import { ProductDetail } from "@/components/ProductDetail";
 import { Stars } from "@/components/Stars";
@@ -25,11 +25,14 @@ export default async function ProdutoPage(props: PageProps<"/produto/[slug]">) {
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const reviews = await getProductReviews(product.id);
+  const [reviews, colorOptions] = await Promise.all([
+    getProductReviews(product.id),
+    getColorSiblings(product.colorGroup),
+  ]);
 
   return (
     <>
-      <ProductDetail product={product} />
+      <ProductDetail product={product} colorOptions={colorOptions} />
 
       <section className="mx-auto max-w-6xl border-t border-content/10 px-6 py-16">
         <div className="mb-10 flex flex-wrap items-baseline justify-between gap-4">
