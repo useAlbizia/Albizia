@@ -63,3 +63,47 @@ export async function customerSignOut() {
   await supabase.auth.signOut();
   redirect("/conta");
 }
+
+export async function customerRequestPasswordReset(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Informe seu e-mail." };
+
+  const supabase = await createClient();
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
+    "https://usealbizia.com.br";
+
+  await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/conta/redefinir`,
+  });
+
+  // Always return ok — never reveal whether the e-mail exists.
+  return { info: "Se este e-mail tiver uma conta, você receberá o link em instantes." };
+}
+
+export type NewPasswordState = { error?: string };
+
+export async function customerSetNewPassword(
+  _prev: NewPasswordState,
+  formData: FormData,
+): Promise<NewPasswordState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+
+  if (password.length < 8) return { error: "A senha deve ter ao menos 8 caracteres." };
+  if (password !== confirm) return { error: "As senhas não coincidem." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Link expirado. Solicite um novo." };
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: "Não foi possível salvar. Tente novamente." };
+
+  redirect("/conta");
+}
