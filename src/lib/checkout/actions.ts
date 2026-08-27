@@ -180,7 +180,7 @@ export async function createOrder(
         ? [
             {
               id: `order-${order.id}`,
-              title: `ALBIZIA — Pedido${couponCode ? ` (cupom ${couponCode})` : ""}`,
+              title: `ALBIZIA · Pedido${couponCode ? ` (cupom ${couponCode})` : ""}`,
               quantity: 1,
               unit_price: totalCents / 100,
               currency_id: "BRL",

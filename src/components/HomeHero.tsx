@@ -20,7 +20,7 @@ export function HomeHero({
 }) {
   return (
     <>
-      {/* Hero — kept intentionally shorter than full height so the first
+      {/* Hero, kept intentionally shorter than full height so the first
           pieces peek in below the fold, inviting the scroll. Hidden when the
           admin has active home banners (the carousel becomes the hero). */}
       {!hideHero && (
@@ -103,7 +103,7 @@ export function HomeHero({
       >
         <p className="text-lg leading-relaxed text-content/80 sm:text-xl">
           A Albizia fecha as folhas ao anoitecer para se preservar. A verdadeira
-          força não está em estar sempre alerta — está em saber o momento
+          força não está em estar sempre alerta, e sim em saber o momento
           exato de se recolher.
         </p>
       </motion.section>

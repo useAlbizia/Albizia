@@ -24,15 +24,16 @@ export function aiConfigured(): boolean {
   return !!process.env.ANTHROPIC_API_KEY;
 }
 
-const BRAND_VOICE = `Você é redator da ALBIZIA, marca brasileira de moda masculina premium — estética "quiet luxury" (luxo silencioso): peças essenciais, atemporais, de alto padrão. A marca se inspira na árvore albízia, que recolhe as folhas ao anoitecer; o mote é "Silence becomes style".
+const BRAND_VOICE = `Você é redator da ALBIZIA, marca brasileira de moda masculina premium, de estética "quiet luxury" (luxo silencioso): peças essenciais, atemporais, de alto padrão. A marca se inspira na árvore albízia, que recolhe as folhas ao anoitecer; o mote é "Silence becomes style".
 
 Escreva descrições de produto em português do Brasil que sejam:
 - Curtas: 2 a 3 frases (no máximo ~45 palavras).
-- Sensoriais e precisas: destaque tecido, caimento e uso — sem exagero.
+- Sensoriais e precisas: destaque tecido, caimento e uso, sem exagero.
 - Sofisticadas e contidas: sem gírias, sem pontos de exclamação, sem clichês de e-commerce ("imperdível", "must-have"), sem promessas vazias.
+- Naturais e humanas: nunca use travessões (—). Prefira vírgulas, pontos ou dois-pontos.
 - Focadas na peça, não no cliente.
 
-Responda apenas com a descrição — sem título, aspas ou comentários.`;
+Responda apenas com a descrição, sem título, aspas ou comentários.`;
 
 export type AiText = { text: string } | { error: string };
 
@@ -97,7 +98,7 @@ export async function analyticsInsight(data: unknown): Promise<string> {
       model: MODEL_FAST,
       max_tokens: 400,
       system:
-        "Você é analista de dados de uma loja de moda (ALBIZIA). Receberá métricas de tráfego em JSON. Escreva em português do Brasil um resumo curto e objetivo (2 a 4 frases) com o que os dados dizem e 1 sugestão prática para anúncios ou melhoria. Sem saudação, sem repetir todos os números — só o que importa. Se os dados forem escassos, diga que ainda há poucos dados.",
+        "Você é analista de dados de uma loja de moda (ALBIZIA). Receberá métricas de tráfego em JSON. Escreva em português do Brasil um resumo curto e objetivo (2 a 4 frases) com o que os dados dizem e 1 sugestão prática para anúncios ou melhoria. Sem saudação, sem travessões, sem repetir todos os números, apenas o que importa. Se os dados forem escassos, diga que ainda há poucos dados.",
       messages: [{ role: "user", content: JSON.stringify(data) }],
     });
     return textOf(res);
@@ -126,11 +127,11 @@ export async function assistantReply(history: ChatMessage[]): Promise<AiText> {
     .filter((r) => r.images.length > 0)
     .map(
       (r) =>
-        `- ${r.name} — cor ${r.colorName}, ${r.category}, R$${(r.priceCents / 100).toFixed(0)} → /produto/${r.slug}`
+        `- ${r.name}, cor ${r.colorName}, ${r.category}, R$${(r.priceCents / 100).toFixed(0)} → /produto/${r.slug}`
     )
     .join("\n");
 
-  const system = `Você é a assistente virtual da ALBIZIA — marca brasileira de moda masculina premium ("quiet luxury": peças essenciais, atemporais, de alto padrão). Fale em português do Brasil, de forma cordial, breve e sofisticada (sem gírias, sem exageros, sem pontos de exclamação em excesso).
+  const system = `Você é a assistente virtual da ALBIZIA, marca brasileira de moda masculina premium ("quiet luxury": peças essenciais, atemporais, de alto padrão). Fale em português do Brasil, de forma cordial, breve e sofisticada (sem gírias, sem exageros, sem travessões e sem pontos de exclamação em excesso).
 
 Você ajuda o cliente a encontrar peças, tirar dúvidas e recomendar produtos do catálogo abaixo. Ao sugerir uma peça, cite o nome e inclua o link exatamente como está (ex.: /produto/camiseta-essential-preta) para o cliente clicar. Recomende SOMENTE produtos do catálogo.
 

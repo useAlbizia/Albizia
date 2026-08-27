@@ -45,7 +45,7 @@ export async function saveTracking(
 
   await sendEmail({
     to: order.customerEmail,
-    subject: `Seu pedido #${order.orderNumber} foi enviado — ALBIZIA`,
+    subject: `Seu pedido #${order.orderNumber} foi enviado · ALBIZIA`,
     html: emailShell(
       "Pedido enviado",
       `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${order.customerName}. Seu pedido está a caminho.</p>

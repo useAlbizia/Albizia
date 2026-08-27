@@ -11,7 +11,7 @@ export async function generateStaticParams() {
 export async function generateMetadata(props: PageProps<"/colecoes/[linha]">) {
   const { linha } = await props.params;
   const collection = await getCollection(linha);
-  return { title: collection ? `${collection.name} — ALBIZIA` : "ALBIZIA" };
+  return { title: collection ? `${collection.name} · ALBIZIA` : "ALBIZIA" };
 }
 
 export default async function ColecaoPage(props: PageProps<"/colecoes/[linha]">) {

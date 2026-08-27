@@ -1,6 +1,6 @@
 import { getOrderForTracking } from "@/lib/orders";
 
-export const metadata = { title: "Acompanhar pedido — ALBIZIA" };
+export const metadata = { title: "Acompanhar pedido · ALBIZIA" };
 
 function one(v: string | string[] | undefined): string {
   return (Array.isArray(v) ? v[0] : v) ?? "";

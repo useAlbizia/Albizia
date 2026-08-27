@@ -1,7 +1,7 @@
 import { getCollections } from "@/lib/products";
 import { CollectionRow } from "@/components/CollectionRow";
 
-export const metadata = { title: "Coleções — ALBIZIA" };
+export const metadata = { title: "Coleções · ALBIZIA" };
 
 export default async function ColecoesPage() {
   const collections = await getCollections();

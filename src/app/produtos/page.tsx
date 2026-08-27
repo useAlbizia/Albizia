@@ -9,7 +9,7 @@ import {
 import { aiSearchProducts } from "@/lib/ai";
 import { ProductCover } from "@/components/ProductImage";
 
-export const metadata = { title: "Produtos — ALBIZIA" };
+export const metadata = { title: "Produtos · ALBIZIA" };
 
 const SORTS = [
   { value: "recentes", label: "Mais recentes" },

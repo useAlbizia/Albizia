@@ -75,13 +75,9 @@ function MercadoPago() {
     <span
       role="img"
       aria-label="Mercado Pago"
-      className="inline-flex h-7 items-center justify-center gap-1 rounded-[4px] bg-[#009EE3] px-2 shadow-sm"
+      className="inline-flex h-7 items-center justify-center rounded-[4px] bg-[#009EE3] px-2.5 shadow-sm"
     >
-      <svg width="16" height="12" viewBox="0 0 28 20" aria-hidden="true">
-        <ellipse cx="14" cy="10" rx="12" ry="7.5" fill="#FFE600" />
-        <path d="M8 10.5c1.5 1.6 3.2 2.4 6 2.4s4.5-.8 6-2.4c-1.2-.5-2-.9-3-.9-1.2 0-1.6.8-3 .8s-1.8-.8-3-.8c-1 0-1.8.4-3 .9z" fill="#009EE3" />
-      </svg>
-      <span className="text-[7px] font-semibold leading-tight text-white">Mercado&nbsp;Pago</span>
+      <span className="text-[8px] font-bold lowercase leading-none text-white">mercado pago</span>
     </span>
   );
 }

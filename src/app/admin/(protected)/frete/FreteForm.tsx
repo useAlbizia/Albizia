@@ -34,13 +34,13 @@ export function FreteForm({ settings }: { settings: FreteSettings }) {
         </label>
         <label className="flex items-center gap-2">
           <input type="radio" name="method" value="melhor_envio" checked={method === "melhor_envio"} onChange={() => setMethod("melhor_envio")} className="accent-content" />
-          Melhor Envio (cotação real por CEP — Correios, Jadlog etc.)
+          Melhor Envio (cotação real por CEP: Correios, Jadlog etc.)
         </label>
       </div>
 
       <span className={`${label} mt-3`}>Valores</span>
-      <input name="flat" type="number" step="0.01" min="0" defaultValue={settings.flatReais} placeholder="Frete fixo (R$) — 0 = grátis" className={input} />
-      <input name="freeThreshold" type="number" step="0.01" min="0" defaultValue={settings.freeThresholdReais} placeholder="Frete grátis acima de (R$) — 0 = desativado" className={input} />
+      <input name="flat" type="number" step="0.01" min="0" defaultValue={settings.flatReais} placeholder="Frete fixo em R$ (0 = grátis)" className={input} />
+      <input name="freeThreshold" type="number" step="0.01" min="0" defaultValue={settings.freeThresholdReais} placeholder="Frete grátis acima de R$ (0 = desativado)" className={input} />
       <p className="-mt-1 text-[11px] text-content/40">
         O frete fixo vale para o método &quot;fixo&quot; e como reserva caso o Melhor Envio esteja
         indisponível. O frete grátis acima do valor vale para os dois métodos.
@@ -49,7 +49,7 @@ export function FreteForm({ settings }: { settings: FreteSettings }) {
       {method === "melhor_envio" && (
         <>
           <span className={`${label} mt-3`}>Melhor Envio</span>
-          <input name="meToken" type="password" placeholder={settings.hasToken ? "Token salvo — deixe em branco para manter" : "Token de API do Melhor Envio"} className={input} autoComplete="off" />
+          <input name="meToken" type="password" placeholder={settings.hasToken ? "Token salvo (deixe em branco para manter)" : "Token de API do Melhor Envio"} className={input} autoComplete="off" />
           <input name="meFromCep" defaultValue={settings.meFromCep} placeholder="CEP de origem (de onde você envia)" className={input} />
           <span className={`${label} mt-2`}>Pacote padrão</span>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

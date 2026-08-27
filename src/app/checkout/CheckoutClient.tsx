@@ -79,7 +79,7 @@ export function CheckoutClient({
       if (r.ok) {
         setDiscountCents(r.discountCents);
         setCouponCode(r.code);
-        setCouponMsg(`${r.code} — ${money(r.discountCents / 100)} de desconto`);
+        setCouponMsg(`${r.code}: ${money(r.discountCents / 100)} de desconto`);
       } else {
         setDiscountCents(0);
         setCouponCode("");

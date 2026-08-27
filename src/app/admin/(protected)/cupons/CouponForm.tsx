@@ -35,7 +35,7 @@ export function CouponForm() {
         type="number"
         step="0.01"
         min="0"
-        placeholder="Compra mínima (R$) — opcional"
+        placeholder="Compra mínima em R$ (opcional)"
         className={input}
       />
 
@@ -45,7 +45,7 @@ export function CouponForm() {
           type="number"
           step="1"
           min="1"
-          placeholder="Limite de usos — opcional"
+          placeholder="Limite de usos (opcional)"
           className={input}
         />
         <input name="expiresAt" type="date" className={input} title="Validade (opcional)" />

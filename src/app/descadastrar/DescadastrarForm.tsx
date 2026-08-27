@@ -11,7 +11,7 @@ export function DescadastrarForm({ email }: { email: string }) {
   if (state.done) {
     return (
       <p className="mt-8 max-w-sm text-center text-sm leading-relaxed text-content/60">
-        Pronto — você não receberá mais nossos e-mails. Sentiremos sua falta.
+        Pronto. Você não receberá mais nossos e-mails. Sentiremos sua falta.
       </p>
     );
   }

@@ -4,7 +4,7 @@ import { LegalPageView } from "@/components/LegalPageView";
 
 export async function generateMetadata() {
   const page = await getLegalPage("trocas");
-  return { title: page ? `${page.title} — ALBIZIA` : "ALBIZIA" };
+  return { title: page ? `${page.title} · ALBIZIA` : "ALBIZIA" };
 }
 
 export default async function TrocasPage() {

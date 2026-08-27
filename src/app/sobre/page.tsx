@@ -1,6 +1,6 @@
 import { Symbol } from "@/components/logo/Symbol";
 
-export const metadata = { title: "Sobre — ALBIZIA" };
+export const metadata = { title: "Sobre · ALBIZIA" };
 
 export default function SobrePage() {
   return (
@@ -12,7 +12,7 @@ export default function SobrePage() {
       </p>
       <p className="mt-6 text-sm leading-relaxed text-content/60">
         Trabalhamos com algodões selecionados e modelagens estudadas, com um
-        único objetivo — peças que envelhecem bem e dizem pouco por si
+        único objetivo: criar peças que envelhecem bem e dizem pouco por si
         mesmas.
       </p>
     </section>

@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description:
-    "ALBIZIA — moda premium. Camisetas e moda praia de alto padrão. Silence becomes style.",
+    "ALBIZIA, moda premium. Camisetas e moda praia de alto padrão. Silence becomes style.",
   keywords: ["ALBIZIA", "moda premium", "camisetas", "moda praia", "luxo silencioso"],
   openGraph: {
     type: "website",

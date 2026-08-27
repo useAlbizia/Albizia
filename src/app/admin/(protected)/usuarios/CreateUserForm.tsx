@@ -14,7 +14,7 @@ export function CreateUserForm() {
       <div className="max-w-md border border-content/20 bg-surface-soft p-6">
         <p className="text-sm text-content/70">
           Conta criada para <strong className="text-content">{state.success.email}</strong>. Envie
-          essa senha temporária para a pessoa — ela será obrigada a trocar no primeiro login.
+          essa senha temporária para a pessoa. Ela será obrigada a trocar no primeiro login.
         </p>
         <div className="mt-4 flex items-center gap-2">
           <code className="flex-1 break-all border border-content/20 bg-surface px-3 py-2 text-sm">
@@ -33,7 +33,7 @@ export function CreateUserForm() {
           </button>
         </div>
         <p className="mt-3 text-[11px] text-content/40">
-          Essa senha só aparece uma vez — não fica salva em nenhum lugar visível.
+          Essa senha só aparece uma vez e não fica salva em nenhum lugar visível.
         </p>
       </div>
     );

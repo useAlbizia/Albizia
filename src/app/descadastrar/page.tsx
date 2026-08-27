@@ -1,7 +1,7 @@
 import { Symbol } from "@/components/logo/Symbol";
 import { DescadastrarForm } from "./DescadastrarForm";
 
-export const metadata = { title: "Cancelar inscrição — ALBIZIA" };
+export const metadata = { title: "Cancelar inscrição · ALBIZIA" };
 
 export default async function DescadastrarPage(props: PageProps<"/descadastrar">) {
   const sp = await props.searchParams;

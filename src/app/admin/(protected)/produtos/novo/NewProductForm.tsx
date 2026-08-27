@@ -63,7 +63,7 @@ export function NewProductForm({ collections }: { collections: CollectionInfo[] 
       />
       <input
         name="sizesText"
-        placeholder="Tamanhos separados por vírgula (opcional — padrão P,M,G,GG)"
+        placeholder="Tamanhos separados por vírgula (opcional, padrão P,M,G,GG)"
         className={inputClass}
       />
 

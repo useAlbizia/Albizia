@@ -43,7 +43,7 @@ export async function sendOrderPaidEmails(orderId: string): Promise<void> {
   // Customer receipt (delivers once a domain is verified in Resend)
   await sendEmail({
     to: order.customerEmail,
-    subject: `Pedido #${order.orderNumber} confirmado — ALBIZIA`,
+    subject: `Pedido #${order.orderNumber} confirmado · ALBIZIA`,
     html: emailShell(
       "Pagamento confirmado",
       `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${order.customerName}. Recebemos a confirmação do seu pagamento — seu pedido está sendo preparado.</p>

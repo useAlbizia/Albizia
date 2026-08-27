@@ -1,7 +1,7 @@
 import { getShippingSettings } from "@/lib/shipping";
 import { CheckoutClient } from "./CheckoutClient";
 
-export const metadata = { title: "Checkout — ALBIZIA" };
+export const metadata = { title: "Checkout · ALBIZIA" };
 
 export default async function CheckoutPage() {
   const s = await getShippingSettings();

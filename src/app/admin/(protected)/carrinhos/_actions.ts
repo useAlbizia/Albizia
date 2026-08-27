@@ -38,7 +38,7 @@ export async function sendRecovery(orderId: string): Promise<RecoveryState> {
 
   const sent = await sendEmail({
     to: order.customerEmail,
-    subject: `Você esqueceu algo, ${order.customerName.split(" ")[0]}? — ALBIZIA`,
+    subject: `Você esqueceu algo, ${order.customerName.split(" ")[0]}? · ALBIZIA`,
     html: emailShell(
       "Seu carrinho está esperando",
       `<p style="font-size:14px;line-height:1.6;color:#55534e;">Notamos que você deixou algumas peças para trás. Elas continuam disponíveis:</p>

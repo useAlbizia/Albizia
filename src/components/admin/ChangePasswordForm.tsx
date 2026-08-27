@@ -23,7 +23,7 @@ export function ChangePasswordForm() {
         Defina sua senha
       </h1>
       <p className="mt-3 max-w-xs text-sm text-content/50">
-        Primeiro acesso — escolha uma senha definitiva antes de continuar.
+        Primeiro acesso. Escolha uma senha definitiva antes de continuar.
       </p>
 
       <form action={formAction} className="mt-8 flex w-full max-w-xs flex-col gap-4">

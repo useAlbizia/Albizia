@@ -7,7 +7,7 @@ import { brl, shortDate } from "@/lib/format";
 import { CustomerAuth } from "./CustomerAuth";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "Minha conta — ALBIZIA" };
+export const metadata = { title: "Minha conta · ALBIZIA" };
 
 export default async function ContaPage() {
   const user = await getSessionUser();

@@ -17,7 +17,7 @@ export async function generateStaticParams() {
 export async function generateMetadata(props: PageProps<"/produto/[slug]">) {
   const { slug } = await props.params;
   const product = await getProductBySlug(slug);
-  return { title: product ? `${product.name} — ALBIZIA` : "ALBIZIA" };
+  return { title: product ? `${product.name} · ALBIZIA` : "ALBIZIA" };
 }
 
 export default async function ProdutoPage(props: PageProps<"/produto/[slug]">) {

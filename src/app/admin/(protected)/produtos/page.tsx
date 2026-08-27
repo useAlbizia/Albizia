@@ -31,7 +31,7 @@ export default async function AdminProdutosPage() {
 
       {noPhoto.length > 0 && (
         <div className="mb-6 border border-amber-500/40 bg-amber-500/10 p-4 text-[13px] text-amber-700 dark:text-amber-300">
-          <strong>{noPhoto.length} produto(s) ativo(s) sem foto</strong> — estão{" "}
+          <strong>{noPhoto.length} produto(s) ativo(s) sem foto</strong>, estão{" "}
           <strong>ocultos no site</strong> até receberem ao menos uma imagem:{" "}
           {noPhoto.map((p) => p.name).join(", ")}. Adicione fotos ou desative-os.
         </div>

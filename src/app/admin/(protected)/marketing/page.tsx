@@ -73,7 +73,7 @@ export default async function MarketingPage() {
 
       <p className="text-[11px] leading-relaxed text-content/40">
         Cada e-mail inclui link de cancelamento automático. O disparo para clientes reais depende
-        de um domínio verificado no Resend — antes disso, só chega no e-mail da conta.
+        de um domínio verificado no Resend. Antes disso, só chega no e-mail da conta.
       </p>
     </div>
   );
