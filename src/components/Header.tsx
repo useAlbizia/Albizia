@@ -184,17 +184,44 @@ export function Header({ menu }: { menu: MenuEntry[] }) {
                     <span className="text-content/40">{expanded === m.id ? "−" : "+"}</span>
                   </button>
                   {expanded === m.id && (
-                    <div className="flex flex-col gap-2 pb-4 pl-3">
-                      {m.columns.flatMap((c) => c.links).map((l) => (
+                    <div className="pb-4">
+                      {m.featured && (
                         <Link
-                          key={`${l.href}-${l.label}`}
-                          href={l.href}
+                          href={m.featured.href}
                           onClick={() => setMobileOpen(false)}
-                          className="text-[13px] text-content/60"
+                          className="relative mb-4 block aspect-[16/10] overflow-hidden"
                         >
-                          {l.label}
+                          <Image src={m.featured.img} alt={m.featured.label} fill sizes="100vw" className="object-cover" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                          <span className="absolute bottom-3 left-3 flex items-center gap-1.5 text-[12px] uppercase tracking-[0.15em] text-white">
+                            {m.featured.label}
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                              <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                          </span>
                         </Link>
-                      ))}
+                      )}
+                      <div className="flex flex-col gap-2.5 pl-1">
+                        {m.columns.map((col) => (
+                          <div key={col.title || "geral"}>
+                            {col.title && (
+                              <p className="mb-1 mt-1 text-[10px] uppercase tracking-[0.2em] text-content/40">
+                                {col.title}
+                              </p>
+                            )}
+                            {col.links.map((l) => (
+                              <Link
+                                key={`${l.href}-${l.label}`}
+                                href={l.href}
+                                onClick={() => setMobileOpen(false)}
+                                className="block py-1 text-[13px] text-content/60"
+                              >
+                                {l.label}
+                              </Link>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Symbol } from "./logo/Symbol";
 import { NewsletterForm } from "./NewsletterForm";
+import { PaymentBadges } from "./PaymentBadges";
 import type { SiteSettings } from "@/lib/settings";
 
 function Column({ title, children }: { title: string; children: React.ReactNode }) {
@@ -16,16 +17,6 @@ function Column({ title, children }: { title: string; children: React.ReactNode 
 }
 
 const linkClass = "transition-colors hover:text-content";
-
-// A card-shaped payment badge (brand name styled inside a card outline) — a
-// clean, on-brand alternative to reproducing third-party logo artwork.
-function CardBadge({ children }: { children: React.ReactNode }) {
-  return (
-    <span className="inline-flex h-7 min-w-[46px] items-center justify-center rounded-[5px] border border-content/15 bg-content/[0.04] px-2 text-[10px] font-semibold uppercase tracking-[0.05em] text-content/60">
-      {children}
-    </span>
-  );
-}
 
 // A trust seal: small line icon + label in a pill.
 function TrustBadge({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) {
@@ -131,14 +122,9 @@ export function Footer({ settings }: { settings: SiteSettings }) {
             <TrustBadge icon={LockIcon}>Site 100% seguro · SSL</TrustBadge>
             <TrustBadge icon={ShieldIcon}>Compra garantida</TrustBadge>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <span className="mr-1 text-[10px] uppercase tracking-[0.18em] text-content/40">Pagamento</span>
-            <CardBadge>Pix</CardBadge>
-            <CardBadge>Visa</CardBadge>
-            <CardBadge>Master</CardBadge>
-            <CardBadge>Elo</CardBadge>
-            <CardBadge>Amex</CardBadge>
-            <CardBadge>Mercado&nbsp;Pago</CardBadge>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-content/40">Formas de pagamento</span>
+            <PaymentBadges />
           </div>
         </div>
       </div>
