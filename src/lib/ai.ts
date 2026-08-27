@@ -3,9 +3,14 @@ import Anthropic from "@anthropic-ai/sdk";
 import { db } from "./db/client";
 
 // Central Claude client for the store's AI features. The key lives only in the
-// environment (never in code/git). claude-opus-5 gives the best brand-voice
-// quality; swap MODEL if you want a cheaper model for high-volume features.
+// environment (never in code/git).
+// - MODEL: best quality, for the low-volume admin description generator.
+// - MODEL_FAST: Haiku — ~25x cheaper, for the high-volume customer-facing
+//   features (search + chat), where near-zero cost per call matters more than
+//   maximum quality. Note: Haiku 4.5 rejects output_config.effort, so the fast
+//   calls omit it.
 const MODEL = "claude-opus-5";
+const MODEL_FAST = "claude-haiku-4-5";
 
 let cached: Anthropic | null = null;
 function getClient(): Anthropic | null {
@@ -82,6 +87,62 @@ export async function generateProductDescription(input: {
   }
 }
 
+export type ChatMessage = { role: "user" | "assistant"; content: string };
+
+// The storefront concierge/assistant. Recommends real products, answers size/
+// shipping/returns/payment questions, in the brand voice. History is trimmed to
+// the last turns to bound cost.
+export async function assistantReply(history: ChatMessage[]): Promise<AiText> {
+  const client = getClient();
+  if (!client) return { error: "Assistente indisponível no momento." };
+  if (history.length === 0 || history[history.length - 1].role !== "user") {
+    return { error: "Envie uma mensagem." };
+  }
+
+  const rows = await db.query.products.findMany({
+    where: (p, { eq }) => eq(p.active, true),
+    with: { collection: true, images: { limit: 1 } },
+  });
+  const catalog = rows
+    .filter((r) => r.images.length > 0)
+    .map(
+      (r) =>
+        `- ${r.name} — cor ${r.colorName}, ${r.category}, R$${(r.priceCents / 100).toFixed(0)} → /produto/${r.slug}`
+    )
+    .join("\n");
+
+  const system = `Você é a assistente virtual da ALBIZIA — marca brasileira de moda masculina premium ("quiet luxury": peças essenciais, atemporais, de alto padrão). Fale em português do Brasil, de forma cordial, breve e sofisticada (sem gírias, sem exageros, sem pontos de exclamação em excesso).
+
+Você ajuda o cliente a encontrar peças, tirar dúvidas e recomendar produtos do catálogo abaixo. Ao sugerir uma peça, cite o nome e inclua o link exatamente como está (ex.: /produto/camiseta-essential-preta) para o cliente clicar. Recomende SOMENTE produtos do catálogo.
+
+CATÁLOGO:
+${catalog}
+
+INFORMAÇÕES DA LOJA:
+- Tamanhos: P, M, G, GG (há um "Guia de tamanhos" em cada página de produto).
+- Pagamento: Pix e cartão, via Mercado Pago.
+- Frete: calculado no checkout (por CEP ou taxa fixa), podendo haver frete grátis acima de um valor.
+- Trocas e devoluções: até 7 dias após o recebimento (direito de arrependimento).
+- Acompanhar pedido: página "Acompanhar" com número do pedido e e-mail.
+
+Se perguntarem algo fora do universo da loja, responda com gentileza e traga a conversa de volta às peças. Mantenha as respostas curtas (2 a 4 frases).`;
+
+  try {
+    const res = await client.messages.create({
+      model: MODEL_FAST,
+      max_tokens: 800,
+      system,
+      messages: history.slice(-10).map((m) => ({ role: m.role, content: m.content })),
+    });
+    const text = textOf(res);
+    return text ? { text } : { error: "Não consegui responder agora. Tente novamente." };
+  } catch (err) {
+    if (err instanceof Anthropic.RateLimitError) return { error: "Muitas mensagens agora. Tente em instantes." };
+    console.error("assistantReply failed", err);
+    return { error: "Não consegui responder agora. Tente novamente." };
+  }
+}
+
 // Semantic product search: Claude reads the (small) catalog and the shopper's
 // natural query and returns the most relevant product slugs, best first.
 // Returns null when AI is unavailable so the caller can fall back to text match.
@@ -108,9 +169,8 @@ export async function aiSearchProducts(query: string): Promise<string[] | null> 
 
   try {
     const res = await client.messages.create({
-      model: MODEL,
+      model: MODEL_FAST,
       max_tokens: 500,
-      output_config: { effort: "low" },
       system:
         'Você é a busca inteligente da loja de moda ALBIZIA. Dada a consulta do cliente e o catálogo (JSON), devolva os slugs dos produtos RELEVANTES, do mais ao menos relevante, considerando cor, tipo de peça, ocasião, clima e estilo. Inclua só o que faz sentido para a consulta (pode ser vazio). Responda SOMENTE com um array JSON de slugs, ex.: ["slug-a","slug-b"].',
       messages: [
