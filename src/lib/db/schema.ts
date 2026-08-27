@@ -201,6 +201,21 @@ export const reviews = pgTable("reviews", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Home hero banners (carousel), managed in the admin. When any are active they
+// replace the animated-symbol hero on the home page.
+export const banners = pgTable("banners", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  imageUrl: text("image_url").notNull(),
+  title: text("title").notNull().default(""),
+  subtitle: text("subtitle").notNull().default(""),
+  ctaLabel: text("cta_label").notNull().default(""),
+  ctaHref: text("cta_href").notNull().default(""),
+  align: text("align").notNull().default("center"), // left | center | right
+  sortOrder: integer("sort_order").notNull().default(0),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Configurable storefront navigation (mega-menu). Each menu_items row is a
 // top-level entry in the header; its menu_links are the sub-links shown in the
 // drop panel, grouped into columns by columnTitle. An optional featured image

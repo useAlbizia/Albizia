@@ -85,6 +85,13 @@
       "when": 1787729967613,
       "tag": "0011_smiling_peter_quill",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1787799926410,
+      "tag": "0012_regular_otto_octavius",
+      "breakpoints": true
     }
   ]
 }

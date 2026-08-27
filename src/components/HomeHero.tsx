@@ -12,14 +12,18 @@ import { fadeSlow, riseIn, staggerChildren } from "@/lib/motion";
 export function HomeHero({
   collections,
   featured,
+  hideHero = false,
 }: {
   collections: CollectionInfo[];
   featured: Product[];
+  hideHero?: boolean;
 }) {
   return (
     <>
       {/* Hero — kept intentionally shorter than full height so the first
-          pieces peek in below the fold, inviting the scroll. */}
+          pieces peek in below the fold, inviting the scroll. Hidden when the
+          admin has active home banners (the carousel becomes the hero). */}
+      {!hideHero && (
       <section className="relative flex min-h-[64vh] flex-col items-center justify-center overflow-hidden px-6 pt-10 pb-6 text-center">
         <motion.div
           initial="hidden"
@@ -50,6 +54,7 @@ export function HomeHero({
           </motion.div>
         </motion.div>
       </section>
+      )}
 
       {featured.length > 0 && (
         <section className="mx-auto max-w-6xl px-6 pb-24 pt-6">
