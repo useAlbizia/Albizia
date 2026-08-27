@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { db } from "./db/client";
 
 // Central Claude client for the store's AI features. The key lives only in the
 // environment (never in code/git). claude-opus-5 gives the best brand-voice
@@ -78,5 +79,53 @@ export async function generateProductDescription(input: {
     }
     console.error("generateProductDescription failed", err);
     return { error: "Não foi possível gerar agora. Tente novamente." };
+  }
+}
+
+// Semantic product search: Claude reads the (small) catalog and the shopper's
+// natural query and returns the most relevant product slugs, best first.
+// Returns null when AI is unavailable so the caller can fall back to text match.
+export async function aiSearchProducts(query: string): Promise<string[] | null> {
+  const client = getClient();
+  if (!client || !query.trim()) return null;
+
+  const rows = await db.query.products.findMany({
+    where: (p, { eq }) => eq(p.active, true),
+    with: { collection: true, images: { limit: 1 } },
+  });
+  const catalog = rows
+    .filter((r) => r.images.length > 0)
+    .map((r) => ({
+      slug: r.slug,
+      nome: r.name,
+      tipo: r.category,
+      colecao: r.collection.slug,
+      cor: r.colorName,
+      preco: r.priceCents / 100,
+      desc: r.description,
+    }));
+  if (catalog.length === 0) return null;
+
+  try {
+    const res = await client.messages.create({
+      model: MODEL,
+      max_tokens: 500,
+      output_config: { effort: "low" },
+      system:
+        'Você é a busca inteligente da loja de moda ALBIZIA. Dada a consulta do cliente e o catálogo (JSON), devolva os slugs dos produtos RELEVANTES, do mais ao menos relevante, considerando cor, tipo de peça, ocasião, clima e estilo. Inclua só o que faz sentido para a consulta (pode ser vazio). Responda SOMENTE com um array JSON de slugs, ex.: ["slug-a","slug-b"].',
+      messages: [
+        { role: "user", content: `Consulta: "${query}"\n\nCatálogo:\n${JSON.stringify(catalog)}` },
+      ],
+    });
+    const text = textOf(res);
+    const m = text.match(/\[[\s\S]*\]/);
+    if (!m) return null;
+    const parsed = JSON.parse(m[0]);
+    if (!Array.isArray(parsed)) return null;
+    const valid = new Set(catalog.map((c) => c.slug));
+    return parsed.filter((s): s is string => typeof s === "string" && valid.has(s));
+  } catch (err) {
+    console.error("aiSearchProducts failed", err);
+    return null;
   }
 }

@@ -1,5 +1,12 @@
 import Link from "next/link";
-import { getFilteredProducts, getCollections, type ProductFilters } from "@/lib/products";
+import {
+  getFilteredProducts,
+  getProductsBySlugs,
+  getCollections,
+  type ProductFilters,
+  type Product,
+} from "@/lib/products";
+import { aiSearchProducts } from "@/lib/ai";
 import { ProductCover } from "@/components/ProductImage";
 
 export const metadata = { title: "Produtos — ALBIZIA" };
@@ -23,10 +30,24 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
     sort: (one(sp.ordem) as ProductFilters["sort"]) ?? "recentes",
   };
 
-  const [products, collections] = await Promise.all([
-    getFilteredProducts(filters),
-    getCollections(),
-  ]);
+  const collections = await getCollections();
+
+  // Smart search: when there's a query, let the AI rank relevant products
+  // (understands intent/occasion/color). Falls back to text match if the AI
+  // is unavailable or returns nothing.
+  let products: Product[];
+  let aiUsed = false;
+  const slugs = filters.q?.trim() ? await aiSearchProducts(filters.q) : null;
+  if (slugs && slugs.length > 0) {
+    products = (await getProductsBySlugs(slugs)).filter(
+      (p) =>
+        (!filters.line || p.line === filters.line) &&
+        (!filters.category || p.category === filters.category)
+    );
+    aiUsed = true;
+  } else {
+    products = await getFilteredProducts(filters);
+  }
 
   const selectClass =
     "border border-content/30 bg-transparent px-3 py-2 text-sm outline-none focus:border-content";
@@ -72,6 +93,12 @@ export default async function ProdutosPage(props: PageProps<"/produtos">) {
           Filtrar
         </button>
       </form>
+
+      {aiUsed && (
+        <p className="mb-6 text-center text-[12px] uppercase tracking-[0.15em] text-content/50">
+          ✦ Busca inteligente para “{filters.q}”
+        </p>
+      )}
 
       {products.length === 0 ? (
         <p className="py-16 text-center text-sm text-content/50">

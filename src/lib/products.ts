@@ -196,6 +196,20 @@ export async function getFilteredProducts(filters: ProductFilters): Promise<Prod
   return rows.map(toProduct).filter((p) => p.images.length > 0);
 }
 
+// Products for a list of slugs, returned IN THAT ORDER (used by AI search to
+// preserve the relevance ranking). Only active products with photos.
+export async function getProductsBySlugs(slugs: string[]): Promise<Product[]> {
+  if (slugs.length === 0) return [];
+  const rows = await db.query.products.findMany({
+    where: (p, { and, eq, inArray }) => and(eq(p.active, true), inArray(p.slug, slugs)),
+    with: { collection: true, variants: true, images: true },
+  });
+  const bySlug = new Map(rows.map((r) => [r.slug, toProduct(r)]));
+  return slugs
+    .map((s) => bySlug.get(s))
+    .filter((p): p is Product => !!p && p.images.length > 0);
+}
+
 export async function getAllProductSlugs(): Promise<string[]> {
   const rows = await db.query.products.findMany({
     where: eq(productsTable.active, true),
