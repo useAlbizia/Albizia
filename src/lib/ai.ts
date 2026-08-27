@@ -87,6 +87,25 @@ export async function generateProductDescription(input: {
   }
 }
 
+// A short, plain-language reading of the analytics for the founders (for ads &
+// improvements). Uses the cheap model; returns "" if unavailable.
+export async function analyticsInsight(data: unknown): Promise<string> {
+  const client = getClient();
+  if (!client) return "";
+  try {
+    const res = await client.messages.create({
+      model: MODEL_FAST,
+      max_tokens: 400,
+      system:
+        "Você é analista de dados de uma loja de moda (ALBIZIA). Receberá métricas de tráfego em JSON. Escreva em português do Brasil um resumo curto e objetivo (2 a 4 frases) com o que os dados dizem e 1 sugestão prática para anúncios ou melhoria. Sem saudação, sem repetir todos os números — só o que importa. Se os dados forem escassos, diga que ainda há poucos dados.",
+      messages: [{ role: "user", content: JSON.stringify(data) }],
+    });
+    return textOf(res);
+  } catch {
+    return "";
+  }
+}
+
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
 // The storefront concierge/assistant. Recommends real products, answers size/

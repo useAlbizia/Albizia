@@ -37,7 +37,16 @@ type TrackPayload = {
 
 export function track(payload: TrackPayload): void {
   if (typeof window === "undefined") return;
-  const body = JSON.stringify({ ...payload, ...ids() });
+  let referrer = "";
+  try {
+    // Only external referrers — internal navigation shouldn't count as a source.
+    if (document.referrer && !document.referrer.startsWith(location.origin)) {
+      referrer = document.referrer;
+    }
+  } catch {
+    /* ignore */
+  }
+  const body = JSON.stringify({ ...payload, ...ids(), referrer });
   try {
     if (navigator.sendBeacon) {
       navigator.sendBeacon("/api/track", new Blob([body], { type: "application/json" }));

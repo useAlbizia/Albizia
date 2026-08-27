@@ -92,6 +92,13 @@
       "when": 1787799926410,
       "tag": "0012_regular_otto_octavius",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1787800897752,
+      "tag": "0013_left_titania",
+      "breakpoints": true
     }
   ]
 }

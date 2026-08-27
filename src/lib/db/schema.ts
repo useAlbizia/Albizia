@@ -307,6 +307,12 @@ export const analyticsEvents = pgTable("analytics_events", {
   sessionId: text("session_id"),
   visitorId: text("visitor_id"),
   device: text("device"), // mobile | tablet | desktop
+  browser: text("browser"), // Chrome, Safari, Firefox, ...
+  os: text("os"), // Android, iOS, Windows, macOS, ...
+  country: text("country"),
+  region: text("region"),
+  city: text("city"),
+  referrer: text("referrer"), // where the visit came from (host only)
   valueCents: integer("value_cents"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
