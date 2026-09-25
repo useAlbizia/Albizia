@@ -8,6 +8,7 @@ import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import type { CartItem } from "@/lib/cart-context";
 import { quoteShipping } from "@/lib/shipping";
+import { getPaymentSettings } from "@/lib/payments";
 import { validateCoupon, type CouponResult } from "@/lib/coupons";
 
 // Live shipping quote for the checkout preview (Melhor Envio method). The order
@@ -168,7 +169,13 @@ export async function createOrder(
     .catch(() => {});
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
-  const mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! });
+  // Credentials come from Admin → Pagamentos, falling back to the env var.
+  const { accessToken } = await getPaymentSettings();
+  if (!accessToken) {
+    console.error("Mercado Pago access token is not configured");
+    return { error: "Pagamento indisponível no momento. Tente novamente em instantes." };
+  }
+  const mpClient = new MercadoPagoConfig({ accessToken });
 
   let checkoutUrl: string | undefined;
   try {
@@ -220,7 +227,9 @@ export async function createOrder(
         notification_url: `${siteUrl}/api/mercadopago/webhook`,
       },
     });
-    checkoutUrl = preference.sandbox_init_point ?? preference.init_point ?? undefined;
+    // init_point FIRST. Preferring sandbox_init_point would send real customers
+    // to the test checkout, where no money is ever actually charged.
+    checkoutUrl = preference.init_point ?? preference.sandbox_init_point ?? undefined;
 
     if (preference.id) {
       await db.update(orders).set({ mpPreferenceId: preference.id }).where(eq(orders.id, order.id));

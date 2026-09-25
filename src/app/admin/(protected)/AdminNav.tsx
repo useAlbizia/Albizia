@@ -24,6 +24,7 @@ const GROUPS: Group[] = [
       { href: "/admin/carrinhos", label: "Carrinhos" },
       { href: "/admin/clientes", label: "Clientes" },
       { href: "/admin/frete", label: "Frete" },
+      { href: "/admin/pagamentos", label: "Pagamentos" },
     ],
   },
   {

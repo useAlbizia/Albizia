@@ -163,6 +163,12 @@ export const siteSettings = pgTable("site_settings", {
   meLengthCm: integer("me_length_cm").notNull().default(20),
   meWidthCm: integer("me_width_cm").notNull().default(20),
   meHeightCm: integer("me_height_cm").notNull().default(4),
+  // Mercado Pago (Checkout Transparente). mpAccessToken is a SECRET, read ONLY
+  // server-side and never returned to the browser. mpPublicKey is meant to be
+  // public — the Payment Brick needs it in the client to tokenize the card, so
+  // the card number never touches our server.
+  mpPublicKey: text("mp_public_key").notNull().default(""),
+  mpAccessToken: text("mp_access_token").notNull().default(""),
   // A variant at or below this stock count is flagged "low" on the dashboard
   // and in the daily low-stock alert email.
   lowStockThreshold: integer("low_stock_threshold").notNull().default(3),
