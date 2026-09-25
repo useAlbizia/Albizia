@@ -40,3 +40,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Modelo de variaveis: fica so na maquina, nao vai para o GitHub
+.env.local.example

@@ -12,6 +12,7 @@ import {
 import { track } from "@/lib/analytics-client";
 import { computeShipping, type ShippingConfig } from "@/lib/shipping-calc";
 import { PaymentStep } from "./PaymentStep";
+import { SeloCompraSegura } from "@/components/CompraSegura";
 
 const initialState: CheckoutState = {};
 
@@ -231,10 +232,14 @@ export function CheckoutClient({
           </p>
         )}
 
+        <div className="mt-6">
+          <SeloCompraSegura />
+        </div>
+
         <button
           type="submit"
           disabled={pending}
-          className="mt-6 w-full border border-content py-4 text-[13px] uppercase tracking-[0.2em] text-content transition-colors hover:bg-content hover:text-surface disabled:opacity-50"
+          className="mt-4 w-full border border-content py-4 text-[13px] uppercase tracking-[0.2em] text-content transition-colors hover:bg-content hover:text-surface disabled:opacity-50"
         >
           {pending ? "Aguarde..." : "Continuar para pagamento"}
         </button>

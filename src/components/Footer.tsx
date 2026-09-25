@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Symbol } from "./logo/Symbol";
 import { NewsletterForm } from "./NewsletterForm";
-import { PaymentBadges } from "./PaymentBadges";
+import { PaymentBadges, ShippingBadges } from "./PaymentBadges";
 import type { SiteSettings } from "@/lib/settings";
 
 function Column({ title, children }: { title: string; children: React.ReactNode }) {
@@ -115,17 +115,33 @@ export function Footer({ settings }: { settings: SiteSettings }) {
         </div>
       </div>
 
-      {/* Trust + payment badges */}
+      {/* Pagamento, envio e segurança. Cada afirmação aqui é verificável:
+          nenhum selo de terceiro que a loja não tenha de fato contratado. */}
       <div className="border-t border-content/10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center gap-4 px-6 py-7">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <TrustBadge icon={LockIcon}>Site 100% seguro · SSL</TrustBadge>
-            <TrustBadge icon={ShieldIcon}>Compra garantida</TrustBadge>
+        <div className="mx-auto max-w-6xl px-6 py-8">
+          <div className="grid gap-7 sm:grid-cols-2">
+            <div className="flex flex-col items-center gap-2.5">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-content/40">
+                Formas de pagamento
+              </span>
+              <PaymentBadges />
+            </div>
+            <div className="flex flex-col items-center gap-2.5">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-content/40">
+                Enviamos com
+              </span>
+              <ShippingBadges />
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[10px] uppercase tracking-[0.18em] text-content/40">Formas de pagamento</span>
-            <PaymentBadges />
+
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 border-t border-content/10 pt-7">
+            <TrustBadge icon={LockIcon}>Conexão criptografada · SSL</TrustBadge>
+            <TrustBadge icon={ShieldIcon}>Pagamento via Mercado Pago</TrustBadge>
           </div>
+          <p className="mx-auto mt-3 max-w-md text-center text-[11px] leading-relaxed text-content/35">
+            Os dados do seu cartão são criptografados no seu navegador e não passam pelos servidores
+            da ALBIZIA.
+          </p>
         </div>
       </div>
 

@@ -82,6 +82,49 @@ function MercadoPago() {
   );
 }
 
+// Wider card, for wordmarks that don't fit the fixed-width Card.
+function WideCard({ children, label }: { children: React.ReactNode; label: string }) {
+  return (
+    <span
+      role="img"
+      aria-label={label}
+      className="inline-flex h-7 items-center justify-center rounded-[4px] border border-black/10 bg-white px-2.5 shadow-sm"
+    >
+      {children}
+    </span>
+  );
+}
+
+function MelhorEnvio() {
+  return (
+    <WideCard label="Melhor Envio">
+      <span className="text-[8px] font-bold leading-none tracking-tight text-[#0FAFA5]">
+        melhor<span className="text-[#1B2B4B]">envio</span>
+      </span>
+    </WideCard>
+  );
+}
+
+function Correios() {
+  return (
+    <WideCard label="Correios">
+      <span className="text-[8px] font-bold uppercase leading-none tracking-tight text-[#00416B]">
+        Correios
+      </span>
+    </WideCard>
+  );
+}
+
+function Jadlog() {
+  return (
+    <WideCard label="Jadlog">
+      <span className="text-[8px] font-bold uppercase leading-none tracking-tight text-[#D3232A]">
+        Jadlog
+      </span>
+    </WideCard>
+  );
+}
+
 export function PaymentBadges() {
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
@@ -91,6 +134,18 @@ export function PaymentBadges() {
       <Elo />
       <Amex />
       <MercadoPago />
+    </div>
+  );
+}
+
+// Carriers we actually ship with. Melhor Envio is the platform that quotes
+// them (see lib/shipping.ts), so naming all three is accurate, not decorative.
+export function ShippingBadges() {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <MelhorEnvio />
+      <Correios />
+      <Jadlog />
     </div>
   );
 }
