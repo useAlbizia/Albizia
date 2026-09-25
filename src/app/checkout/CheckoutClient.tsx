@@ -3,9 +3,15 @@
 import Link from "next/link";
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { useCart } from "@/lib/cart-context";
-import { createOrder, applyCoupon, quoteFreteAction, type CheckoutState } from "@/lib/checkout/actions";
+import {
+  createPendingOrder,
+  applyCoupon,
+  quoteFreteAction,
+  type CheckoutState,
+} from "@/lib/checkout/actions";
 import { track } from "@/lib/analytics-client";
 import { computeShipping, type ShippingConfig } from "@/lib/shipping-calc";
+import { PaymentStep } from "./PaymentStep";
 
 const initialState: CheckoutState = {};
 
@@ -19,13 +25,19 @@ function money(reais: number): string {
 export function CheckoutClient({
   method,
   shipping,
+  publicKey,
 }: {
   method: "flat" | "melhor_envio";
   shipping: ShippingConfig;
+  publicKey: string;
 }) {
   const { items, totalPrice } = useCart();
-  const action = createOrder.bind(null, items);
+  const action = createPendingOrder.bind(null, items);
   const [state, formAction, pending] = useActionState(action, initialState);
+
+  // Kept in state so the Payment Brick can pre-fill the payer once the order
+  // moves to the payment step.
+  const [email, setEmail] = useState("");
 
   const [couponInput, setCouponInput] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -65,6 +77,8 @@ export function CheckoutClient({
   const effectiveDiscount = Math.min(discountCents, subtotalCents);
   const totalCents = subtotalCents - effectiveDiscount + (shippingCents ?? 0);
   const totalQty = items.reduce((s, i) => s + i.quantity, 0);
+  // The order exists: the customer moves from "seus dados" to paying in place.
+  const paying = !!state.orderId;
 
   function calcFrete() {
     startFrete(async () => {
@@ -151,11 +165,29 @@ export function CheckoutClient({
         </div>
       </div>
 
+      {paying ? (
+        <div className="mt-10">
+          <PaymentStep
+            publicKey={publicKey}
+            orderId={state.orderId as string}
+            amountCents={state.totalCents ?? totalCents}
+            email={email}
+          />
+        </div>
+      ) : (
       <form action={formAction} className="mt-10 flex flex-col gap-4">
         <input type="hidden" name="couponCode" value={couponCode} />
         <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Seus dados</p>
         <input name="name" placeholder="Nome completo" required className={inputClass} />
-        <input name="email" type="email" placeholder="E-mail" required className={inputClass} />
+        <input
+          name="email"
+          type="email"
+          placeholder="E-mail"
+          required
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className={inputClass}
+        />
         <input name="phone" placeholder="Telefone" required className={inputClass} />
 
         <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-content/50">Entrega</p>
@@ -204,13 +236,14 @@ export function CheckoutClient({
           disabled={pending}
           className="mt-6 w-full border border-content py-4 text-[13px] uppercase tracking-[0.2em] text-content transition-colors hover:bg-content hover:text-surface disabled:opacity-50"
         >
-          {pending ? "Redirecionando..." : "Ir para pagamento"}
+          {pending ? "Aguarde..." : "Continuar para pagamento"}
         </button>
 
         <p className="text-center text-[11px] text-content/40">
-          Você será redirecionado ao Mercado Pago (Pix ou cartão) para concluir o pagamento.
+          Você paga aqui mesmo, sem sair da ALBIZIA. Cartão, Pix ou boleto.
         </p>
       </form>
+      )}
     </section>
   );
 }

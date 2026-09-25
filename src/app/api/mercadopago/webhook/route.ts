@@ -10,6 +10,7 @@ import { db } from "@/lib/db/client";
 import { orders, productVariants, analyticsEvents } from "@/lib/db/schema";
 import { sendOrderPaidEmails } from "@/lib/order-notify";
 import { incrementCouponUse } from "@/lib/coupons";
+import { getPaymentSettings } from "@/lib/payments";
 
 // Mercado Pago is the only source of truth for payment status — this
 // endpoint never trusts anything the customer's browser reports back.
@@ -47,7 +48,13 @@ export async function POST(request: NextRequest) {
   // Re-fetch the payment by id from MP's own API — the webhook body/query is
   // only ever a "something changed, go check" ping, never trusted for the
   // actual amount or status.
-  const mpClient = new MercadoPagoConfig({ accessToken: process.env.MERCADOPAGO_ACCESS_TOKEN! });
+  // Same credentials the checkout used: Admin → Pagamentos, env var as fallback.
+  const { accessToken } = await getPaymentSettings();
+  if (!accessToken) {
+    console.error("Webhook received but no Mercado Pago access token is configured");
+    return NextResponse.json({ ok: true });
+  }
+  const mpClient = new MercadoPagoConfig({ accessToken });
   let payment;
   try {
     payment = await new Payment(mpClient).get({ id: dataId });

@@ -1,14 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
-import { eq, inArray } from "drizzle-orm";
-import { MercadoPagoConfig, Preference } from "mercadopago";
+import { inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import type { CartItem } from "@/lib/cart-context";
 import { quoteShipping } from "@/lib/shipping";
-import { getPaymentSettings } from "@/lib/payments";
 import { validateCoupon, type CouponResult } from "@/lib/coupons";
 
 // Live shipping quote for the checkout preview (Melhor Envio method). The order
@@ -40,12 +37,18 @@ const checkoutSchema = z.object({
   zip: z.string().min(8, "CEP inválido"),
 });
 
-export type CheckoutState = { error?: string };
+export type CheckoutState = {
+  error?: string;
+  // Set once the order exists and the customer can pay. The payment itself
+  // happens in the Payment Brick, on our own page.
+  orderId?: string;
+  totalCents?: number;
+};
 
 // Re-derives price and stock from the database for every line — the client
 // cart is only ever a display convenience, never a source of truth for an
 // amount we're about to charge.
-export async function createOrder(
+export async function createPendingOrder(
   items: CartItem[],
   _prevState: CheckoutState,
   formData: FormData
@@ -168,80 +171,9 @@ export async function createOrder(
     .values({ type: "order_created", valueCents: subtotalCents })
     .catch(() => {});
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL!;
-  // Credentials come from Admin → Pagamentos, falling back to the env var.
-  const { accessToken } = await getPaymentSettings();
-  if (!accessToken) {
-    console.error("Mercado Pago access token is not configured");
-    return { error: "Pagamento indisponível no momento. Tente novamente em instantes." };
-  }
-  const mpClient = new MercadoPagoConfig({ accessToken });
-
-  let checkoutUrl: string | undefined;
-  try {
-    // With a discount we send a single consolidated line equal to the exact
-    // amount charged (MP rejects negative line items, so we can't itemize +
-    // subtract). Without one, we keep the itemized breakdown + a Frete line.
-    const mpItems =
-      discountCents > 0
-        ? [
-            {
-              id: `order-${order.id}`,
-              title: `ALBIZIA · Pedido${couponCode ? ` (cupom ${couponCode})` : ""}`,
-              quantity: 1,
-              unit_price: totalCents / 100,
-              currency_id: "BRL",
-            },
-          ]
-        : [
-            ...lineItems.map((li) => ({
-              id: li.variantId,
-              title: `${li.productName} (${li.size})`,
-              quantity: li.quantity,
-              unit_price: li.unitPriceCents / 100,
-              currency_id: "BRL",
-            })),
-            ...(shippingCents > 0
-              ? [
-                  {
-                    id: "frete",
-                    title: "Frete",
-                    quantity: 1,
-                    unit_price: shippingCents / 100,
-                    currency_id: "BRL",
-                  },
-                ]
-              : []),
-          ];
-
-    const preference = await new Preference(mpClient).create({
-      body: {
-        items: mpItems,
-        payer: { name: data.name, email: data.email },
-        external_reference: order.id,
-        back_urls: {
-          success: `${siteUrl}/checkout/confirmacao?order=${order.id}`,
-          pending: `${siteUrl}/checkout/confirmacao?order=${order.id}`,
-          failure: `${siteUrl}/checkout?falha=1`,
-        },
-        notification_url: `${siteUrl}/api/mercadopago/webhook`,
-      },
-    });
-    // init_point FIRST. Preferring sandbox_init_point would send real customers
-    // to the test checkout, where no money is ever actually charged.
-    checkoutUrl = preference.init_point ?? preference.sandbox_init_point ?? undefined;
-
-    if (preference.id) {
-      await db.update(orders).set({ mpPreferenceId: preference.id }).where(eq(orders.id, order.id));
-    }
-  } catch (err) {
-    console.error("Mercado Pago preference creation failed", err);
-    return { error: "Não foi possível iniciar o pagamento. Tente novamente em instantes." };
-  }
-
-  if (!checkoutUrl) {
-    return { error: "Não foi possível iniciar o pagamento. Tente novamente em instantes." };
-  }
-
-  redirect(checkoutUrl);
+  // Payment now happens on our own page, in the Payment Brick. The client gets
+  // only the order id and the amount to render; when the payment is actually
+  // processed the amount is re-read from THIS row, so a tampered client can
+  // never change what gets charged.
+  return { orderId: order.id, totalCents };
 }
