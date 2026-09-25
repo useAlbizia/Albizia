@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import { db } from "./db/client";
 import { orders, siteSettings } from "./db/schema";
 import { sendEmail, emailShell, money } from "./email";
+import { adminEmails } from "./auth/admins";
 
 // ── Recuperação de venda ──────────────────────────────────────────────────
 // Um checkout que ficou pendente é dinheiro que já estava na mesa. A ideia,
@@ -166,10 +167,15 @@ export async function sendHighValueAlerts(): Promise<{
 }> {
   const { queue, settings } = await listRecoveryQueue();
 
-  const destinatarios = (settings.alertEmail || process.env.ORDER_NOTIFICATION_EMAIL || "")
+  // Cadeia de destino: o que o admin configurou, senão a variável de
+  // notificação, senão os próprios sócios. O alerta nunca fica sem destino,
+  // porque um aviso não enviado é uma venda perdida em silêncio.
+  const configurado = (settings.alertEmail || process.env.ORDER_NOTIFICATION_EMAIL || "")
     .split(",")
     .map((e) => e.trim())
     .filter(Boolean);
+
+  const destinatarios = configurado.length > 0 ? configurado : adminEmails();
 
   if (destinatarios.length === 0) {
     return { alerted: 0, skipped: "nenhum e-mail de alerta configurado" };

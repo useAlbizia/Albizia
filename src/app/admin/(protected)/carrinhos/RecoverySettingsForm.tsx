@@ -59,8 +59,8 @@ export function RecoverySettingsForm({ settings }: { settings: RecoveryFormSetti
           className={input}
         />
         <p className="text-[11px] text-content/40">
-          Quem é avisado quando um pedido de alto valor fica parado. Deixe em branco para não
-          receber alerta.
+          Quem é avisado quando um pedido de alto valor fica parado. Em branco, o alerta vai para
+          os e-mails de administrador da loja.
         </p>
       </div>
 

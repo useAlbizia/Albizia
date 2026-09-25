@@ -7,10 +7,6 @@
     {
       "path": "/api/low-stock-check",
       "schedule": "0 13 * * *"
-    },
-    {
-      "path": "/api/recovery-alert",
-      "schedule": "0 * * * *"
     }
   ]
 }

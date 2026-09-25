@@ -10,7 +10,7 @@
 // No "server-only" here on purpose: this is imported by the Edge proxy too.
 const FALLBACK_ADMINS = ["nilson.brites@gmail.com", "jairrodrigues04@gmail.com"];
 
-function adminEmails(): string[] {
+export function adminEmails(): string[] {
   const raw = process.env.ADMIN_EMAILS;
   const parsed = (raw ? raw.split(",") : [])
     .map((e) => e.trim().toLowerCase())
