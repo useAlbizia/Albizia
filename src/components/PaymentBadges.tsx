@@ -11,26 +11,28 @@ import { useState } from "react";
 // lista fixa: o componente roda no cliente, dentro do Footer.
 
 type Brand = {
-  slug: string;
+  // Nome do arquivo em /public/brands. SVG quando a marca publica vetor,
+  // PNG otimizado quando só existe bitmap oficial.
+  file: string;
   label: string;
-  // Usado só enquanto o SVG oficial não existe.
+  // Usado só enquanto o arquivo oficial não existe na pasta.
   fallback: string;
   color: string;
 };
 
 const PAYMENT: Brand[] = [
-  { slug: "pix", label: "Pix", fallback: "PIX", color: "#32BCAD" },
-  { slug: "visa", label: "Visa", fallback: "VISA", color: "#1A1F71" },
-  { slug: "mastercard", label: "Mastercard", fallback: "mastercard", color: "#EB001B" },
-  { slug: "elo", label: "Elo", fallback: "elo", color: "#211E1F" },
-  { slug: "amex", label: "American Express", fallback: "AMEX", color: "#1F72CD" },
-  { slug: "mercadopago", label: "Mercado Pago", fallback: "mercado pago", color: "#009EE3" },
+  { file: "pix.svg", label: "Pix", fallback: "PIX", color: "#32BCAD" },
+  { file: "visa.svg", label: "Visa", fallback: "VISA", color: "#1A1F71" },
+  { file: "mastercard.svg", label: "Mastercard", fallback: "mastercard", color: "#EB001B" },
+  { file: "elo.svg", label: "Elo", fallback: "elo", color: "#211E1F" },
+  { file: "amex.svg", label: "American Express", fallback: "AMEX", color: "#1F72CD" },
+  { file: "mercadopago.png", label: "Mercado Pago", fallback: "mercado pago", color: "#009EE3" },
 ];
 
 const SHIPPING: Brand[] = [
-  { slug: "melhorenvio", label: "Melhor Envio", fallback: "melhor envio", color: "#0FAFA5" },
-  { slug: "correios", label: "Correios", fallback: "Correios", color: "#00416B" },
-  { slug: "jadlog", label: "Jadlog", fallback: "Jadlog", color: "#D3232A" },
+  { file: "melhorenvio.png", label: "Melhor Envio", fallback: "melhor envio", color: "#0FAFA5" },
+  { file: "correios.png", label: "Correios", fallback: "Correios", color: "#00416B" },
+  { file: "jadlog.png", label: "Jadlog", fallback: "Jadlog", color: "#D3232A" },
 ];
 
 function BrandMark({ brand }: { brand: Brand }) {
@@ -53,9 +55,9 @@ function BrandMark({ brand }: { brand: Brand }) {
       ) : (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={`/brands/${brand.slug}.svg`}
+          src={`/brands/${brand.file}`}
           alt={brand.label}
-          className="h-4 w-auto max-w-[44px] object-contain"
+          className="h-4 w-auto max-w-[46px] object-contain"
           loading="lazy"
           onError={() => setFailed(true)}
         />
@@ -68,7 +70,7 @@ function Row({ brands }: { brands: Brand[] }) {
   return (
     <div className="flex flex-wrap items-center justify-center gap-2">
       {brands.map((b) => (
-        <BrandMark key={b.slug} brand={b} />
+        <BrandMark key={b.file} brand={b} />
       ))}
     </div>
   );
