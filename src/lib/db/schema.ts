@@ -106,6 +106,10 @@ export const orders = pgTable("orders", {
   // When a cart-recovery email was last sent for this (still pending) order —
   // stops us from spamming the same abandoned checkout.
   recoveryEmailSentAt: timestamp("recovery_email_sent_at", { withTimezone: true }),
+  // Quando a equipe foi avisada de que este pedido de alto valor empacou.
+  // Guardado por pedido para o alerta nunca sair duas vezes, por mais que o
+  // cron rode de hora em hora.
+  recoveryAlertSentAt: timestamp("recovery_alert_sent_at", { withTimezone: true }),
   mpPreferenceId: text("mp_preference_id"),
   mpPaymentId: text("mp_payment_id"),
   mpStatus: text("mp_status"),

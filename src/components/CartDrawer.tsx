@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCart } from "@/lib/cart-context";
+import { CompreJunto } from "./CompreJunto";
 
 function money(reais: number): string {
   return reais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -120,6 +121,8 @@ export function CartDrawer() {
                     </div>
                   ))}
                 </div>
+
+                <CompreJunto />
 
                 <div className="border-t border-content/10 px-6 py-5">
                   <div className="mb-4 flex items-center justify-between">

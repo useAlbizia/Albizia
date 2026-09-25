@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     await sendEmail({
       to: notify,
-      subject: `Estoque baixo — ${low.length} tamanho(s) precisam de reposição`,
+      subject: `Estoque baixo: ${low.length} tamanho(s) precisam de reposição`,
       html: emailShell(
         "Alerta de estoque baixo",
         `<p style="font-size:14px;line-height:1.6;color:#55534e;">Os tamanhos abaixo estão com ${settings.lowStockThreshold} unidade(s) ou menos:</p>
