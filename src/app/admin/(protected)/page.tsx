@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getDashboardMetrics } from "@/lib/metrics";
 import { getSiteSettings } from "@/lib/settings";
+import { listRecoveryQueue } from "@/lib/recovery";
 import { brl, shortDate } from "@/lib/format";
 import { ORDER_STATUS_LABEL } from "@/lib/orders";
 
@@ -19,10 +20,50 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 export default async function AdminDashboardPage() {
   const settings = await getSiteSettings();
   const m = await getDashboardMetrics(settings.lowStockThreshold);
+  // Venda parada é a primeira coisa que alguém tem que ver ao abrir o painel:
+  // é dinheiro que já estava na mesa e ainda dá para recuperar.
+  const { queue } = await listRecoveryQueue().catch(() => ({ queue: [] }));
+  const urgentes = queue.filter((o) => o.urgency === "agora");
+  const emJogo = queue.reduce((s, o) => s + o.totalCents, 0);
 
   return (
     <div>
       <h1 className="mb-8 text-sm uppercase tracking-[0.3em] text-content/60">Painel</h1>
+
+      {queue.length > 0 && (
+        <Link
+          href="/admin/carrinhos"
+          className="mb-8 flex items-start gap-4 border border-content/25 p-5 transition-colors hover:border-content"
+        >
+          <span
+            aria-hidden="true"
+            className="mt-0.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-content px-1.5 text-[11px] font-medium leading-none text-surface"
+          >
+            {queue.length}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13px] text-content">
+              {queue.length === 1 ? "1 venda parada" : `${queue.length} vendas paradas`}
+              {urgentes.length > 0 && (
+                <>
+                  {", "}
+                  <strong className="font-medium">
+                    {urgentes.length === 1
+                      ? "1 para ligar agora"
+                      : `${urgentes.length} para ligar agora`}
+                  </strong>
+                </>
+              )}
+            </span>
+            <span className="mt-1 block text-[12px] text-content/50">
+              {brl(emJogo)} esperando. {urgentes[0] ? urgentes[0].situation : queue[0].situation}
+            </span>
+            <span className="mt-2 inline-block text-[11px] uppercase tracking-[0.15em] text-content/50">
+              Abrir a fila
+            </span>
+          </span>
+        </Link>
+      )}
 
       {/* Revenue */}
       <div className="grid grid-cols-2 gap-px overflow-hidden bg-content/10 sm:grid-cols-4">

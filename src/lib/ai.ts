@@ -121,14 +121,27 @@ export async function assistantReply(history: ChatMessage[]): Promise<AiText> {
 
   const rows = await db.query.products.findMany({
     where: (p, { eq }) => eq(p.active, true),
-    with: { collection: true, images: { limit: 1 } },
+    with: { collection: true, images: { limit: 1 }, variants: true },
   });
+
+  // O catálogo é remontado a cada mensagem, direto do banco: produto novo,
+  // cor nova e mudança de estoque entram sozinhos, sem redeploy.
+  //
+  // Inclui tamanhos DISPONÍVEIS de propósito. Sem isso a assistente
+  // recomendava peça esgotada com toda a confiança do mundo, o que é pior
+  // que não recomendar nada.
   const catalog = rows
     .filter((r) => r.images.length > 0)
-    .map(
-      (r) =>
-        `- ${r.name}, cor ${r.colorName}, ${r.category}, R$${(r.priceCents / 100).toFixed(0)} → /produto/${r.slug}`
-    )
+    .map((r) => {
+      const emEstoque = r.variants.filter((v) => v.stock > 0).map((v) => v.size);
+      const disponibilidade =
+        emEstoque.length === 0
+          ? "ESGOTADO (não recomende)"
+          : `tamanhos disponíveis: ${emEstoque.join(", ")}`;
+      const linha = r.collection?.name ? `, linha ${r.collection.name}` : "";
+      const tecido = r.fabric ? `, ${r.fabric}` : "";
+      return `- ${r.name}, cor ${r.colorName}${linha}, ${r.category}${tecido}, R$${(r.priceCents / 100).toFixed(0)}, ${disponibilidade} → /produto/${r.slug}`;
+    })
     .join("\n");
 
   const system = `Você é a assistente virtual da ALBIZIA, marca brasileira de moda masculina premium ("quiet luxury": peças essenciais, atemporais, de alto padrão). Fale em português do Brasil, de forma cordial, breve e sofisticada (sem gírias, sem exageros, sem travessões e sem pontos de exclamação em excesso).
@@ -138,12 +151,18 @@ Você ajuda o cliente a encontrar peças, tirar dúvidas e recomendar produtos d
 CATÁLOGO:
 ${catalog}
 
+REGRAS SOBRE ESTOQUE (importante):
+- Só recomende peça que tenha tamanho disponível. Nunca sugira o que está marcado como ESGOTADO.
+- Se o cliente pedir um tamanho que não está na lista daquela peça, diga com franqueza que aquele tamanho está indisponível e ofereça outro tamanho ou outra peça parecida. Nunca invente disponibilidade.
+
 INFORMAÇÕES DA LOJA:
 - Tamanhos: P, M, G, GG (há um "Guia de tamanhos" em cada página de produto).
-- Pagamento: Pix e cartão, via Mercado Pago.
-- Frete: calculado no checkout (por CEP ou taxa fixa), podendo haver frete grátis acima de um valor.
+- Pagamento: Pix, cartão de crédito e boleto, processado pelo Mercado Pago dentro do próprio site.
+- Frete: calculado no checkout por CEP (Correios e transportadoras via Melhor Envio), podendo haver frete grátis acima de um valor.
 - Trocas e devoluções: até 7 dias após o recebimento (direito de arrependimento).
 - Acompanhar pedido: página "Acompanhar" com número do pedido e e-mail.
+
+Nunca invente preço, prazo, cupom, promoção ou característica que não esteja acima. Se não souber, diga que não sabe e ofereça o caminho certo (página do produto, "Acompanhar", ou o contato da loja).
 
 Se perguntarem algo fora do universo da loja, responda com gentileza e traga a conversa de volta às peças. Mantenha as respostas curtas (2 a 4 frases).`;
 

@@ -56,9 +56,11 @@ function isActive(pathname: string, href: string): boolean {
 function GroupList({
   pathname,
   onNavigate,
+  alertas = 0,
 }: {
   pathname: string;
   onNavigate?: () => void;
+  alertas?: number;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -70,19 +72,30 @@ function GroupList({
           <div className="flex flex-col">
             {group.items.map((item) => {
               const active = isActive(pathname, item.href);
+              // Venda parada é dinheiro esperando: o número aparece no menu
+              // inteiro do admin, não só para quem lembra de abrir a fila.
+              const badge = item.href === "/admin/carrinhos" ? (alertas ?? 0) : 0;
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
-                  className={`-mx-2 border-l-2 px-3 py-1.5 text-[13px] tracking-[0.08em] transition-colors ${
+                  className={`-mx-2 flex items-center justify-between gap-2 border-l-2 px-3 py-1.5 text-[13px] tracking-[0.08em] transition-colors ${
                     active
                       ? "border-content font-medium text-content"
                       : "border-transparent text-content/60 hover:text-content"
                   }`}
                 >
-                  {item.label}
+                  <span>{item.label}</span>
+                  {badge > 0 && (
+                    <span
+                      aria-label={`${badge} venda(s) parada(s)`}
+                      className="flex h-4 min-w-4 items-center justify-center rounded-full bg-content px-1 text-[10px] font-medium leading-none text-surface"
+                    >
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -93,7 +106,13 @@ function GroupList({
   );
 }
 
-export function AdminNav({ email }: { email: string | undefined }) {
+export function AdminNav({
+  email,
+  alertas = 0,
+}: {
+  email: string | undefined;
+  alertas?: number;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
@@ -119,7 +138,7 @@ export function AdminNav({ email }: { email: string | undefined }) {
 
       {open && (
         <div className="border-b border-content/10 px-6 py-6 md:hidden">
-          <GroupList pathname={pathname} onNavigate={() => setOpen(false)} />
+          <GroupList pathname={pathname} alertas={alertas} onNavigate={() => setOpen(false)} />
           <div className="mt-6 flex items-center justify-between border-t border-content/10 pt-4">
             <span className="truncate text-[12px] text-content/50">{email}</span>
             <form action={logout}>
@@ -140,7 +159,7 @@ export function AdminNav({ email }: { email: string | undefined }) {
           ALBIZIA <span className="text-content/40">admin</span>
         </span>
         <div className="flex-1">
-          <GroupList pathname={pathname} />
+          <GroupList pathname={pathname} alertas={alertas} />
         </div>
         <div className="mt-6 border-t border-content/10 pt-4">
           <p className="truncate text-[12px] text-content/50">{email}</p>

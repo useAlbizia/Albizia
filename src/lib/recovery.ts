@@ -1,5 +1,5 @@
 import "server-only";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "./db/client";
 import { orders, siteSettings } from "./db/schema";
 import { sendEmail, emailShell, money } from "./email";
@@ -27,6 +27,24 @@ export async function getRecoverySettings(): Promise<RecoverySettings> {
     highValueCents: row?.recoveryHighValueCents ?? 50000,
     alertEmail: row?.recoveryAlertEmail ?? "",
   };
+}
+
+// Contagem enxuta para o aviso no menu. O menu aparece em toda página do
+// admin, então aqui não se carrega item nem se classifica urgência: é um
+// COUNT e nada mais.
+export async function countRecoveryQueue(): Promise<{ total: number; valorCents: number }> {
+  const settings = await getRecoverySettings();
+  const cutoff = new Date(Date.now() - settings.minutes * 60000);
+
+  const [row] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      valorCents: sql<number>`coalesce(sum(${orders.totalCents}), 0)::int`,
+    })
+    .from(orders)
+    .where(and(eq(orders.status, "pending"), lt(orders.createdAt, cutoff)));
+
+  return { total: row?.total ?? 0, valorCents: row?.valorCents ?? 0 };
 }
 
 // "agora" = a janela de pagamento está fechando ou acabou de falhar.
