@@ -21,7 +21,7 @@ const GROUPS: Group[] = [
     title: "Vendas",
     items: [
       { href: "/admin/pedidos", label: "Pedidos" },
-      { href: "/admin/carrinhos", label: "Carrinhos" },
+      { href: "/admin/carrinhos", label: "Recuperação" },
       { href: "/admin/clientes", label: "Clientes" },
       { href: "/admin/frete", label: "Frete" },
       { href: "/admin/pagamentos", label: "Pagamentos" },

@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
-import { orders } from "@/lib/db/schema";
+import { orders, siteSettings } from "@/lib/db/schema";
 import { sendEmail, emailShell, money } from "@/lib/email";
 import { logAudit } from "@/lib/audit";
 
@@ -67,6 +68,60 @@ export async function sendRecovery(orderId: string): Promise<RecoveryState> {
     entity: "order",
     entityId: orderId,
     detail: { orderNumber: order.orderNumber, to: order.customerEmail },
+  });
+
+  revalidatePath("/admin/carrinhos");
+  return { ok: true };
+}
+
+export type RecoverySettingsState = { ok?: boolean; error?: string };
+
+const settingsSchema = z.object({
+  minutes: z.coerce.number().int().min(5).max(10080),
+  highValue: z.coerce.number().min(0),
+  alertEmail: z.string().max(200).default(""),
+});
+
+// Os limites da fila de recuperação. Ficam no banco e não no código para o
+// fundador ajustar sozinho conforme aprende o ritmo das vendas.
+export async function saveRecoverySettings(
+  _prev: RecoverySettingsState,
+  formData: FormData,
+): Promise<RecoverySettingsState> {
+  await requireAdmin();
+
+  const parsed = settingsSchema.safeParse({
+    minutes: formData.get("minutes") ?? 60,
+    highValue: formData.get("highValue") ?? 0,
+    alertEmail: formData.get("alertEmail") ?? "",
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const d = parsed.data;
+
+  const email = d.alertEmail.trim();
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return { error: "E-mail de alerta inválido." };
+  }
+
+  const values = {
+    recoveryMinutes: d.minutes,
+    recoveryHighValueCents: Math.round(d.highValue * 100),
+    recoveryAlertEmail: email,
+    updatedAt: new Date(),
+  };
+
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, ...values })
+    .onConflictDoUpdate({ target: siteSettings.id, set: values });
+
+  await logAudit({
+    action: "settings.recuperacao",
+    entity: "site_settings",
+    entityId: "1",
+    detail: { minutes: d.minutes, highValueCents: values.recoveryHighValueCents },
   });
 
   revalidatePath("/admin/carrinhos");

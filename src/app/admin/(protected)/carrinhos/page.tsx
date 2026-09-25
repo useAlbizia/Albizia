@@ -1,92 +1,141 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
-import { db } from "@/lib/db/client";
-import { orders } from "@/lib/db/schema";
+import { listRecoveryQueue, type Urgency } from "@/lib/recovery";
 import { brl } from "@/lib/format";
 import { RecoveryButton } from "./RecoveryButton";
+import { RecoverySettingsForm } from "./RecoverySettingsForm";
 
 export const dynamic = "force-dynamic";
 
-// How old a pending order must be before we treat it as truly "abandoned"
-// (rather than a checkout still in progress at Mercado Pago).
-const ABANDONED_MINUTES = 60;
-
-function ageLabel(createdAt: Date): string {
-  const mins = Math.floor((Date.now() - new Date(createdAt).getTime()) / 60000);
+function ageLabel(mins: number): string {
   if (mins < 60) return `${mins} min`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h`;
   return `${Math.floor(hours / 24)}d`;
 }
 
-// Kept as a top-level helper (not inline in the component) so the clock read
-// isn't flagged as an impure call in render — this is a server component that
-// renders once per request, so "now" is correct.
-function isAbandoned(createdAt: Date): boolean {
-  return Date.now() - new Date(createdAt).getTime() >= ABANDONED_MINUTES * 60000;
-}
+// Urgência sem cor berrante: uma barra à esquerda e um rótulo. O admin é
+// minimalista, e "agora" precisa saltar sem parecer um alarme de incêndio.
+const URGENCY: Record<Urgency, { label: string; bar: string; text: string }> = {
+  agora: { label: "Ligar agora", bar: "bg-content", text: "text-content" },
+  hoje: { label: "Ainda hoje", bar: "bg-content/40", text: "text-content/60" },
+  normal: { label: "Sem pressa", bar: "bg-content/15", text: "text-content/40" },
+};
 
 export default async function CarrinhosPage() {
-  const pending = await db.query.orders.findMany({
-    where: eq(orders.status, "pending"),
-    orderBy: [desc(orders.createdAt)],
-    with: { items: true },
-    limit: 200,
-  });
+  const { queue, settings } = await listRecoveryQueue();
 
-  const abandoned = pending.filter((o) => isAbandoned(o.createdAt));
+  const urgentes = queue.filter((o) => o.urgency === "agora").length;
+  const emJogo = queue.reduce((sum, o) => sum + o.totalCents, 0);
 
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
-        <h1 className="text-sm uppercase tracking-[0.3em] text-content/60">Carrinhos abandonados</h1>
-        <span className="text-[12px] text-content/50">{abandoned.length} carrinho(s)</span>
-      </div>
-      <p className="mb-8 max-w-2xl text-[12px] text-content/40">
-        Checkouts iniciados que ainda não foram pagos após {ABANDONED_MINUTES} minutos. Envie um
-        lembrete por e-mail para tentar recuperar a venda.
+      <h1 className="mb-2 text-sm uppercase tracking-[0.3em] text-content/60">
+        Recuperação de venda
+      </h1>
+      <p className="mb-8 max-w-2xl text-[12px] leading-relaxed text-content/40">
+        Checkouts que ficaram parados há mais de {settings.minutes} minutos, em ordem de prioridade.
+        Quem está no topo é quem vale ligar primeiro.
       </p>
 
-      <div className="space-y-3">
-        {abandoned.map((o) => (
-          <div
-            key={o.id}
-            className="flex flex-col gap-4 border border-content/10 p-5 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div className="min-w-0">
-              <div className="flex items-center gap-3">
-                <Link
-                  href={`/admin/pedidos/${o.id}`}
-                  className="text-sm hover:underline"
-                >
-                  #{o.orderNumber}
-                </Link>
-                <span className="text-[11px] uppercase tracking-[0.1em] text-content/40">
-                  há {ageLabel(o.createdAt)}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-content/70">{o.customerName}</p>
-              <p className="text-[12px] text-content/40">{o.customerEmail}</p>
-              <p className="mt-1 text-[12px] text-content/50">
-                {o.items.map((i) => `${i.productName} (${i.size})×${i.quantity}`).join(" · ")}
-              </p>
-            </div>
-            <div className="flex items-center gap-6 sm:flex-col sm:items-end sm:gap-2">
-              <span className="text-sm">{brl(o.subtotalCents)}</span>
-              <RecoveryButton
-                orderId={o.id}
-                sentAt={o.recoveryEmailSentAt ? o.recoveryEmailSentAt.toISOString() : null}
-              />
-            </div>
+      {queue.length > 0 && (
+        <div className="mb-8 flex flex-wrap gap-x-10 gap-y-3 border-y border-content/10 py-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-content/40">Parados</p>
+            <p className="mt-1 text-lg">{queue.length}</p>
           </div>
-        ))}
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-content/40">Para ligar agora</p>
+            <p className="mt-1 text-lg">{urgentes}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-content/40">Em jogo</p>
+            <p className="mt-1 text-lg">{brl(emJogo)}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {queue.map((o) => {
+          const u = URGENCY[o.urgency];
+          return (
+            <div key={o.id} className="flex border border-content/10">
+              <div className={`w-1 shrink-0 ${u.bar}`} aria-hidden="true" />
+              <div className="flex flex-1 flex-col gap-4 p-5 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                    <span className={`text-[10px] uppercase tracking-[0.18em] ${u.text}`}>
+                      {u.label}
+                    </span>
+                    <Link href={`/admin/pedidos/${o.id}`} className="text-sm hover:underline">
+                      #{o.orderNumber}
+                    </Link>
+                    <span className="text-[11px] text-content/40">há {ageLabel(o.minutesOld)}</span>
+                    {o.isHighValue && (
+                      <span className="border border-content/30 px-1.5 py-0.5 text-[9px] uppercase tracking-[0.15em] text-content/60">
+                        Alto valor
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mt-2 text-sm text-content/80">{o.customerName}</p>
+                  <p className="text-[12px] text-content/40">
+                    {o.customerEmail}
+                    {o.customerPhone ? ` · ${o.customerPhone}` : ""}
+                  </p>
+
+                  <p className="mt-2 max-w-xl text-[12px] leading-relaxed text-content/55">
+                    {o.situation}
+                  </p>
+
+                  <p className="mt-2 text-[12px] text-content/40">{o.items}</p>
+
+                  {o.recoveryEmailSentAt && (
+                    <p className="mt-2 text-[11px] text-content/35">
+                      Lembrete por e-mail já enviado.
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex shrink-0 flex-col items-start gap-3 lg:items-end">
+                  <span className="text-base">{brl(o.totalCents)}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {o.whatsappUrl && (
+                      <a
+                        href={o.whatsappUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="border border-content/30 px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] transition-colors hover:border-content"
+                      >
+                        WhatsApp
+                      </a>
+                    )}
+                    <RecoveryButton
+                      orderId={o.id}
+                      sentAt={o.recoveryEmailSentAt ? o.recoveryEmailSentAt.toISOString() : null}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {abandoned.length === 0 && (
+      {queue.length === 0 && (
         <p className="py-10 text-center text-sm text-content/50">
-          Nenhum carrinho abandonado no momento. 🎉
+          Nenhuma venda parada no momento.
         </p>
       )}
+
+      <div className="mt-12 border-t border-content/10 pt-8">
+        <RecoverySettingsForm
+          settings={{
+            minutes: settings.minutes,
+            highValueReais: (settings.highValueCents / 100).toFixed(2),
+            alertEmail: settings.alertEmail,
+          }}
+        />
+      </div>
     </div>
   );
 }

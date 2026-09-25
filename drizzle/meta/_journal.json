@@ -113,6 +113,13 @@
       "when": 1790321011359,
       "tag": "0015_enable_rls_all_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1790321518912,
+      "tag": "0016_legal_prima",
+      "breakpoints": true
     }
   ]
 }

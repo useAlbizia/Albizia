@@ -169,6 +169,12 @@ export const siteSettings = pgTable("site_settings", {
   // the card number never touches our server.
   mpPublicKey: text("mp_public_key").notNull().default(""),
   mpAccessToken: text("mp_access_token").notNull().default(""),
+  // Recuperação de venda. Um checkout parado é dinheiro na mesa: passado
+  // recoveryMinutes sem pagar ele entra na fila, e acima de
+  // recoveryHighValueCents dispara alerta para alguém ligar para o cliente.
+  recoveryMinutes: integer("recovery_minutes").notNull().default(60),
+  recoveryHighValueCents: integer("recovery_high_value_cents").notNull().default(50000),
+  recoveryAlertEmail: text("recovery_alert_email").notNull().default(""),
   // A variant at or below this stock count is flagged "low" on the dashboard
   // and in the daily low-stock alert email.
   lowStockThreshold: integer("low_stock_threshold").notNull().default(3),
