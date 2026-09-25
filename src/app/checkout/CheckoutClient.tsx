@@ -24,6 +24,24 @@ function money(reais: number): string {
   return reais.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+// Máscara conforme digita: CPF até 11 dígitos, CNPJ a partir daí, porque
+// pessoa jurídica também compra. A validação de verdade (dígito verificador)
+// acontece no servidor, em lib/fiscal.ts.
+function formatDocumentoDigitando(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 14);
+  if (d.length <= 11) {
+    return d
+      .replace(/^(\d{3})(\d)/, "$1.$2")
+      .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+      .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+  }
+  return d
+    .replace(/^(\d{2})(\d)/, "$1.$2")
+    .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d)/, ".$1/$2")
+    .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
+}
+
 export function CheckoutClient({
   method,
   shipping,
@@ -40,6 +58,7 @@ export function CheckoutClient({
   // Kept in state so the Payment Brick can pre-fill the payer once the order
   // moves to the payment step.
   const [email, setEmail] = useState("");
+  const [documento, setDocumento] = useState("");
 
   const [couponInput, setCouponInput] = useState("");
   const [couponCode, setCouponCode] = useState("");
@@ -156,6 +175,21 @@ export function CheckoutClient({
           className={inputClass}
         />
         <input name="phone" placeholder="Telefone" required className={inputClass} />
+        <div className="flex flex-col gap-1">
+          <input
+            name="document"
+            inputMode="numeric"
+            autoComplete="off"
+            placeholder="CPF"
+            required
+            value={documento}
+            onChange={(e) => setDocumento(formatDocumentoDigitando(e.target.value))}
+            className={inputClass}
+          />
+          <p className="text-[11px] text-content/40">
+            Necessário para emitir a nota fiscal do seu pedido.
+          </p>
+        </div>
 
         <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-content/50">Entrega</p>
         <div className="grid grid-cols-3 gap-3">

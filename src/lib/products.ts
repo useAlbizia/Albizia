@@ -16,6 +16,8 @@ export type Product = {
   /** reais, e.g. 219 for R$219,00 — converted from price_cents for display */
   price: number;
   fabric: string;
+  /** Classificação fiscal (NCM) usada na nota. Vazio = padrão da categoria. */
+  ncm: string;
   description: string;
   colorGroup: string | null;
   colorName: string;
@@ -48,6 +50,7 @@ function toProduct(row: {
   category: string;
   priceCents: number;
   fabric: string;
+  ncm: string;
   description: string;
   colorGroup: string | null;
   colorName: string;
@@ -64,6 +67,7 @@ function toProduct(row: {
     line: row.collection.slug as ProductLine,
     price: row.priceCents / 100,
     fabric: row.fabric,
+    ncm: row.ncm ?? "",
     description: row.description,
     colorGroup: row.colorGroup,
     colorName: row.colorName,

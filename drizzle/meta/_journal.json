@@ -134,6 +134,13 @@
       "when": 1790323294580,
       "tag": "0018_dapper_kree",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1790326259589,
+      "tag": "0019_freezing_morg",
+      "breakpoints": true
     }
   ]
 }

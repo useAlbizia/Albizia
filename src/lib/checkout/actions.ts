@@ -7,6 +7,7 @@ import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/s
 import type { CartItem } from "@/lib/cart-context";
 import { quoteShipping } from "@/lib/shipping";
 import { validateCoupon, type CouponResult } from "@/lib/coupons";
+import { isValidDocument, onlyDigits } from "@/lib/fiscal";
 
 // Live shipping quote for the checkout preview (Melhor Envio method). The order
 // re-computes the authoritative price server-side, so this is display-only.
@@ -28,6 +29,11 @@ const checkoutSchema = z.object({
   name: z.string().min(1, "Nome obrigatório"),
   email: z.string().email("E-mail inválido"),
   phone: z.string().min(8, "Telefone inválido"),
+  // Exigido pela NF-e de venda de produto. Sem isso a nota não sai, então é
+  // melhor pedir aqui do que caçar o cliente depois da compra.
+  document: z
+    .string()
+    .refine((v) => isValidDocument(v), "CPF inválido"),
   street: z.string().min(1, "Endereço obrigatório"),
   number: z.string().min(1, "Número obrigatório"),
   complement: z.string().optional(),
@@ -61,6 +67,7 @@ export async function createPendingOrder(
     name: formData.get("name"),
     email: formData.get("email"),
     phone: formData.get("phone"),
+    document: formData.get("document"),
     street: formData.get("street"),
     number: formData.get("number"),
     complement: formData.get("complement") || undefined,
@@ -137,6 +144,7 @@ export async function createPendingOrder(
       customerName: data.name,
       customerEmail: data.email,
       customerPhone: data.phone,
+      customerDocument: onlyDigits(data.document),
       shippingAddress: {
         street: data.street,
         number: data.number,

@@ -20,6 +20,7 @@ type Product = {
   category: string;
   priceCents: number;
   fabric: string;
+  ncm: string;
   description: string;
   active: boolean;
   colorGroup: string | null;
@@ -119,6 +120,20 @@ export function EditProductForm({
           required
           className={inputClass}
         />
+        <div className="flex flex-col gap-1">
+          <input
+            name="ncm"
+            defaultValue={product.ncm ?? ""}
+            inputMode="numeric"
+            maxLength={10}
+            placeholder="NCM (opcional)"
+            className={inputClass}
+          />
+          <p className="text-[11px] text-content/40">
+            Classificação fiscal usada na nota. Em branco, usa o padrão da categoria (camiseta
+            61091000, moda praia 62111100). Confirme com seu contador.
+          </p>
+        </div>
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-[0.2em] text-content/50">Descrição</span>

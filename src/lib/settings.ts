@@ -8,6 +8,7 @@ export type SiteSettings = {
   contactEmail: string;
   contactPhone: string;
   address: string;
+  storeUf: string;
   instagram: string;
   facebook: string;
   tiktok: string;
@@ -25,6 +26,7 @@ const DEFAULTS: SiteSettings = {
   contactEmail: "",
   contactPhone: "",
   address: "",
+  storeUf: "",
   instagram: "",
   facebook: "",
   tiktok: "",
@@ -45,6 +47,7 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     contactEmail: row.contactEmail,
     contactPhone: row.contactPhone,
     address: row.address,
+    storeUf: row.storeUf,
     instagram: row.instagram,
     facebook: row.facebook,
     tiktok: row.tiktok,

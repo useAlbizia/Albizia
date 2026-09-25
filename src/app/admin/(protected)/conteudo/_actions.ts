@@ -16,6 +16,14 @@ const settingsSchema = z.object({
   contactEmail: z.string().max(160).default(""),
   contactPhone: z.string().max(40).default(""),
   address: z.string().max(240).default(""),
+  // UF de despacho, usada para decidir o CFOP da nota (5102 dentro do
+  // estado, 6102 para fora). Normalizada para maiúscula aqui para a
+  // comparação em lib/fiscal.ts não depender de como foi digitado.
+  storeUf: z
+    .string()
+    .max(2)
+    .default("")
+    .transform((v) => v.trim().toUpperCase()),
   instagram: z.string().max(60).default(""),
   facebook: z.string().max(120).default(""),
   tiktok: z.string().max(60).default(""),
@@ -36,6 +44,7 @@ export async function saveSettings(
     contactEmail: formData.get("contactEmail") ?? "",
     contactPhone: formData.get("contactPhone") ?? "",
     address: formData.get("address") ?? "",
+    storeUf: formData.get("storeUf") ?? "",
     instagram: formData.get("instagram") ?? "",
     facebook: formData.get("facebook") ?? "",
     tiktok: formData.get("tiktok") ?? "",

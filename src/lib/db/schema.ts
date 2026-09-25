@@ -47,6 +47,10 @@ export const products = pgTable("products", {
     .references(() => collections.id),
   category: text("category").notNull(), // "camiseta" | "moda-praia"
   priceCents: integer("price_cents").notNull(),
+  // NCM (Nomenclatura Comum do Mercosul): classificação fiscal exigida em
+  // cada item da NF-e. Vazio significa "usar o padrão da categoria" (ver
+  // lib/fiscal.ts), para o fundador não precisar preencher peça por peça.
+  ncm: text("ncm").notNull().default(""),
   fabric: text("fabric").notNull(),
   description: text("description").notNull(),
   active: boolean("active").notNull().default(true),
@@ -93,6 +97,10 @@ export const orders = pgTable("orders", {
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email").notNull(),
   customerPhone: text("customer_phone").notNull(),
+  // CPF (ou CNPJ) do destinatário, só dígitos. Exigido pela NF-e modelo 55,
+  // que é o que vale para venda de produto. Sem isso não há nota, então é
+  // coletado no checkout. Pedidos antigos ficam vazios.
+  customerDocument: text("customer_document").notNull().default(""),
   shippingAddress: jsonb("shipping_address").notNull(),
   subtotalCents: integer("subtotal_cents").notNull(),
   shippingCents: integer("shipping_cents").notNull().default(0),
@@ -179,6 +187,10 @@ export const siteSettings = pgTable("site_settings", {
   recoveryMinutes: integer("recovery_minutes").notNull().default(60),
   recoveryHighValueCents: integer("recovery_high_value_cents").notNull().default(50000),
   recoveryAlertEmail: text("recovery_alert_email").notNull().default(""),
+  // UF de onde a loja despacha. Define o CFOP da nota: venda dentro do
+  // estado usa 5102, para fora usa 6102. Sem isso a exportação não
+  // conseguiria preencher esse campo sozinha.
+  storeUf: text("store_uf").notNull().default(""),
   // A variant at or below this stock count is flagged "low" on the dashboard
   // and in the daily low-stock alert email.
   lowStockThreshold: integer("low_stock_threshold").notNull().default(3),

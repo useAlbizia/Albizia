@@ -47,12 +47,21 @@ export default async function FinanceiroPage(props: PageProps<"/admin/financeiro
               </Link>
             ))}
           </div>
-          <a
-            href="/api/admin/export/orders"
-            className="border border-content/30 px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-content/70 transition-colors hover:border-content"
-          >
-            Exportar CSV
-          </a>
+          <div className="flex flex-wrap gap-2">
+            <a
+              href="/api/admin/export/orders"
+              className="border border-content/30 px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-content/70 transition-colors hover:border-content"
+            >
+              Exportar CSV
+            </a>
+            <a
+              href="/api/admin/export/fiscal"
+              title="Planilha por item, com CPF, endereço completo, NCM e CFOP, pronta para o emissor de nota fiscal"
+              className="border border-content/30 px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-content/70 transition-colors hover:border-content"
+            >
+              Exportar p/ nota fiscal
+            </a>
+          </div>
         </div>
       </div>
 

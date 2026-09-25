@@ -22,6 +22,12 @@ export function SettingsForm({ settings }: { settings: SiteSettings }) {
       <input name="companyName" defaultValue={settings.companyName} placeholder="Nome/Razão social" className={input} />
       <input name="cnpj" defaultValue={settings.cnpj} placeholder="CNPJ" className={input} />
       <input name="address" defaultValue={settings.address} placeholder="Endereço" className={input} />
+      <div className="flex flex-col gap-1">
+        <input name="storeUf" defaultValue={settings.storeUf ?? ""} maxLength={2} placeholder="UF de onde você despacha (ex: SP)" className={`${input} uppercase`} />
+        <p className="text-[11px] text-content/40">
+          Define o CFOP da nota fiscal: venda dentro do estado usa 5102, para fora usa 6102.
+        </p>
+      </div>
       <label className="mt-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Contato</label>
       <input name="contactEmail" defaultValue={settings.contactEmail} placeholder="E-mail de contato" className={input} />
       <input name="contactPhone" defaultValue={settings.contactPhone} placeholder="Telefone" className={input} />
