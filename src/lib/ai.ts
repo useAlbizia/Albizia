@@ -109,6 +109,30 @@ export async function analyticsInsight(data: unknown): Promise<string> {
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
 
+// Limpeza determinística da resposta do assistente.
+//
+// Existe porque pedir no prompt não basta: em teste, o modelo usou travessão
+// mesmo com a proibição escrita, e devolveu **negrito** em markdown. O widget
+// do chat não renderiza markdown (só transforma link de produto), então o
+// asterisco chegaria literal na tela do cliente. Regra que precisa valer
+// sempre vira código, não pedido.
+export function sanitizeReply(text: string): string {
+  return (
+    text
+      // Markdown que o widget não renderiza.
+      .replace(/\*\*([\s\S]+?)\*\*/g, "$1")
+      .replace(/__([\s\S]+?)__/g, "$1")
+      // Travessão e meia-risca viram vírgula, que é como a marca escreve.
+      .replace(/[ \t]*[—–][ \t]*/g, ", ")
+      // Sobras da troca acima.
+      .replace(/,\s*,/g, ",")
+      .replace(/[ \t]{2,}/g, " ")
+      // Só espaços horizontais: a quebra de linha separa parágrafos no chat.
+      .replace(/[ \t]+\n/g, "\n")
+      .trim()
+  );
+}
+
 // The storefront concierge/assistant. Recommends real products, answers size/
 // shipping/returns/payment questions, in the brand voice. History is trimmed to
 // the last turns to bound cost.
@@ -158,13 +182,15 @@ REGRAS SOBRE ESTOQUE (importante):
 INFORMAÇÕES DA LOJA:
 - Tamanhos: P, M, G, GG (há um "Guia de tamanhos" em cada página de produto).
 - Pagamento: Pix, cartão de crédito e boleto, processado pelo Mercado Pago dentro do próprio site.
+- Parcelamento existe APENAS no cartão de crédito. Pix e boleto são à vista, em pagamento único. Nunca diga que boleto ou Pix parcelam. Se perguntarem o número exato de parcelas, diga que as condições aparecem no checkout, sem prometer um número.
+- Não escreva em markdown (nada de ** ou *): o chat mostra texto puro.
 - Frete: calculado no checkout por CEP (Correios e transportadoras via Melhor Envio), podendo haver frete grátis acima de um valor.
 - Trocas e devoluções: até 7 dias após o recebimento (direito de arrependimento).
 - Acompanhar pedido: página "Acompanhar" com número do pedido e e-mail.
 
 Nunca invente preço, prazo, cupom, promoção ou característica que não esteja acima. Se não souber, diga que não sabe e ofereça o caminho certo (página do produto, "Acompanhar", ou o contato da loja).
 
-Se perguntarem algo fora do universo da loja, responda com gentileza e traga a conversa de volta às peças. Mantenha as respostas curtas (2 a 4 frases).`;
+Se perguntarem algo fora do universo da loja (notícias, conhecimentos gerais, outros assuntos), NÃO responda a pergunta: diga com simpatia que você é a assistente da ALBIZIA e só consegue ajudar com as peças e o pedido, e ofereça ajuda com isso. Mantenha as respostas curtas (2 a 4 frases).`;
 
   try {
     const res = await client.messages.create({
@@ -173,7 +199,7 @@ Se perguntarem algo fora do universo da loja, responda com gentileza e traga a c
       system,
       messages: history.slice(-10).map((m) => ({ role: m.role, content: m.content })),
     });
-    const text = textOf(res);
+    const text = sanitizeReply(textOf(res));
     return text ? { text } : { error: "Não consegui responder agora. Tente novamente." };
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) return { error: "Muitas mensagens agora. Tente em instantes." };
