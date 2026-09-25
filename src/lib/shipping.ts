@@ -50,6 +50,54 @@ export async function getShippingConfig(): Promise<ShippingConfig> {
   return { flatCents: s.flatCents, freeThresholdCents: s.freeThresholdCents };
 }
 
+export type MeCredentialCheck =
+  | { ok: true; name: string; email: string; firstName: string }
+  | { ok: false; message: string };
+
+// Valida o token do Melhor Envio contra a API e diz de qual conta ele é, para
+// o fundador confirmar a conexão no admin em vez de descobrir que está errado
+// na primeira cotação de um cliente real.
+export async function testMelhorEnvioToken(token: string): Promise<MeCredentialCheck> {
+  const t = token.trim();
+  if (!t) return { ok: false, message: "Nenhum token salvo ainda." };
+
+  try {
+    const res = await fetch("https://www.melhorenvio.com.br/api/v2/me", {
+      headers: {
+        Authorization: `Bearer ${t}`,
+        Accept: "application/json",
+        "User-Agent": "ALBIZIA (contato@usealbizia.com.br)",
+      },
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return {
+        ok: false,
+        message:
+          res.status === 401
+            ? "Token inválido ou expirado. Gere um novo em Melhor Envio, Integrações, Tokens."
+            : `O Melhor Envio respondeu com erro ${res.status}.`,
+      };
+    }
+
+    const data = (await res.json()) as {
+      firstname?: string;
+      lastname?: string;
+      email?: string;
+    };
+    const firstName = data.firstname ?? "";
+    return {
+      ok: true,
+      firstName,
+      name: [data.firstname, data.lastname].filter(Boolean).join(" "),
+      email: data.email ?? "",
+    };
+  } catch {
+    return { ok: false, message: "Não foi possível falar com o Melhor Envio. Tente de novo." };
+  }
+}
+
 export type ShippingOption = {
   id: number;
   name: string; // e.g. "PAC", "SEDEX"

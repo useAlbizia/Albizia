@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { siteSettings } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
+import { getShippingSettings, testMelhorEnvioToken } from "@/lib/shipping";
 
 export type FreteState = { ok?: boolean; error?: string };
 
@@ -60,4 +61,22 @@ export async function saveFrete(_prev: FreteState, formData: FormData): Promise<
   revalidatePath("/", "layout");
   revalidatePath("/admin/frete");
   return { ok: true };
+}
+
+export type FreteTestState = { ok?: boolean; error?: string; account?: string };
+
+// Confere o token salvo contra a API do Melhor Envio e diz de qual conta é.
+// Sem isso, um token errado só aparece quando um cliente real tenta calcular
+// frete e não recebe nenhuma opção.
+export async function testarConexaoFrete(
+  _prev: FreteTestState,
+  _formData: FormData,
+): Promise<FreteTestState> {
+  await requireAdmin();
+
+  const { meToken } = await getShippingSettings();
+  const result = await testMelhorEnvioToken(meToken);
+  if (!result.ok) return { error: result.message };
+
+  return { ok: true, account: result.name || result.email || "conta conectada" };
 }

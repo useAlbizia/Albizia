@@ -1,9 +1,15 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { saveFrete, type FreteState } from "./_actions";
+import {
+  saveFrete,
+  testarConexaoFrete,
+  type FreteState,
+  type FreteTestState,
+} from "./_actions";
 
 const initial: FreteState = {};
+const initialTest: FreteTestState = {};
 const input =
   "border border-content/30 bg-transparent px-4 py-3 text-sm outline-none focus:border-content";
 const label = "text-[11px] uppercase tracking-[0.2em] text-content/50";
@@ -22,10 +28,12 @@ export type FreteSettings = {
 
 export function FreteForm({ settings }: { settings: FreteSettings }) {
   const [state, action, pending] = useActionState(saveFrete, initial);
+  const [test, testAction, testing] = useActionState(testarConexaoFrete, initialTest);
   const [method, setMethod] = useState(settings.method);
 
   return (
-    <form action={action} className="flex max-w-lg flex-col gap-4">
+    <div className="max-w-lg">
+    <form action={action} className="flex flex-col gap-4">
       <span className={label}>Método de frete</span>
       <div className="flex flex-col gap-2 text-sm">
         <label className="flex items-center gap-2">
@@ -73,5 +81,30 @@ export function FreteForm({ settings }: { settings: FreteSettings }) {
         {state.error && <span className="text-[13px] text-content/70">{state.error}</span>}
       </div>
     </form>
+
+    {method === "melhor_envio" && settings.hasToken && (
+      <form action={testAction} className="mt-8 border-t border-content/10 pt-6">
+        <span className={label}>Conferir conexão</span>
+        <p className="mb-4 mt-2 text-[12px] text-content/40">
+          Confirma com o Melhor Envio que o token funciona e mostra de qual conta ele é. Sem isso,
+          um token errado só aparece quando um cliente tenta calcular o frete e não recebe opção
+          nenhuma.
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <button
+            type="submit"
+            disabled={testing}
+            className="border border-content/30 px-5 py-2.5 text-[12px] uppercase tracking-[0.15em] transition-colors hover:border-content disabled:opacity-50"
+          >
+            {testing ? "Conferindo..." : "Testar conexão"}
+          </button>
+          {test.ok && (
+            <span className="text-[13px] text-content/60">Conectado: {test.account} ✓</span>
+          )}
+          {test.error && <span className="text-[13px] text-content/70">{test.error}</span>}
+        </div>
+      </form>
+    )}
+    </div>
   );
 }

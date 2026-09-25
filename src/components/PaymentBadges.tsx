@@ -1,151 +1,85 @@
-// Payment-method badges shown in the footer to indicate accepted payments.
-// Simplified, recognizable marks in each brand's colors (nominative use), on
-// white cards so they read the same in light and dark themes.
+"use client";
 
-function Card({ children, label }: { children: React.ReactNode; label: string }) {
+import { useState } from "react";
+
+// Selos de marca. A arte oficial vive em /public/brands/<slug>.svg (uso
+// nominativo: indicar o que a loja aceita e com quem envia).
+//
+// Se o arquivo ainda não estiver lá, o componente cai sozinho num wordmark de
+// texto. Então basta soltar o SVG oficial na pasta que ele passa a aparecer,
+// sem mexer em código. É por isso que a checagem é via onError e não via
+// lista fixa: o componente roda no cliente, dentro do Footer.
+
+type Brand = {
+  slug: string;
+  label: string;
+  // Usado só enquanto o SVG oficial não existe.
+  fallback: string;
+  color: string;
+};
+
+const PAYMENT: Brand[] = [
+  { slug: "pix", label: "Pix", fallback: "PIX", color: "#32BCAD" },
+  { slug: "visa", label: "Visa", fallback: "VISA", color: "#1A1F71" },
+  { slug: "mastercard", label: "Mastercard", fallback: "mastercard", color: "#EB001B" },
+  { slug: "elo", label: "Elo", fallback: "elo", color: "#211E1F" },
+  { slug: "amex", label: "American Express", fallback: "AMEX", color: "#1F72CD" },
+  { slug: "mercadopago", label: "Mercado Pago", fallback: "mercado pago", color: "#009EE3" },
+];
+
+const SHIPPING: Brand[] = [
+  { slug: "melhorenvio", label: "Melhor Envio", fallback: "melhor envio", color: "#0FAFA5" },
+  { slug: "correios", label: "Correios", fallback: "Correios", color: "#00416B" },
+  { slug: "jadlog", label: "Jadlog", fallback: "Jadlog", color: "#D3232A" },
+];
+
+function BrandMark({ brand }: { brand: Brand }) {
+  const [failed, setFailed] = useState(false);
+
   return (
     <span
       role="img"
-      aria-label={label}
-      className="inline-flex h-7 w-11 items-center justify-center rounded-[4px] border border-black/10 bg-white shadow-sm"
+      aria-label={brand.label}
+      title={brand.label}
+      className="inline-flex h-8 min-w-[46px] items-center justify-center rounded-[4px] border border-black/10 bg-white px-2 shadow-sm"
     >
-      {children}
-    </span>
-  );
-}
-
-function Visa() {
-  return (
-    <Card label="Visa">
-      <span className="text-[10px] font-bold italic tracking-tight text-[#1A1F71]">VISA</span>
-    </Card>
-  );
-}
-
-function Mastercard() {
-  return (
-    <Card label="Mastercard">
-      <svg width="26" height="17" viewBox="0 0 26 17" aria-hidden="true">
-        <circle cx="10" cy="8.5" r="6.5" fill="#EB001B" />
-        <circle cx="16" cy="8.5" r="6.5" fill="#F79E1B" />
-        <path d="M13 3.3a6.5 6.5 0 0 0 0 10.4 6.5 6.5 0 0 0 0-10.4z" fill="#FF5F00" />
-      </svg>
-    </Card>
-  );
-}
-
-function Elo() {
-  return (
-    <Card label="Elo">
-      <span className="text-[10px] font-extrabold lowercase text-[#111]">
-        e<span className="text-[#EF4123]">l</span>
-        <span className="text-[#00A4E0]">o</span>
-      </span>
-    </Card>
-  );
-}
-
-function Amex() {
-  return (
-    <span
-      role="img"
-      aria-label="American Express"
-      className="inline-flex h-7 w-11 items-center justify-center rounded-[4px] bg-[#1F72CD] shadow-sm"
-    >
-      <span className="text-[7px] font-bold leading-tight text-white">AMEX</span>
-    </span>
-  );
-}
-
-function Pix() {
-  return (
-    <Card label="Pix">
-      <svg width="16" height="16" viewBox="0 0 32 32" aria-hidden="true">
-        <path
-          fill="#32BCAD"
-          d="M16 3.6l4.2 4.2a3 3 0 0 1-4.2 0l-.9-.9a1.4 1.4 0 0 0-2 0l-.9.9a3 3 0 0 1-4.2 0L16 3.6zm-8.4 8.4l2.6-2.6a3 3 0 0 1 0 4.2l-.9.9a1.4 1.4 0 0 0 0 2l.9.9a3 3 0 0 1 0 4.2L7.6 20a2 2 0 0 1 0-2.8l2.2-2.2a2 2 0 0 0 0-2.8L7.6 12zm16.8 0l-2.6 2.6a2 2 0 0 0 0 2.8l2.2 2.2a2 2 0 0 1 0 2.8l-2.6-2.6a3 3 0 0 1 0-4.2l.9-.9a1.4 1.4 0 0 0 0-2l-.9-.9a3 3 0 0 1 0-4.2zM16 28.4l-4.2-4.2a3 3 0 0 1 4.2 0l.9.9a1.4 1.4 0 0 0 2 0l.9-.9a3 3 0 0 1 4.2 0L16 28.4z"
+      {failed ? (
+        <span
+          className="text-[8px] font-bold leading-none tracking-tight"
+          style={{ color: brand.color }}
+        >
+          {brand.fallback}
+        </span>
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={`/brands/${brand.slug}.svg`}
+          alt={brand.label}
+          className="h-4 w-auto max-w-[44px] object-contain"
+          loading="lazy"
+          onError={() => setFailed(true)}
         />
-      </svg>
-    </Card>
-  );
-}
-
-function MercadoPago() {
-  return (
-    <span
-      role="img"
-      aria-label="Mercado Pago"
-      className="inline-flex h-7 items-center justify-center rounded-[4px] bg-[#009EE3] px-2.5 shadow-sm"
-    >
-      <span className="text-[8px] font-bold lowercase leading-none text-white">mercado pago</span>
+      )}
     </span>
   );
 }
 
-// Wider card, for wordmarks that don't fit the fixed-width Card.
-function WideCard({ children, label }: { children: React.ReactNode; label: string }) {
+function Row({ brands }: { brands: Brand[] }) {
   return (
-    <span
-      role="img"
-      aria-label={label}
-      className="inline-flex h-7 items-center justify-center rounded-[4px] border border-black/10 bg-white px-2.5 shadow-sm"
-    >
-      {children}
-    </span>
-  );
-}
-
-function MelhorEnvio() {
-  return (
-    <WideCard label="Melhor Envio">
-      <span className="text-[8px] font-bold leading-none tracking-tight text-[#0FAFA5]">
-        melhor<span className="text-[#1B2B4B]">envio</span>
-      </span>
-    </WideCard>
-  );
-}
-
-function Correios() {
-  return (
-    <WideCard label="Correios">
-      <span className="text-[8px] font-bold uppercase leading-none tracking-tight text-[#00416B]">
-        Correios
-      </span>
-    </WideCard>
-  );
-}
-
-function Jadlog() {
-  return (
-    <WideCard label="Jadlog">
-      <span className="text-[8px] font-bold uppercase leading-none tracking-tight text-[#D3232A]">
-        Jadlog
-      </span>
-    </WideCard>
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {brands.map((b) => (
+        <BrandMark key={b.slug} brand={b} />
+      ))}
+    </div>
   );
 }
 
 export function PaymentBadges() {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <Pix />
-      <Visa />
-      <Mastercard />
-      <Elo />
-      <Amex />
-      <MercadoPago />
-    </div>
-  );
+  return <Row brands={PAYMENT} />;
 }
 
-// Carriers we actually ship with. Melhor Envio is the platform that quotes
-// them (see lib/shipping.ts), so naming all three is accurate, not decorative.
+// Transportadoras que a loja de fato usa. O Melhor Envio é a plataforma que
+// cota as demais (ver lib/shipping.ts), então nomear as três é verdade.
 export function ShippingBadges() {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <MelhorEnvio />
-      <Correios />
-      <Jadlog />
-    </div>
-  );
+  return <Row brands={SHIPPING} />;
 }
