@@ -21,7 +21,7 @@ type Brand = {
 };
 
 const PAYMENT: Brand[] = [
-  { file: "pix.svg", label: "Pix", fallback: "PIX", color: "#32BCAD" },
+  { file: "pix.png", label: "Pix", fallback: "PIX", color: "#32BCAD" },
   { file: "visa.svg", label: "Visa", fallback: "VISA", color: "#1A1F71" },
   { file: "mastercard.svg", label: "Mastercard", fallback: "mastercard", color: "#EB001B" },
   { file: "elo.svg", label: "Elo", fallback: "elo", color: "#211E1F" },
@@ -43,7 +43,7 @@ function BrandMark({ brand }: { brand: Brand }) {
       role="img"
       aria-label={brand.label}
       title={brand.label}
-      className="inline-flex h-8 min-w-[46px] items-center justify-center rounded-[4px] border border-black/10 bg-white px-2 shadow-sm"
+      className="inline-flex h-9 min-w-[52px] items-center justify-center rounded-[4px] border border-black/10 bg-white px-2.5 shadow-sm"
     >
       {failed ? (
         <span
@@ -57,7 +57,7 @@ function BrandMark({ brand }: { brand: Brand }) {
         <img
           src={`/brands/${brand.file}`}
           alt={brand.label}
-          className="h-4 w-auto max-w-[46px] object-contain"
+          className="h-5 w-auto max-w-[76px] object-contain"
           loading="lazy"
           onError={() => setFailed(true)}
         />
