@@ -51,6 +51,15 @@ export const products = pgTable("products", {
   // cada item da NF-e. Vazio significa "usar o padrão da categoria" (ver
   // lib/fiscal.ts), para o fundador não precisar preencher peça por peça.
   ncm: text("ncm").notNull().default(""),
+  // Medidas da peça embalada, usadas na cotação e na compra da etiqueta.
+  // Zero significa "usar o pacote padrão de Admin → Entrega e frete", para o
+  // fundador não ter que medir peça por peça antes de abrir a loja. Uma
+  // camiseta e um short de praia não cabem na mesma caixa, e a diferença
+  // entre o cotado e o real sai do bolso de quem vende.
+  weightGrams: integer("weight_grams").notNull().default(0),
+  lengthCm: integer("length_cm").notNull().default(0),
+  widthCm: integer("width_cm").notNull().default(0),
+  heightCm: integer("height_cm").notNull().default(0),
   fabric: text("fabric").notNull(),
   description: text("description").notNull(),
   active: boolean("active").notNull().default(true),
@@ -111,6 +120,23 @@ export const orders = pgTable("orders", {
   totalCents: integer("total_cents").notNull(),
   // Carrier tracking code, set when the order is marked shipped.
   trackingCode: text("tracking_code"),
+  // ── Melhor Envio ─────────────────────────────────────────────────────
+  // Qual serviço o CLIENTE escolheu no checkout. Sem isso não dá para
+  // comprar a etiqueta depois: o Melhor Envio precisa saber se é PAC, SEDEX
+  // ou Jadlog, e cobrar outro serviço muda o preço que já foi pago.
+  meServiceId: integer("me_service_id"),
+  meServiceName: text("me_service_name"),
+  meCompany: text("me_company"),
+  // O envio dentro do Melhor Envio, do carrinho até a entrega.
+  meOrderId: text("me_order_id"),
+  // cart | paid | generated | posted | delivered | canceled
+  meStatus: text("me_status"),
+  // O que a etiqueta custou de verdade, contra o shippingCents que o cliente
+  // pagou. Guardar os dois é o que mostra se o frete deu lucro ou prejuízo
+  // naquela venda, em vez de só aparecer no fim do mês.
+  meLabelCostCents: integer("me_label_cost_cents"),
+  meLabelUrl: text("me_label_url"),
+  meLabeledAt: timestamp("me_labeled_at", { withTimezone: true }),
   // When a cart-recovery email was last sent for this (still pending) order —
   // stops us from spamming the same abandoned checkout.
   recoveryEmailSentAt: timestamp("recovery_email_sent_at", { withTimezone: true }),
@@ -175,6 +201,25 @@ export const siteSettings = pgTable("site_settings", {
   meLengthCm: integer("me_length_cm").notNull().default(20),
   meWidthCm: integer("me_width_cm").notNull().default(20),
   meHeightCm: integer("me_height_cm").notNull().default(4),
+  // "production" | "sandbox". O sandbox do Melhor Envio é outro mundo: outra
+  // conta, outro cadastro, outro token, e nada atravessa de um para o outro.
+  // Por isso são dois campos de token, e não um só que troca de valor: a
+  // pessoa testa e volta para produção sem ter perdido o token bom.
+  meEnvironment: text("me_environment").notNull().default("production"),
+  meTokenSandbox: text("me_token_sandbox").notNull().default(""),
+  // Remetente completo. A cotação precisa só do CEP, mas a COMPRA da etiqueta
+  // exige nome, documento e endereço inteiro de quem envia. Sem isso o botão
+  // de gerar etiqueta não tem o que mandar.
+  meFromName: text("me_from_name").notNull().default(""),
+  meFromDocument: text("me_from_document").notNull().default(""),
+  meFromPhone: text("me_from_phone").notNull().default(""),
+  meFromEmail: text("me_from_email").notNull().default(""),
+  meFromAddress: text("me_from_address").notNull().default(""),
+  meFromNumber: text("me_from_number").notNull().default(""),
+  meFromComplement: text("me_from_complement").notNull().default(""),
+  meFromDistrict: text("me_from_district").notNull().default(""),
+  meFromCity: text("me_from_city").notNull().default(""),
+  meFromState: text("me_from_state").notNull().default(""),
   // Mercado Pago (Checkout Transparente). mpAccessToken is a SECRET, read ONLY
   // server-side and never returned to the browser. mpPublicKey is meant to be
   // public — the Payment Brick needs it in the client to tokenize the card, so
