@@ -29,10 +29,14 @@ const PAYMENT: Brand[] = [
   { file: "mercadopago.png", label: "Mercado Pago", fallback: "mercado pago", color: "#009EE3" },
 ];
 
+// Só entra aqui transportadora que a loja realmente usa. A Jadlog saiu porque
+// o rodapé estava prometendo uma transportadora que o checkout não oferecia:
+// quem cota é o Melhor Envio, e aparece só o que estiver habilitado na conta.
+// A arte dela continua em /public/brands/jadlog.png, conferida e pronta, para
+// o dia em que a conta do Melhor Envio estiver ligada com a Jadlog ativa.
 const SHIPPING: Brand[] = [
   { file: "melhorenvio.png", label: "Melhor Envio", fallback: "melhor envio", color: "#0FAFA5" },
   { file: "correios.png", label: "Correios", fallback: "Correios", color: "#00416B" },
-  { file: "jadlog.png", label: "Jadlog", fallback: "Jadlog", color: "#D3232A" },
 ];
 
 function BrandMark({ brand }: { brand: Brand }) {
@@ -80,8 +84,6 @@ export function PaymentBadges() {
   return <Row brands={PAYMENT} />;
 }
 
-// Transportadoras que a loja de fato usa. O Melhor Envio é a plataforma que
-// cota as demais (ver lib/shipping.ts), então nomear as três é verdade.
 export function ShippingBadges() {
   return <Row brands={SHIPPING} />;
 }
