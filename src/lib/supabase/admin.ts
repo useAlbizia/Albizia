@@ -70,6 +70,38 @@ export async function adminSetPassword(params: {
   return {};
 }
 
+// Gera o link de recuperação SEM disparar e-mail do Supabase.
+//
+// POR QUE: o e-mail padrão do Supabase chega como "Supabase Auth
+// <noreply@mail.app.supabase.io>", em inglês, com rodapé "powered by
+// Supabase". Quem recebe não reconhece a loja e trata como golpe. Gerando o
+// link aqui, a ALBIZIA envia pelo próprio template, em português e com a
+// marca, pelo mesmo Resend que já manda a confirmação de pedido.
+export async function adminGenerateRecoveryLink(params: {
+  email: string;
+  redirectTo: string;
+}): Promise<{ link?: string; error?: string }> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({
+      type: "recovery",
+      email: params.email,
+      options: { redirect_to: params.redirectTo },
+    }),
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    return { error: body.msg ?? body.message ?? `Erro ${res.status}` };
+  }
+
+  // A chave mudou de lugar entre versões do GoTrue; aceita as duas.
+  const link = body.action_link ?? body.properties?.action_link;
+  if (!link) return { error: "O Supabase não devolveu o link." };
+  return { link };
+}
+
 export type AdminUser = {
   id: string;
   email: string;

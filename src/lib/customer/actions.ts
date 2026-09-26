@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteOrigin } from "@/lib/site-url";
+import { sendBrandedRecoveryEmail } from "@/lib/auth-email";
 
 export type AuthState = { error?: string; info?: string };
 
@@ -72,12 +72,9 @@ export async function customerRequestPasswordReset(
   const email = String(formData.get("email") ?? "").trim();
   if (!email) return { error: "Informe seu e-mail." };
 
-  const supabase = await createClient();
-  const origin = await getSiteOrigin();
-
-  await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/conta/redefinir`,
-  });
+  // Falha de proposito ignorada: e-mail inexistente nao pode ser
+  // distinguido de e-mail existente, senao vira consulta de quem tem conta.
+  await sendBrandedRecoveryEmail(email, "cliente").catch(() => {});
 
   // Always return ok — never reveal whether the e-mail exists.
   return { info: "Se este e-mail tiver uma conta, você receberá o link em instantes." };

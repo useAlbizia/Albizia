@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { isAdminEmail } from "@/lib/auth/admins";
 import { adminCreateUser, adminListUsers, adminSetPassword } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { getSiteOrigin } from "@/lib/site-url";
+import { sendBrandedRecoveryEmail } from "@/lib/auth-email";
 import { logAudit } from "@/lib/audit";
 
 export type CreateAdminState = { error?: string; success?: { email: string; password: string } };
@@ -64,12 +64,8 @@ export async function sendAdminResetLink(
   if (!email.success) return { error: "E-mail inválido." };
   if (!isAdminEmail(email.data)) return { error: "Este e-mail não é de um administrador." };
 
-  const supabase = await createClient();
-  const origin = await getSiteOrigin();
-  const { error } = await supabase.auth.resetPasswordForEmail(email.data, {
-    redirectTo: `${origin}/admin/redefinir`,
-  });
-  if (error) return { error: "Não foi possível enviar agora. Tente de novo." };
+  const { ok, error } = await sendBrandedRecoveryEmail(email.data, "admin");
+  if (!ok) return { error: error ?? "Não foi possível enviar agora. Tente de novo." };
 
   await logAudit({ action: "user.reset_link", entity: "user", entityId: email.data });
   return { sentTo: email.data };
