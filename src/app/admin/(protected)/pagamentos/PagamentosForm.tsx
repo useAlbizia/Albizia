@@ -42,9 +42,15 @@ export function PagamentosForm({ settings }: { settings: PagamentosSettings }) {
         </summary>
         <div className="border-t border-content/10 px-4 py-4 text-[12px] leading-relaxed text-content/55">
           <p className="mb-3">
-            É a <strong className="font-medium">mesma conta</strong> do Mercado Pago que recebe o
-            dinheiro. Não existe conta de desenvolvedor separada: o painel de desenvolvedores é
-            uma área dentro da sua conta normal.
+            As credenciais pertencem a uma <strong className="font-medium">aplicação</strong>, e a
+            aplicação vive dentro de uma conta do Mercado Pago. Aqui, o dinheiro cai na conta onde
+            a aplicação está. Use a aplicação criada na conta que deve receber as vendas da
+            ALBIZIA.
+          </p>
+          <p className="mb-3 text-content/45">
+            É diferente de conectar a conta de um terceiro: nesse caso a aplicação fica com quem
+            desenvolve e o pagamento vai para a conta de quem autorizou, via OAuth. Não é o caso
+            aqui, porque a loja recebe na própria conta.
           </p>
           <ol className="flex list-decimal flex-col gap-1.5 pl-4">
             <li>
