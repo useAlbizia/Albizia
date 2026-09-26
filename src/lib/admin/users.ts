@@ -3,8 +3,10 @@
 import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
-import { adminCreateUser } from "@/lib/supabase/admin";
+import { isAdminEmail } from "@/lib/auth/admins";
+import { adminCreateUser, adminListUsers, adminSetPassword } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteOrigin } from "@/lib/site-url";
 import { logAudit } from "@/lib/audit";
 
 export type CreateAdminState = { error?: string; success?: { email: string; password: string } };
@@ -41,6 +43,62 @@ export async function createAdminUser(
 
   await logAudit({ action: "user.create", entity: "user", entityId: email.data });
   return { success: { email: email.data, password: tempPassword } };
+}
+
+export type ResetAdminState = {
+  error?: string;
+  sentTo?: string;
+  tempPassword?: { email: string; password: string };
+};
+
+// Manda o link de recuperação para o próprio admin. Caminho preferido: a
+// senha nasce e morre com a pessoa, ninguém mais vê. O link usa o domínio
+// real da requisição (lib/site-url.ts), então não tem como cair em localhost.
+export async function sendAdminResetLink(
+  _prev: ResetAdminState,
+  formData: FormData,
+): Promise<ResetAdminState> {
+  await requireAdmin();
+
+  const email = z.string().email().safeParse(formData.get("email"));
+  if (!email.success) return { error: "E-mail inválido." };
+  if (!isAdminEmail(email.data)) return { error: "Este e-mail não é de um administrador." };
+
+  const supabase = await createClient();
+  const origin = await getSiteOrigin();
+  const { error } = await supabase.auth.resetPasswordForEmail(email.data, {
+    redirectTo: `${origin}/admin/redefinir`,
+  });
+  if (error) return { error: "Não foi possível enviar agora. Tente de novo." };
+
+  await logAudit({ action: "user.reset_link", entity: "user", entityId: email.data });
+  return { sentTo: email.data };
+}
+
+// Gera senha temporária e mostra UMA vez, aqui no painel. Existe para quando
+// o e-mail não resolve (caixa cheia, spam, provedor bloqueando). Ela força a
+// troca no primeiro login, então não vira senha definitiva de ninguém.
+export async function resetAdminPassword(
+  _prev: ResetAdminState,
+  formData: FormData,
+): Promise<ResetAdminState> {
+  await requireAdmin();
+
+  const email = z.string().email().safeParse(formData.get("email"));
+  if (!email.success) return { error: "E-mail inválido." };
+  if (!isAdminEmail(email.data)) return { error: "Este e-mail não é de um administrador." };
+
+  const users = await adminListUsers();
+  const alvo = users.find((u) => u.email.toLowerCase() === email.data.toLowerCase());
+  if (!alvo) return { error: "Usuário não encontrado no Supabase." };
+
+  const tempPassword = generateTempPassword();
+  const { error } = await adminSetPassword({ userId: alvo.id, password: tempPassword });
+  if (error) return { error };
+
+  // Registra que houve reset, nunca o valor da senha.
+  await logAudit({ action: "user.reset_password", entity: "user", entityId: email.data });
+  return { tempPassword: { email: email.data, password: tempPassword } };
 }
 
 export type ChangePasswordState = { error?: string };

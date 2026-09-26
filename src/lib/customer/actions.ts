@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { getSiteOrigin } from "@/lib/site-url";
 
 export type AuthState = { error?: string; info?: string };
 
@@ -72,9 +73,7 @@ export async function customerRequestPasswordReset(
   if (!email) return { error: "Informe seu e-mail." };
 
   const supabase = await createClient();
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
-    "https://usealbizia.com.br";
+  const origin = await getSiteOrigin();
 
   await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/conta/redefinir`,

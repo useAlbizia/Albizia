@@ -42,6 +42,34 @@ export async function adminCreateUser(params: {
   return {};
 }
 
+// Define uma senha nova para um admin existente. Usado quando alguém perde o
+// acesso e o e-mail de recuperação não resolve (caixa cheia, spam, domínio
+// bloqueando). must_change_password força a troca no primeiro login, então a
+// senha temporária serve uma vez só.
+export async function adminSetPassword(params: {
+  userId: string;
+  password: string;
+}): Promise<{ error?: string }> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${params.userId}`,
+    {
+      method: "PUT",
+      headers: adminHeaders(),
+      body: JSON.stringify({
+        password: params.password,
+        user_metadata: { must_change_password: true },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return { error: body.msg ?? body.message ?? `Erro ${res.status}` };
+  }
+
+  return {};
+}
+
 export type AdminUser = {
   id: string;
   email: string;

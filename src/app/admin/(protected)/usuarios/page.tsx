@@ -1,5 +1,6 @@
 import { adminListUsers } from "@/lib/supabase/admin";
 import { CreateUserForm } from "./CreateUserForm";
+import { ResetAccess } from "./ResetAccess";
 
 export const dynamic = "force-dynamic";
 
@@ -18,12 +19,13 @@ export default async function UsuariosPage() {
           Acessos de admin
         </h1>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[520px] text-left text-sm">
+          <table className="w-full min-w-[720px] text-left text-sm">
             <thead>
               <tr className="border-b border-content/10 text-[11px] uppercase tracking-[0.1em] text-content/50">
                 <th className="py-3 pr-4 font-normal">E-mail</th>
                 <th className="py-3 pr-4 font-normal">Criado em</th>
                 <th className="py-3 pr-4 font-normal">Última sessão</th>
+                <th className="py-3 font-normal">Recuperar acesso</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-content/10">
@@ -33,6 +35,9 @@ export default async function UsuariosPage() {
                   <td className="py-3 pr-4 text-content/60">{fmt(u.createdAt)}</td>
                   <td className="py-3 pr-4 text-content/60">
                     {u.lastSignInAt ? fmt(u.lastSignInAt) : "nunca acessou"}
+                  </td>
+                  <td className="py-3 align-top">
+                    <ResetAccess email={u.email} />
                   </td>
                 </tr>
               ))}
