@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { shortDate } from "@/lib/format";
 import { sendRecovery } from "./_actions";
 
 export function RecoveryButton({ orderId, sentAt }: { orderId: string; sentAt: string | null }) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<string | null>(
-    sentAt ? `Enviado ${new Date(sentAt).toLocaleDateString("pt-BR")}` : null
+    sentAt ? `Enviado ${shortDate(sentAt)}` : null
   );
 
   return (

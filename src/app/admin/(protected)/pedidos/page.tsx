@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db/client";
+import { shortDate } from "@/lib/format";
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pendente",
@@ -49,7 +50,7 @@ export default async function AdminPedidosPage() {
                   {STATUS_LABEL[o.status] ?? o.status}
                 </td>
                 <td className="py-3 pr-4 text-content/60">
-                  {new Date(o.createdAt).toLocaleDateString("pt-BR")}
+                  {shortDate(o.createdAt)}
                 </td>
               </tr>
             ))}

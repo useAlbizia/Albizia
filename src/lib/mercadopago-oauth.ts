@@ -4,6 +4,7 @@ import { db } from "./db/client";
 import { siteSettings } from "./db/schema";
 import { sendEmail, emailShell } from "./email";
 import { adminEmails } from "./auth/admins";
+import { dateTime } from "./format";
 
 // ── Conexão da conta do Mercado Pago por OAuth ───────────────────────────
 //
@@ -159,7 +160,7 @@ async function avisarTrocaDeConta(anterior: string, nova: string): Promise<void>
   const destinos = adminEmails();
   if (destinos.length === 0) return;
 
-  const quando = new Date().toLocaleString("pt-BR");
+  const quando = dateTime(new Date());
   await sendEmail({
     to: destinos,
     subject: "A conta que recebe os pagamentos foi alterada · ALBIZIA",

@@ -4,6 +4,7 @@ import { getAdminUser } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { orders, siteSettings } from "@/lib/db/schema";
 import { cfopFor, formatDocument, ncmFor, reais, toCsv } from "@/lib/fiscal";
+import { shortDate } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +69,7 @@ export async function GET(request: NextRequest) {
   for (const o of filtrados) {
     const a = (o.shippingAddress ?? {}) as Addr;
     const cfop = cfopFor(ufLoja, a.state ?? "");
-    const data = new Date(o.paidAt ?? o.createdAt).toLocaleDateString("pt-BR");
+    const data = shortDate(o.paidAt ?? o.createdAt);
 
     o.items.forEach((item, i) => {
       const primeira = i === 0;

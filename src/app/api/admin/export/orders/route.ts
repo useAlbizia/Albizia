@@ -4,6 +4,7 @@ import { getAdminUser } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { orders } from "@/lib/db/schema";
 import { ORDER_STATUS_LABEL } from "@/lib/orders";
+import { dateTime, isoDay } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export async function GET() {
     lines.push(
       [
         cell(o.orderNumber),
-        cell(new Date(o.createdAt).toLocaleString("pt-BR")),
+        cell(dateTime(o.createdAt)),
         cell(ORDER_STATUS_LABEL[o.status] ?? o.status),
         cell(o.customerName),
         cell(o.customerEmail),
@@ -60,7 +61,7 @@ export async function GET() {
   }
 
   const csv = "﻿" + lines.join("\r\n");
-  const filename = `albizia-pedidos-${new Date().toISOString().slice(0, 10)}.csv`;
+  const filename = `albizia-pedidos-${isoDay(Date.now())}.csv`;
 
   return new NextResponse(csv, {
     headers: {

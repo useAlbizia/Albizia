@@ -1,4 +1,5 @@
 import { adminListUsers } from "@/lib/supabase/admin";
+import { dateTime } from "@/lib/format";
 import { CreateUserForm } from "./CreateUserForm";
 import { ResetAccess } from "./ResetAccess";
 
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 function fmt(iso: string | null): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  return dateTime(iso);
 }
 
 export default async function UsuariosPage() {

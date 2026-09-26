@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { longDate } from "@/lib/format";
 import { desconectarMp, testarConexao, type TestState } from "./_actions";
 
 const initialTest: TestState = {};
@@ -14,11 +15,7 @@ export type PagamentosSettings = {
 
 function dataCurta(iso: string | null): string {
   if (!iso) return "";
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
+  return longDate(iso);
 }
 
 // Tela de pagamentos, para quem OPERA a loja.

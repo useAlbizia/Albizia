@@ -3,6 +3,7 @@ import { and, gte, eq, sql, desc, isNotNull } from "drizzle-orm";
 import { type AnyPgColumn } from "drizzle-orm/pg-core";
 import { db } from "./db/client";
 import { analyticsEvents as ev } from "./db/schema";
+import { isoDay } from "./format";
 
 export type Bucket = { label: string; n: number };
 
@@ -118,8 +119,12 @@ export async function getAnalyticsSummary(days = 30): Promise<AnalyticsSummary> 
 
   const dailyMap = new Map(dailyRows.map((r) => [r.date, r.views]));
   const daily: { date: string; views: number }[] = [];
+  // O banco agrupa em America/Sao_Paulo (o `at time zone` acima), então o eixo
+  // de dias precisa ser montado no mesmo fuso. Montado em UTC, depois das 21h
+  // a chave daqui já é o dia seguinte, não casa com nenhuma linha do banco e o
+  // gráfico zera o dia de hoje enquanto mostra uma data que ainda não chegou.
   for (let i = 13; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 864e5).toISOString().slice(0, 10);
+    const d = isoDay(Date.now() - i * 864e5);
     daily.push({ date: d, views: dailyMap.get(d) ?? 0 });
   }
 

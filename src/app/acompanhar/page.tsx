@@ -1,4 +1,5 @@
 import { getOrderForTracking } from "@/lib/orders";
+import { shortDate } from "@/lib/format";
 
 export const metadata = { title: "Acompanhar pedido · ALBIZIA" };
 
@@ -63,7 +64,7 @@ export default async function AcompanharPage(props: PageProps<"/acompanhar">) {
           <div className="flex items-baseline justify-between border-b border-content/10 pb-4">
             <span className="text-lg">Pedido #{order.orderNumber}</span>
             <span className="text-[12px] text-content/50">
-              {new Date(order.createdAt).toLocaleDateString("pt-BR")}
+              {shortDate(order.createdAt)}
             </span>
           </div>
 
