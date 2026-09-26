@@ -57,7 +57,18 @@ export function FreteForm({ settings }: { settings: FreteSettings }) {
       {method === "melhor_envio" && (
         <>
           <span className={`${label} mt-3`}>Melhor Envio</span>
-          <input name="meToken" type="password" placeholder={settings.hasToken ? "Token salvo (deixe em branco para manter)" : "Token de API do Melhor Envio"} className={input} autoComplete="off" />
+          <input
+            name="meToken"
+            type="password"
+            placeholder={settings.hasToken ? "Token salvo (deixe em branco para manter)" : "Token de API do Melhor Envio"}
+            className={input}
+            // O navegador oferecia a senha salva do painel aqui dentro:
+            // "off" ele ignora em campo de senha, "new-password" ele respeita.
+            autoComplete="new-password"
+            data-1p-ignore="true"
+            data-lpignore="true"
+            spellCheck={false}
+          />
           <input name="meFromCep" defaultValue={settings.meFromCep} placeholder="CEP de origem (de onde você envia)" className={input} />
           <span className={`${label} mt-2`}>Pacote padrão</span>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
