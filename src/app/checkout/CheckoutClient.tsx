@@ -10,7 +10,7 @@ import {
   type CheckoutState,
 } from "@/lib/checkout/actions";
 import { track } from "@/lib/analytics-client";
-import { computeShipping, type ShippingConfig } from "@/lib/shipping-calc";
+import { computeShipping, type ShippingConfig, type ShippingOption } from "@/lib/shipping-calc";
 import { PaymentStep } from "./PaymentStep";
 import { OrderSummary } from "./OrderSummary";
 import { SeloCompraSegura } from "@/components/CompraSegura";
@@ -67,7 +67,13 @@ export function CheckoutClient({
   const [couponPending, startCoupon] = useTransition();
 
   const [zip, setZip] = useState("");
+  // As opções reais da transportadora, para o cliente escolher entre pagar
+  // menos e receber antes. Antes disso a loja escolhia sozinha a mais barata
+  // e nem guardava qual era, o que impedia emitir a etiqueta depois.
+  const [freteOptions, setFreteOptions] = useState<ShippingOption[]>([]);
+  const [serviceId, setServiceId] = useState<number | null>(null);
   const [quotedCents, setQuotedCents] = useState<number | null>(null);
+  const [freteMsg, setFreteMsg] = useState<string | null>(null);
   const [fretePending, startFrete] = useTransition();
 
   const hasItems = items.length > 0;
@@ -103,9 +109,29 @@ export function CheckoutClient({
 
   function calcFrete() {
     startFrete(async () => {
-      const r = await quoteFreteAction(zip, subtotalCents, totalQty);
-      setQuotedCents(r.cents);
+      const r = await quoteFreteAction(zip, items);
+      setFreteOptions(r.options);
+      if (r.options.length > 0) {
+        // Vem ordenado do mais barato para o mais caro, então o primeiro é o
+        // padrão. O cliente troca se quiser receber antes.
+        setServiceId(r.options[0].id);
+        setQuotedCents(r.options[0].priceCents);
+        setFreteMsg(null);
+      } else {
+        setServiceId(null);
+        setQuotedCents(r.flatCents);
+        setFreteMsg(
+          r.flatCents === null
+            ? "Não foi possível calcular o frete para este CEP. Confira o número."
+            : null
+        );
+      }
     });
+  }
+
+  function escolherServico(o: ShippingOption) {
+    setServiceId(o.id);
+    setQuotedCents(o.priceCents);
   }
 
   function handleApply() {
@@ -209,6 +235,9 @@ export function CheckoutClient({
             onChange={(e) => {
               setZip(e.target.value);
               setQuotedCents(null);
+              setFreteOptions([]);
+              setServiceId(null);
+              setFreteMsg(null);
             }}
             placeholder="CEP"
             required
@@ -225,6 +254,52 @@ export function CheckoutClient({
             </button>
           )}
         </div>
+
+        {/* O serviço escolhido viaja junto com o pedido. Sem ele o painel não
+            tem como comprar a etiqueta certa depois. */}
+        <input type="hidden" name="shippingServiceId" value={serviceId ?? ""} />
+
+        {freteMsg && <p className="text-[12px] text-content/60">{freteMsg}</p>}
+
+        {freteOptions.length > 0 && (
+          <fieldset className="flex flex-col gap-2">
+            <legend className="mb-1 text-[11px] uppercase tracking-[0.2em] text-content/50">
+              Entrega
+            </legend>
+            {freteOptions.map((o) => {
+              const ativo = o.id === serviceId;
+              return (
+                <label
+                  key={o.id}
+                  className={`flex cursor-pointer items-center justify-between gap-3 border px-4 py-3 text-sm transition-colors ${
+                    ativo ? "border-content" : "border-content/20 hover:border-content/40"
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <input
+                      type="radio"
+                      name="shippingService"
+                      checked={ativo}
+                      onChange={() => escolherServico(o)}
+                      className="accent-content"
+                    />
+                    <span>
+                      <span className="block">
+                        {o.company} {o.name}
+                      </span>
+                      <span className="block text-[12px] text-content/50">
+                        {o.deliveryDays === null
+                          ? "prazo informado pela transportadora"
+                          : `até ${o.deliveryDays} ${o.deliveryDays === 1 ? "dia útil" : "dias úteis"}`}
+                      </span>
+                    </span>
+                  </span>
+                  <span className="shrink-0">{money(o.priceCents / 100)}</span>
+                </label>
+              );
+            })}
+          </fieldset>
+        )}
 
         {state.error && (
           <p className="text-[13px] text-content/70" role="alert">

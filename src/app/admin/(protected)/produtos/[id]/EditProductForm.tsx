@@ -21,6 +21,10 @@ type Product = {
   priceCents: number;
   fabric: string;
   ncm: string;
+  weightGrams: number;
+  lengthCm: number;
+  widthCm: number;
+  heightCm: number;
   description: string;
   active: boolean;
   colorGroup: string | null;
@@ -130,8 +134,57 @@ export function EditProductForm({
             className={inputClass}
           />
           <p className="text-[11px] text-content/40">
-            Classificação fiscal usada na nota. Em branco, usa o padrão da categoria (camiseta
-            61091000, moda praia 62111100). Confirme com seu contador.
+            Classificação fiscal usada na nota. Em branco, usa o padrão da categoria: camiseta
+            61091000, moda praia 62111100.
+          </p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-[11px] uppercase tracking-[0.2em] text-content/50">
+            Peça embalada
+          </span>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <input
+              name="weightGrams"
+              type="number"
+              min="0"
+              max="30000"
+              defaultValue={product.weightGrams || ""}
+              placeholder="Peso (g)"
+              title="Peso da peça já embalada, em gramas"
+              className={inputClass}
+            />
+            <input
+              name="lengthCm"
+              type="number"
+              min="0"
+              max="105"
+              defaultValue={product.lengthCm || ""}
+              placeholder="Compr. (cm)"
+              className={inputClass}
+            />
+            <input
+              name="widthCm"
+              type="number"
+              min="0"
+              max="105"
+              defaultValue={product.widthCm || ""}
+              placeholder="Largura (cm)"
+              className={inputClass}
+            />
+            <input
+              name="heightCm"
+              type="number"
+              min="0"
+              max="105"
+              defaultValue={product.heightCm || ""}
+              placeholder="Altura (cm)"
+              className={inputClass}
+            />
+          </div>
+          <p className="text-[11px] text-content/40">
+            Medidas do pacote fechado, não da peça aberta. É o que o cliente paga de frete e o que
+            a etiqueta vai custar. Em branco, usa o pacote padrão de Entrega e frete.
           </p>
         </div>
         <div className="flex flex-col gap-2">

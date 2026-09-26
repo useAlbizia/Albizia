@@ -6,6 +6,21 @@ export type ShippingConfig = {
   freeThresholdCents: number;
 };
 
+/**
+ * Uma opção de entrega devolvida pela transportadora.
+ *
+ * Mora aqui, e não em lib/shipping.ts, porque o checkout é componente de
+ * cliente e lib/shipping.ts é "server-only": importar o tipo de lá arrastaria
+ * o módulo do servidor para o pacote do navegador.
+ */
+export type ShippingOption = {
+  id: number;
+  name: string; // "PAC", "SEDEX", ".Package"
+  company: string; // "Correios", "Jadlog"
+  priceCents: number;
+  deliveryDays: number | null;
+};
+
 export function computeShipping(
   subtotalCents: number,
   config: ShippingConfig,

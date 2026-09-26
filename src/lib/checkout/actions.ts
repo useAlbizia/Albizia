@@ -5,18 +5,67 @@ import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import type { CartItem } from "@/lib/cart-context";
-import { quoteShipping } from "@/lib/shipping";
+import {
+  quoteMelhorEnvio,
+  quoteShipping,
+  type CartLine,
+  type ShippingOption,
+} from "@/lib/shipping";
 import { validateCoupon, type CouponResult } from "@/lib/coupons";
 import { isValidDocument, onlyDigits } from "@/lib/fiscal";
 
-// Live shipping quote for the checkout preview (Melhor Envio method). The order
-// re-computes the authoritative price server-side, so this is display-only.
+/**
+ * As linhas do carrinho com peso e medida, lidas do BANCO.
+ *
+ * As medidas nunca vêm do cliente. Quem manda o peso manda o preço do frete,
+ * e um carrinho forjado com 1g de camiseta seria frete grátis pago pela loja.
+ */
+async function linesFromItems(items: CartItem[]): Promise<CartLine[]> {
+  const variantIds = [...new Set(items.map((i) => i.variantId))];
+  if (variantIds.length === 0) return [];
+
+  const variants = await db.query.productVariants.findMany({
+    where: inArray(productVariants.id, variantIds),
+    with: { product: true },
+  });
+
+  const linhas: CartLine[] = [];
+  for (const item of items) {
+    const v = variants.find((x) => x.id === item.variantId);
+    if (!v) continue;
+    linhas.push({
+      name: v.product.name,
+      quantity: item.quantity,
+      unitPriceCents: v.product.priceCents,
+      weightGrams: v.product.weightGrams,
+      lengthCm: v.product.lengthCm,
+      widthCm: v.product.widthCm,
+      heightCm: v.product.heightCm,
+    });
+  }
+  return linhas;
+}
+
+/**
+ * As opções de frete para o CEP, para o cliente ESCOLHER.
+ *
+ * Antes isso devolvia só o valor mais barato e a escolha era invisível. Sem
+ * saber qual serviço foi cotado é impossível comprar a etiqueta depois, e o
+ * cliente também não podia optar por pagar mais para receber antes.
+ */
 export async function quoteFreteAction(
   cep: string,
-  subtotalCents: number,
-  qty: number
-): Promise<{ cents: number }> {
-  return { cents: await quoteShipping(cep, subtotalCents, qty) };
+  items: CartItem[]
+): Promise<{ options: ShippingOption[]; flatCents: number | null }> {
+  const lines = await linesFromItems(items);
+  const options = await quoteMelhorEnvio(cep, lines);
+  if (options.length > 0) return { options, flatCents: null };
+
+  // Melhor Envio fora do ar, sem token, ou método "frete fixo": o checkout
+  // não pode travar, então mostra o valor único e segue.
+  const subtotal = lines.reduce((n, l) => n + l.unitPriceCents * l.quantity, 0);
+  const { cents } = await quoteShipping(cep, subtotal, lines);
+  return { options: [], flatCents: cents };
 }
 
 // Checkout preview: re-checks a coupon against the true server-side subtotal so
@@ -95,6 +144,10 @@ export async function createPendingOrder(
     size: string;
     unitPriceCents: number;
     quantity: number;
+    weightGrams: number;
+    lengthCm: number;
+    widthCm: number;
+    heightCm: number;
   }[] = [];
 
   for (const item of items) {
@@ -112,6 +165,10 @@ export async function createPendingOrder(
       size: variant.size,
       unitPriceCents: variant.product.priceCents,
       quantity: item.quantity,
+      weightGrams: variant.product.weightGrams,
+      lengthCm: variant.product.lengthCm,
+      widthCm: variant.product.widthCm,
+      heightCm: variant.product.heightCm,
     });
   }
 
@@ -120,7 +177,22 @@ export async function createPendingOrder(
 
   // Shipping is computed server-side (never trust a client-sent amount). For
   // the Melhor Envio method this is a live carrier quote for the CEP.
-  const shippingCents = await quoteShipping(data.zip, subtotalCents, totalQty);
+  //
+  // O serviço escolhido vem do formulário, mas só como preferência: a cotação
+  // é refeita aqui e o preço que vale é o do servidor. Se o serviço sumiu
+  // entre a tela e o envio, cai no mais barato em vez de derrubar a compra.
+  const escolhaCliente = Number(formData.get("shippingServiceId") ?? "") || null;
+  const linhasFrete: CartLine[] = lineItems.map((li) => ({
+    name: li.productName,
+    quantity: li.quantity,
+    unitPriceCents: li.unitPriceCents,
+    weightGrams: li.weightGrams,
+    lengthCm: li.lengthCm,
+    widthCm: li.widthCm,
+    heightCm: li.heightCm,
+  }));
+  const frete = await quoteShipping(data.zip, subtotalCents, linhasFrete, escolhaCliente);
+  const shippingCents = frete.cents;
 
   // Coupon is re-validated here against the true subtotal — the client preview
   // is never trusted. If it's no longer valid we stop rather than silently
@@ -159,6 +231,12 @@ export async function createPendingOrder(
       discountCents,
       couponCode,
       totalCents,
+      // Qual serviço foi cotado. É isto que permite comprar a etiqueta
+      // depois sem adivinhar, e cobrar da loja o mesmo que se cobrou do
+      // cliente.
+      meServiceId: frete.option?.id ?? null,
+      meServiceName: frete.option?.name ?? null,
+      meCompany: frete.option?.company ?? null,
     })
     .returning();
 
