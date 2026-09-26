@@ -1,10 +1,12 @@
 import { Symbol } from "@/components/logo/Symbol";
 import { createClient } from "@/lib/supabase/server";
+import { RecoveryGate } from "@/components/auth/RecoveryGate";
 import { SetPasswordForm } from "./SetPasswordForm";
 
-// The recovery email links here with a `code`. We exchange it for a session
-// (server-side) so the visitor is authenticated just long enough to set a
-// new password. If the code is missing/expired, we say so plainly.
+// O e-mail de recuperação pode chegar de duas formas, e as duas caem aqui:
+//  - `?code=...`  → fluxo PKCE, trocado por sessão aqui no servidor.
+//  - `#access_token=...` → o que a API admin gera. A tralha não chega ao
+//    servidor, então quem lê é o RecoveryGate, no navegador.
 export default async function RedefinirPage(props: PageProps<"/admin/redefinir">) {
   const params = await props.searchParams;
   const code = typeof params.code === "string" ? params.code : undefined;
@@ -21,17 +23,14 @@ export default async function RedefinirPage(props: PageProps<"/admin/redefinir">
       <Symbol className="h-10 w-10" />
       <h1 className="mt-8 text-sm uppercase tracking-[0.3em] text-content/60">Nova senha</h1>
 
-      {ok ? (
-        <SetPasswordForm />
-      ) : (
-        <p className="mt-8 max-w-xs text-center text-sm leading-relaxed text-content/60">
-          Este link é inválido ou expirou. Solicite um novo em{" "}
-          <a href="/admin/esqueci" className="underline">
-            recuperar acesso
-          </a>
-          .
-        </p>
-      )}
+      <div className="mt-8 w-full max-w-xs">
+        <RecoveryGate
+          servidorOk={ok}
+          linkAjuda={{ href: "/admin/esqueci", texto: "recuperar acesso" }}
+        >
+          <SetPasswordForm />
+        </RecoveryGate>
+      </div>
     </div>
   );
 }

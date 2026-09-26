@@ -1,8 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
+import { RecoveryGate } from "@/components/auth/RecoveryGate";
 import { SetPasswordForm } from "./SetPasswordForm";
 
 export const metadata = { title: "Nova senha · ALBIZIA" };
 
+// Mesmos dois formatos de link do painel: `?code=` é trocado aqui no
+// servidor, `#access_token=` só existe no navegador e quem lê é o
+// RecoveryGate.
 export default async function RedefinirContaPage(props: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
@@ -22,17 +26,9 @@ export default async function RedefinirContaPage(props: {
         Nova senha
       </h1>
 
-      {ok ? (
+      <RecoveryGate servidorOk={ok} linkAjuda={{ href: "/conta", texto: "minha conta" }}>
         <SetPasswordForm />
-      ) : (
-        <p className="text-center text-sm leading-relaxed text-content/60">
-          Este link é inválido ou expirou.{" "}
-          <a href="/conta" className="underline underline-offset-2 hover:text-content">
-            Solicite um novo
-          </a>
-          .
-        </p>
-      )}
+      </RecoveryGate>
     </section>
   );
 }
