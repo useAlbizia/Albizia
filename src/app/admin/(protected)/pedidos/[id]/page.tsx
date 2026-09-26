@@ -3,8 +3,11 @@ import { eq } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { orders } from "@/lib/db/schema";
 import { brl } from "@/lib/format";
+import { getSiteSettings } from "@/lib/settings";
+import { cfopFor, formatDocument, ncmFor, reais } from "@/lib/fiscal";
 import { StatusControl } from "./StatusControl";
 import { TrackingForm } from "./TrackingForm";
+import { DadosNotaFiscal } from "./DadosNotaFiscal";
 
 type ShippingAddress = {
   street: string;
@@ -21,11 +24,75 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
 
   const order = await db.query.orders.findFirst({
     where: eq(orders.id, id),
-    with: { items: true },
+    with: { items: { with: { product: { columns: { category: true, ncm: true } } } } },
   });
   if (!order) notFound();
 
   const address = order.shippingAddress as ShippingAddress;
+
+  // Dados prontos para digitar no emissor. A loja é MEI e emite manualmente,
+  // então o trabalho aqui é juntar tudo em ordem, não emitir.
+  const config = await getSiteSettings();
+  const cfop = cfopFor(config.storeUf, address.state ?? "");
+  const enderecoUmaLinha = [
+    `${address.street}, ${address.number}`,
+    address.complement || null,
+    address.neighborhood,
+    `${address.city}/${address.state}`,
+    `CEP ${address.zip}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const destinatario = [
+    { rotulo: "Nome", valor: order.customerName },
+    {
+      rotulo: "CPF ou CNPJ",
+      valor: order.customerDocument ? formatDocument(order.customerDocument) : "",
+      dica: order.customerDocument ? undefined : "Pedido feito antes do campo existir no checkout",
+    },
+    { rotulo: "E-mail", valor: order.customerEmail },
+    { rotulo: "Telefone", valor: order.customerPhone },
+    { rotulo: "Endereço completo", valor: enderecoUmaLinha },
+    { rotulo: "CEP", valor: address.zip ?? "" },
+  ];
+
+  const itensNota = order.items.map((i) => ({
+    descricao: `${i.productName} (${i.size})`,
+    ncm: ncmFor(i.product?.category ?? "", i.product?.ncm),
+    quantidade: i.quantity,
+    unitario: reais(i.unitPriceCents),
+    total: reais(i.unitPriceCents * i.quantity),
+  }));
+
+  const totais = [
+    { rotulo: "Valor dos produtos", valor: reais(order.subtotalCents) },
+    { rotulo: "Frete", valor: reais(order.shippingCents) },
+    { rotulo: "Desconto", valor: reais(order.discountCents) },
+    { rotulo: "Valor total da nota", valor: reais(order.totalCents) },
+    {
+      rotulo: "CFOP",
+      valor: cfop,
+      dica: cfop
+        ? cfop === "5102"
+          ? "Venda dentro do estado"
+          : "Venda para fora do estado"
+        : "Informe a UF de despacho em Configurações, Conteúdo",
+    },
+  ];
+
+  // Tudo de uma vez, para colar num bloco de notas ao lado do emissor.
+  const blocoCompleto = [
+    `Pedido #${order.orderNumber}`,
+    ...destinatario.map((c) => `${c.rotulo}: ${c.valor}`),
+    "",
+    "Itens:",
+    ...itensNota.map(
+      (i) => `- ${i.descricao} | NCM ${i.ncm} | ${i.quantidade} x ${i.unitario} = ${i.total}`,
+    ),
+    "",
+    ...totais.map((c) => `${c.rotulo}: ${c.valor}`),
+  ].join("\n");
 
   return (
     <div className="max-w-2xl">
@@ -104,6 +171,13 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
           Ao salvar, o pedido é marcado como “Enviado” e o cliente recebe o código por e-mail.
         </p>
       </div>
+
+      <DadosNotaFiscal
+        destinatario={destinatario}
+        itens={itensNota}
+        totais={totais}
+        blocoCompleto={blocoCompleto}
+      />
 
       {order.mpPaymentId && (
         <p className="mt-8 text-[11px] text-content/40">
