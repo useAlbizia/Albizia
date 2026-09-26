@@ -2,11 +2,8 @@ import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { getAdminUser } from "@/lib/auth/dal";
-import { buildAuthorizationUrl } from "@/lib/mercadopago-oauth";
+import { buildAuthorizationUrl, getConnection } from "@/lib/mercadopago-oauth";
 import { getSiteOrigin } from "@/lib/site-url";
-import { db } from "@/lib/db/client";
-import { siteSettings } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +15,8 @@ export async function GET() {
   const user = await getAdminUser();
   if (!user) return NextResponse.json({ error: "não autorizado" }, { status: 401 });
 
-  const config = await db.query.siteSettings.findFirst({ where: eq(siteSettings.id, 1) });
-  if (!config?.mpClientId) {
+  const conexao = await getConnection();
+  if (!conexao.configurada) {
     return NextResponse.redirect(
       `${await getSiteOrigin()}/admin/pagamentos?erro=app_nao_configurada`,
     );
@@ -41,7 +38,7 @@ export async function GET() {
   });
 
   const url = buildAuthorizationUrl({
-    clientId: config.mpClientId,
+    clientId: conexao.clientId,
     redirectUri: `${origin}/api/mercadopago/oauth/callback`,
     state,
   });

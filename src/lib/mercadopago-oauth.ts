@@ -37,11 +37,23 @@ async function row() {
   return db.query.siteSettings.findFirst({ where: eq(siteSettings.id, 1) });
 }
 
-export async function getConnection(): Promise<MpConnection> {
+// Credenciais da APLICAÇÃO: configuração de quem desenvolve, não de quem
+// opera a loja. Ficam em variável de ambiente, fora do painel, para que a
+// tela de pagamentos mostre só o botão de conectar. O banco existe como
+// alternativa para quem não tem acesso ao deploy.
+async function appCredentials(): Promise<{ clientId: string; clientSecret: string }> {
   const r = await row();
   return {
-    configurada: !!(r?.mpClientId && r?.mpClientSecret),
-    clientId: r?.mpClientId ?? "",
+    clientId: process.env.MP_CLIENT_ID || r?.mpClientId || "",
+    clientSecret: process.env.MP_CLIENT_SECRET || r?.mpClientSecret || "",
+  };
+}
+
+export async function getConnection(): Promise<MpConnection> {
+  const [r, app] = await Promise.all([row(), appCredentials()]);
+  return {
+    configurada: !!(app.clientId && app.clientSecret),
+    clientId: app.clientId,
     conectada: !!r?.mpRefreshToken,
     userId: r?.mpUserId ?? "",
     publicKey: r?.mpPublicKey ?? "",
@@ -91,14 +103,14 @@ export async function exchangeCodeForTokens(
   code: string,
   redirectUri: string,
 ): Promise<{ ok: true; userId: string; liveMode: boolean } | { ok: false; error: string }> {
-  const r = await row();
-  if (!r?.mpClientId || !r?.mpClientSecret) {
+  const app = await appCredentials();
+  if (!app.clientId || !app.clientSecret) {
     return { ok: false, error: "A aplicação não está configurada." };
   }
 
   const data = await pedirToken({
-    client_id: r.mpClientId,
-    client_secret: r.mpClientSecret,
+    client_id: app.clientId,
+    client_secret: app.clientSecret,
     grant_type: "authorization_code",
     code,
     redirect_uri: redirectUri,
@@ -129,12 +141,12 @@ export async function exchangeCodeForTokens(
 // Renova o access_token usando o refresh_token. Chamado sozinho quando a
 // validade está perto do fim.
 async function refresh(): Promise<boolean> {
-  const r = await row();
-  if (!r?.mpClientId || !r?.mpClientSecret || !r?.mpRefreshToken) return false;
+  const [r, app] = await Promise.all([row(), appCredentials()]);
+  if (!app.clientId || !app.clientSecret || !r?.mpRefreshToken) return false;
 
   const data = await pedirToken({
-    client_id: r.mpClientId,
-    client_secret: r.mpClientSecret,
+    client_id: app.clientId,
+    client_secret: app.clientSecret,
     grant_type: "refresh_token",
     refresh_token: r.mpRefreshToken,
   });

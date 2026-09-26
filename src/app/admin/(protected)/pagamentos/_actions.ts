@@ -6,7 +6,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { siteSettings } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
-import { getPaymentSettings, isTestCredential, testMercadoPagoCredentials } from "@/lib/payments";
+import { getPaymentSettings, testMercadoPagoCredentials } from "@/lib/payments";
 import { disconnect } from "@/lib/mercadopago-oauth";
 
 export type PagamentosState = { ok?: boolean; error?: string; warning?: string };

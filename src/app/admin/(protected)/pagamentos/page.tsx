@@ -1,4 +1,3 @@
-import { getPaymentSettings } from "@/lib/payments";
 import { getConnection } from "@/lib/mercadopago-oauth";
 import { PagamentosForm } from "./PagamentosForm";
 
@@ -20,14 +19,13 @@ export default async function PagamentosPage(props: {
   const detalhe = typeof params.detalhe === "string" ? params.detalhe : undefined;
   const conectado = params.conectado === "1";
 
-  const [s, conexao] = await Promise.all([getPaymentSettings(), getConnection()]);
+  const conexao = await getConnection();
 
   return (
     <div>
       <h1 className="mb-2 text-sm uppercase tracking-[0.3em] text-content/60">Pagamentos</h1>
       <p className="mb-8 max-w-2xl text-[12px] leading-relaxed text-content/40">
-        Conecte a conta do Mercado Pago que vai receber as vendas. Nada aqui é exposto no site: o
-        que é segredo fica guardado no servidor e nunca volta para esta tela.
+        Conecte a conta do Mercado Pago que vai receber as vendas.
       </p>
 
       {conectado && (
@@ -45,13 +43,9 @@ export default async function PagamentosPage(props: {
 
       <PagamentosForm
         settings={{
-          // Só o que pode cruzar para o navegador. Access token, client
-          // secret e refresh token nunca saem do servidor: o formulário
-          // recebe booleanos, não os valores.
-          publicKey: s.publicKey,
-          hasToken: !!s.accessToken,
+          // Nenhuma credencial cruza para o navegador: só o estado da
+          // conexão e o número público da conta conectada.
           appConfigurada: conexao.configurada,
-          clientId: conexao.clientId,
           conectada: conexao.conectada,
           contaId: conexao.userId,
           conectadaEm: conexao.conectadaEm ? conexao.conectadaEm.toISOString() : null,
