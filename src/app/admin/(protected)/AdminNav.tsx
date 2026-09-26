@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logout } from "./actions";
+import { ThemeToggle } from "./ThemeToggle";
 
 type Item = { href: string; label: string };
 type Group = { title: string; items: Item[] };
@@ -139,7 +140,10 @@ export function AdminNav({
       {open && (
         <div className="border-b border-content/10 px-6 py-6 md:hidden">
           <GroupList pathname={pathname} alertas={alertas} onNavigate={() => setOpen(false)} />
-          <div className="mt-6 flex items-center justify-between border-t border-content/10 pt-4">
+          <div className="mt-6 border-t border-content/10 pt-4">
+            <ThemeToggle />
+          </div>
+          <div className="mt-4 flex items-center justify-between border-t border-content/10 pt-4">
             <span className="truncate text-[12px] text-content/50">{email}</span>
             <form action={logout}>
               <button
@@ -162,6 +166,9 @@ export function AdminNav({
           <GroupList pathname={pathname} alertas={alertas} />
         </div>
         <div className="mt-6 border-t border-content/10 pt-4">
+          <ThemeToggle />
+        </div>
+        <div className="mt-4 border-t border-content/10 pt-4">
           <p className="truncate text-[12px] text-content/50">{email}</p>
           <form action={logout}>
             <button

@@ -44,10 +44,12 @@ export const metadata: Metadata = {
   },
 };
 
-// Runs before paint, straight from each visitor's own local clock — no
-// timezone lookups needed, the browser already knows. Sets the theme
-// attribute early so the page never flashes the wrong one.
-const THEME_INIT_SCRIPT = `(function(){try{var h=new Date().getHours();var t=(h>=18||h<6)?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
+// Roda antes da primeira pintura, direto do relógio local de quem acessa (a
+// loja fica clara de dia e escura à noite, sem consultar fuso: o navegador já
+// sabe). Dentro do /admin, respeita a preferência salva pelo seletor do
+// painel. Sem este script, escolher "escuro" ainda daria um flash de tela
+// branca a cada carregamento, que é justamente o que incomoda.
+const THEME_INIT_SCRIPT = `(function(){try{var p=location.pathname,f=null;try{f=localStorage.getItem('albizia-admin-theme')}catch(e){}var t;if((p==='/admin'||p.indexOf('/admin/')===0)&&(f==='dark'||f==='light')){t=f}else{var h=new Date().getHours();t=(h>=18||h<6)?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();`;
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [settings, menu] = await Promise.all([getSiteSettings(), getMenu()]);
