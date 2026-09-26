@@ -2,6 +2,8 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { siteSettings } from "./db/schema";
+import { sendEmail, emailShell } from "./email";
+import { adminEmails } from "./auth/admins";
 
 // ── Conexão da conta do Mercado Pago por OAuth ───────────────────────────
 //
@@ -121,6 +123,9 @@ export async function exchangeCodeForTokens(
   }
 
   const expiraEm = new Date(Date.now() + (data.expires_in ?? 0) * 1000);
+  // Lido ANTES de sobrescrever, para o aviso conseguir dizer de qual conta
+  // para qual conta a mudança aconteceu.
+  const anterior = (await row())?.mpUserId ?? "";
 
   await db
     .update(siteSettings)
@@ -135,7 +140,44 @@ export async function exchangeCodeForTokens(
     })
     .where(eq(siteSettings.id, 1));
 
+  // Avisa os sócios sempre que a conta que RECEBE muda.
+  //
+  // Um invasor com senha de admin poderia trocar a conta e desviar as vendas
+  // seguintes. Impedir a troca não dá (quem opera precisa poder trocar), mas
+  // ninguém consegue fazer isso em silêncio: o aviso sai na hora, para todos
+  // os administradores, com a conta antiga e a nova.
+  if (anterior !== String(data.user_id ?? "")) {
+    await avisarTrocaDeConta(anterior, String(data.user_id ?? "")).catch((e) =>
+      console.error("Falha ao avisar troca de conta do Mercado Pago", e),
+    );
+  }
+
   return { ok: true, userId: String(data.user_id ?? ""), liveMode: data.live_mode !== false };
+}
+
+async function avisarTrocaDeConta(anterior: string, nova: string): Promise<void> {
+  const destinos = adminEmails();
+  if (destinos.length === 0) return;
+
+  const quando = new Date().toLocaleString("pt-BR");
+  await sendEmail({
+    to: destinos,
+    subject: "A conta que recebe os pagamentos foi alterada · ALBIZIA",
+    html: emailShell(
+      "Conta de recebimento alterada",
+      `<p style="font-size:14px;line-height:1.7;color:#55534e;margin:0 0 14px;">
+         Em ${quando}, a conta do Mercado Pago que recebe as vendas da loja passou a ser
+         <strong>nº ${nova}</strong>${anterior ? `, no lugar da nº ${anterior}` : ""}.
+       </p>
+       <p style="font-size:14px;line-height:1.7;color:#55534e;margin:0 0 14px;">
+         Se foi você ou seu sócio, ignore esta mensagem.
+       </p>
+       <p style="font-size:13px;line-height:1.7;color:#8a857c;margin:0;">
+         Se NÃO foi, entre agora no painel, desconecte essa conta e troque a senha de todos os
+         administradores. A partir do momento da troca, as vendas caem na conta indicada acima.
+       </p>`,
+    ),
+  });
 }
 
 // Renova o access_token usando o refresh_token. Chamado sozinho quando a
