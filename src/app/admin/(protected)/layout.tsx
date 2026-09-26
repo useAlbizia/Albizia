@@ -2,6 +2,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { countRecoveryQueue } from "@/lib/recovery";
 import { ChangePasswordForm } from "@/components/admin/ChangePasswordForm";
 import { AdminNav } from "./AdminNav";
+import { NovaVersaoAviso } from "./NovaVersaoAviso";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-surface text-content md:flex">
       <AdminNav email={user.email} alertas={recuperacao.total} />
+      <NovaVersaoAviso />
       <div className="flex min-h-screen flex-1 flex-col">
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">{children}</main>
         <footer className="border-t border-content/10 px-6 py-6">
