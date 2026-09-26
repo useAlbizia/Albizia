@@ -25,7 +25,8 @@ const DOMINIOS_PERMITIDOS = [
 
 const PADRAO = "https://usealbizia.com.br";
 
-function hostPermitido(host: string): boolean {
+// Exportada para teste: é a fronteira de segurança deste arquivo.
+export function hostPermitido(host: string): boolean {
   const semPorta = host.split(":")[0].toLowerCase();
   return DOMINIOS_PERMITIDOS.some((d) => semPorta === d || semPorta.endsWith(`.${d}`));
 }
