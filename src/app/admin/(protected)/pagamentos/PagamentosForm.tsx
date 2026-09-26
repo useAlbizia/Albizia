@@ -33,6 +33,49 @@ export function PagamentosForm({ settings }: { settings: PagamentosSettings }) {
         </p>
       )}
 
+      {/* Onde achar as credenciais. Sem isto a tela pede duas chaves sem
+          dizer de onde saem, e a conta "de desenvolvedor" parece ser outra
+          conta (não é: é a mesma que recebe o dinheiro). */}
+      <details className="mb-6 border border-content/20">
+        <summary className="cursor-pointer px-4 py-3 text-[12px] uppercase tracking-[0.15em] text-content/70">
+          Onde encontrar essas credenciais
+        </summary>
+        <div className="border-t border-content/10 px-4 py-4 text-[12px] leading-relaxed text-content/55">
+          <p className="mb-3">
+            É a <strong className="font-medium">mesma conta</strong> do Mercado Pago que recebe o
+            dinheiro. Não existe conta de desenvolvedor separada: o painel de desenvolvedores é
+            uma área dentro da sua conta normal.
+          </p>
+          <ol className="flex list-decimal flex-col gap-1.5 pl-4">
+            <li>
+              Abra{" "}
+              <a
+                href="https://www.mercadopago.com.br/developers/panel/app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline underline-offset-2 hover:text-content"
+              >
+                mercadopago.com.br/developers/panel/app
+              </a>{" "}
+              e entre com a conta que recebe as vendas.
+            </li>
+            <li>Clique na sua aplicação. Se não houver nenhuma, crie uma (qualquer nome serve).</li>
+            <li>
+              No menu lateral, abra <strong className="font-medium">Credenciais de produção</strong>.
+            </li>
+            <li>Copie a Public Key e o Access Token para os campos abaixo e salve.</li>
+            <li>
+              Clique em <strong className="font-medium">Testar conexão</strong>: ele confirma de
+              qual conta é a credencial e se é produção ou teste.
+            </li>
+          </ol>
+          <p className="mt-3">
+            Credencial de <strong className="font-medium">teste</strong> não recebe dinheiro de
+            verdade, só simula com cartões fictícios. Para vender mesmo, use as de produção.
+          </p>
+        </div>
+      </details>
+
       <form action={action} className="flex flex-col gap-4">
         <span className={label}>Credenciais do Mercado Pago</span>
 
@@ -42,7 +85,12 @@ export function PagamentosForm({ settings }: { settings: PagamentosSettings }) {
             defaultValue={settings.publicKey}
             placeholder="Public Key (ex: APP_USR-xxxx)"
             className={input}
+            // O navegador via um campo de senha logo abaixo e enchia estes
+            // dois com o e-mail e a senha salvos do dono. Estes atributos
+            // desligam isso no Chrome, no 1Password e no LastPass.
             autoComplete="off"
+            data-1p-ignore="true"
+            data-lpignore="true"
             spellCheck={false}
           />
           <p className="text-[11px] text-content/40">
@@ -60,7 +108,12 @@ export function PagamentosForm({ settings }: { settings: PagamentosSettings }) {
                 : "Access Token (ex: APP_USR-xxxx)"
             }
             className={input}
-            autoComplete="off"
+            // "new-password" é o que o Chrome respeita. Com "off" ele ignora
+            // e oferece a senha salva do próprio painel, que foi o que
+            // aconteceu: o navegador enchia estes campos com e-mail e senha.
+            autoComplete="new-password"
+            data-1p-ignore="true"
+            data-lpignore="true"
             spellCheck={false}
           />
           <p className="text-[11px] text-content/40">
