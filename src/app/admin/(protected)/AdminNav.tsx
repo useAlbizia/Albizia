@@ -19,13 +19,13 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    // Só o que se olha no dia a dia. Frete e pagamento saíram daqui: são
+    // configuração que se mexe uma vez, não rotina de venda.
     title: "Vendas",
     items: [
       { href: "/admin/pedidos", label: "Pedidos" },
       { href: "/admin/carrinhos", label: "Recuperação" },
       { href: "/admin/clientes", label: "Clientes" },
-      { href: "/admin/frete", label: "Frete" },
-      { href: "/admin/pagamentos", label: "Pagamentos" },
     ],
   },
   {
@@ -41,6 +41,8 @@ const GROUPS: Group[] = [
   {
     title: "Configurações",
     items: [
+      { href: "/admin/pagamentos", label: "Meio de pagamento" },
+      { href: "/admin/frete", label: "Entrega e frete" },
       { href: "/admin/conteudo", label: "Conteúdo" },
       { href: "/admin/menu", label: "Menu" },
       { href: "/admin/usuarios", label: "Usuários" },
