@@ -179,8 +179,20 @@ export const siteSettings = pgTable("site_settings", {
   // server-side and never returned to the browser. mpPublicKey is meant to be
   // public — the Payment Brick needs it in the client to tokenize the card, so
   // the card number never touches our server.
+  // Preenchidos pelo OAuth (ou colados à mão, no caminho alternativo).
   mpPublicKey: text("mp_public_key").notNull().default(""),
   mpAccessToken: text("mp_access_token").notNull().default(""),
+  // ── Conexão por OAuth ──────────────────────────────────────────────
+  // Dados da APLICAÇÃO, que vive na conta de quem desenvolve. Configurados
+  // uma vez e não mudam mais.
+  mpClientId: text("mp_client_id").notNull().default(""),
+  mpClientSecret: text("mp_client_secret").notNull().default(""),
+  // Dados da CONTA CONECTADA, que é quem recebe o dinheiro. Vêm da
+  // autorização e são renovados sozinhos antes de vencer.
+  mpRefreshToken: text("mp_refresh_token").notNull().default(""),
+  mpUserId: text("mp_user_id").notNull().default(""),
+  mpConnectedAt: timestamp("mp_connected_at", { withTimezone: true }),
+  mpExpiresAt: timestamp("mp_expires_at", { withTimezone: true }),
   // Recuperação de venda. Um checkout parado é dinheiro na mesa: passado
   // recoveryMinutes sem pagar ele entra na fila, e acima de
   // recoveryHighValueCents dispara alerta para alguém ligar para o cliente.

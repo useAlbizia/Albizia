@@ -141,6 +141,13 @@
       "when": 1790326259589,
       "tag": "0019_freezing_morg",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1790417023514,
+      "tag": "0020_soft_mathemanic",
+      "breakpoints": true
     }
   ]
 }

@@ -1,28 +1,60 @@
-import { getPaymentSettings, isTestCredential } from "@/lib/payments";
+import { getPaymentSettings } from "@/lib/payments";
+import { getConnection } from "@/lib/mercadopago-oauth";
 import { PagamentosForm } from "./PagamentosForm";
 
 export const dynamic = "force-dynamic";
 
-export default async function PagamentosPage() {
-  const s = await getPaymentSettings();
+const ERROS: Record<string, string> = {
+  app_nao_configurada: "Informe a aplicação do Mercado Pago antes de conectar.",
+  autorizacao_negada: "A autorização foi cancelada no Mercado Pago.",
+  resposta_incompleta: "O Mercado Pago devolveu uma resposta incompleta. Tente de novo.",
+  state_invalido: "A volta do Mercado Pago não conferiu. Por segurança, comece de novo.",
+  troca_falhou: "O Mercado Pago recusou a conexão.",
+};
+
+export default async function PagamentosPage(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await props.searchParams;
+  const erro = typeof params.erro === "string" ? params.erro : undefined;
+  const detalhe = typeof params.detalhe === "string" ? params.detalhe : undefined;
+  const conectado = params.conectado === "1";
+
+  const [s, conexao] = await Promise.all([getPaymentSettings(), getConnection()]);
 
   return (
     <div>
       <h1 className="mb-2 text-sm uppercase tracking-[0.3em] text-content/60">Pagamentos</h1>
       <p className="mb-8 max-w-2xl text-[12px] leading-relaxed text-content/40">
-        Conecte a conta do Mercado Pago que vai receber as vendas. O Access Token fica guardado com
-        segurança no servidor e nunca é exposto no site. Pegue as duas credenciais em
-        mercadopago.com.br/developers, no menu Suas integrações, dentro da sua aplicação, em
-        Credenciais de produção.
+        Conecte a conta do Mercado Pago que vai receber as vendas. Nada aqui é exposto no site: o
+        que é segredo fica guardado no servidor e nunca volta para esta tela.
       </p>
+
+      {conectado && (
+        <p className="mb-6 max-w-lg border border-content/30 px-4 py-3 text-[12px] text-content/70">
+          Conta conectada com sucesso.
+        </p>
+      )}
+
+      {erro && (
+        <p className="mb-6 max-w-lg border border-content/30 px-4 py-3 text-[12px] leading-relaxed text-content/70">
+          {ERROS[erro] ?? "Não foi possível conectar."}
+          {detalhe ? ` (${detalhe})` : ""}
+        </p>
+      )}
 
       <PagamentosForm
         settings={{
-          // Only the public key crosses to the browser. The access token never
-          // leaves the server — the form receives a boolean, not the secret.
+          // Só o que pode cruzar para o navegador. Access token, client
+          // secret e refresh token nunca saem do servidor: o formulário
+          // recebe booleanos, não os valores.
           publicKey: s.publicKey,
           hasToken: !!s.accessToken,
-          isTest: isTestCredential(s.accessToken) || isTestCredential(s.publicKey),
+          appConfigurada: conexao.configurada,
+          clientId: conexao.clientId,
+          conectada: conexao.conectada,
+          contaId: conexao.userId,
+          conectadaEm: conexao.conectadaEm ? conexao.conectadaEm.toISOString() : null,
         }}
       />
     </div>

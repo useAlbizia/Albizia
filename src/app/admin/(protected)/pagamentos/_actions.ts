@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { siteSettings } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
 import { getPaymentSettings, isTestCredential, testMercadoPagoCredentials } from "@/lib/payments";
+import { disconnect } from "@/lib/mercadopago-oauth";
 
 export type PagamentosState = { ok?: boolean; error?: string; warning?: string };
 
@@ -51,26 +52,61 @@ export async function savePagamentos(
   revalidatePath("/", "layout");
   revalidatePath("/admin/pagamentos");
 
-  // A mismatched pair (one TEST, one production) silently breaks the checkout,
-  // so it is worth calling out at save time rather than at the first sale.
-  const effectiveToken = accessToken || (await getPaymentSettings()).accessToken;
-  const pkTest = isTestCredential(publicKey);
-  const atTest = isTestCredential(effectiveToken);
-
-  if (publicKey && effectiveToken && pkTest !== atTest) {
+  // Não dá para avisar "isto é teste" olhando a chave: no Mercado Pago atual
+  // as credenciais de teste e de produção começam iguais (APP_USR-). O aviso
+  // aqui é honesto sobre isso em vez de dar uma garantia que não existe.
+  const tokenEfetivo = accessToken || (await getPaymentSettings()).accessToken;
+  if (publicKey && tokenEfetivo) {
     return {
       ok: true,
       warning:
-        "Atenção: uma credencial é de teste e a outra é de produção. As duas precisam ser do mesmo ambiente.",
-    };
-  }
-  if (pkTest || atTest) {
-    return {
-      ok: true,
-      warning: "Credenciais de TESTE salvas. Nenhuma cobrança real será feita neste modo.",
+        "Salvo. Confirme no painel do Mercado Pago que você copiou da aba Produtivas, e não de Teste: as duas chaves começam igual e não há como diferenciar por aqui.",
     };
   }
   return { ok: true };
+}
+
+export type AppState = { ok?: boolean; error?: string };
+
+// Dados da APLICAÇÃO (client_id e secret). É a configuração de quem
+// desenvolve, feita uma vez. Depois disso, conectar a conta que recebe é só
+// clicar num botão, sem ninguém copiar chave.
+export async function saveMpApp(_prev: AppState, formData: FormData): Promise<AppState> {
+  await requireAdmin();
+
+  const clientId = String(formData.get("clientId") ?? "").trim();
+  const clientSecret = String(formData.get("clientSecret") ?? "").trim();
+
+  if (!clientId) return { error: "Informe o número da aplicação." };
+  if (!/^\d+$/.test(clientId)) return { error: "O número da aplicação só tem dígitos." };
+
+  const values: Record<string, unknown> = { mpClientId: clientId, updatedAt: new Date() };
+  // Segredo só é sobrescrito quando um novo é digitado.
+  if (clientSecret) values.mpClientSecret = clientSecret;
+
+  await db
+    .insert(siteSettings)
+    .values({ id: 1, ...values })
+    .onConflictDoUpdate({ target: siteSettings.id, set: values });
+
+  await logAudit({
+    action: "pagamentos.app_mp",
+    entity: "site_settings",
+    entityId: "1",
+    detail: { clientId, secretChanged: !!clientSecret },
+  });
+
+  revalidatePath("/admin/pagamentos");
+  return { ok: true };
+}
+
+export type DisconnectState = { ok?: boolean; error?: string };
+
+export async function desconectarMp(): Promise<void> {
+  await requireAdmin();
+  await disconnect();
+  await logAudit({ action: "pagamentos.desconectar_mp", entity: "site_settings", entityId: "1" });
+  revalidatePath("/admin/pagamentos");
 }
 
 export type TestState = {

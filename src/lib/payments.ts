@@ -2,6 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { siteSettings } from "./db/schema";
+import { getValidAccessToken } from "./mercadopago-oauth";
 
 // ── Mercado Pago credentials ─────────────────────────────────────────────
 // Kept in Admin → Pagamentos so the founder can connect the account without a
@@ -21,9 +22,17 @@ export type PaymentSettings = {
 
 export async function getPaymentSettings(): Promise<PaymentSettings> {
   const row = await db.query.siteSettings.findFirst({ where: eq(siteSettings.id, 1) });
+
+  // Com a conta conectada por OAuth, o token vence e precisa ser renovado.
+  // getValidAccessToken renova com antecedência, para a renovação nunca cair
+  // no meio de uma compra. Sem OAuth, vale o que foi colado à mão.
+  const accessToken = row?.mpRefreshToken
+    ? await getValidAccessToken()
+    : row?.mpAccessToken || process.env.MERCADOPAGO_ACCESS_TOKEN || "";
+
   return {
     publicKey: row?.mpPublicKey || process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY || "",
-    accessToken: row?.mpAccessToken || process.env.MERCADOPAGO_ACCESS_TOKEN || "",
+    accessToken,
   };
 }
 
@@ -39,11 +48,21 @@ export async function isPaymentConfigured(): Promise<boolean> {
   return !!s.accessToken && !!s.publicKey;
 }
 
-// Mercado Pago test credentials start with TEST-, production ones with
-// APP_USR-. Surfacing this in the admin stops the classic "we went live still
-// in sandbox and took no real money" failure.
-export function isTestCredential(value: string): boolean {
-  return value.trim().toUpperCase().startsWith("TEST-");
+// NÃO DÁ para saber se a credencial é de teste olhando o texto dela.
+//
+// O formato antigo usava prefixo TEST-, e uma versão anterior deste arquivo
+// checava isso. Está errado no Mercado Pago atual: as credenciais de TESTE
+// também começam com APP_USR-. O painel chegou a dizer "produção" para uma
+// credencial de teste por causa disso, que é pior do que não dizer nada.
+//
+// O que separa as duas é o seletor "Teste / Produtivas" no painel do Mercado
+// Pago, no momento de copiar. Isso não viaja junto com a chave.
+//
+// Onde dá para saber de verdade é no OAuth: a resposta do token traz
+// live_mode. Por isso a conexão por botão é também mais confiável que colar
+// chave à mão.
+export function isTestCredential(_value: string): boolean {
+  return false;
 }
 
 export type CredentialCheck =
@@ -73,11 +92,14 @@ export async function testMercadoPagoCredentials(accessToken: string): Promise<C
     }
 
     const data = (await res.json()) as { email?: string; nickname?: string };
+    // isTest fica sempre false: o texto da credencial não diz o ambiente.
+    // Quem informa isso de verdade é o seletor Teste/Produtivas no painel do
+    // Mercado Pago, na hora de copiar.
     return {
       ok: true,
       email: data.email ?? "",
       nickname: data.nickname ?? "",
-      isTest: isTestCredential(token),
+      isTest: false,
     };
   } catch {
     return { ok: false, message: "Não foi possível falar com o Mercado Pago. Tente de novo." };

@@ -1,0 +1,192 @@
+import "server-only";
+import { eq } from "drizzle-orm";
+import { db } from "./db/client";
+import { siteSettings } from "./db/schema";
+
+// ── Conexão da conta do Mercado Pago por OAuth ───────────────────────────
+//
+// Duas contas diferentes participam, e confundir as duas é o que torna isso
+// difícil de entender:
+//
+//  - A APLICAÇÃO vive na conta de quem desenvolve. Ela tem client_id e
+//    client_secret, configurados uma vez e nunca mais.
+//  - A CONTA CONECTADA é quem recebe o dinheiro. Ela autoriza clicando num
+//    botão, e nós guardamos os tokens dela. Pode ser a conta CNPJ da empresa,
+//    sem ninguém precisar copiar chave nenhuma.
+//
+// O access_token vence. O refresh_token serve para trocar por um novo sem
+// incomodar ninguém, e é isso que getValidAccessToken faz sozinho.
+
+const AUTORIZAR = "https://auth.mercadopago.com/authorization";
+const TOKEN = "https://api.mercadopago.com/oauth/token";
+
+// Renova com folga: esperar vencer significaria uma venda falhando primeiro.
+const FOLGA_MS = 7 * 24 * 60 * 60 * 1000;
+
+export type MpConnection = {
+  configurada: boolean; // a aplicação tem client_id e secret
+  clientId: string; // número da aplicação, não é segredo
+  conectada: boolean; // alguma conta autorizou
+  userId: string;
+  publicKey: string;
+  conectadaEm: Date | null;
+  expiraEm: Date | null;
+};
+
+async function row() {
+  return db.query.siteSettings.findFirst({ where: eq(siteSettings.id, 1) });
+}
+
+export async function getConnection(): Promise<MpConnection> {
+  const r = await row();
+  return {
+    configurada: !!(r?.mpClientId && r?.mpClientSecret),
+    clientId: r?.mpClientId ?? "",
+    conectada: !!r?.mpRefreshToken,
+    userId: r?.mpUserId ?? "",
+    publicKey: r?.mpPublicKey ?? "",
+    conectadaEm: r?.mpConnectedAt ?? null,
+    expiraEm: r?.mpExpiresAt ?? null,
+  };
+}
+
+export function buildAuthorizationUrl(params: {
+  clientId: string;
+  redirectUri: string;
+  state: string;
+}): string {
+  const u = new URL(AUTORIZAR);
+  u.searchParams.set("client_id", params.clientId);
+  u.searchParams.set("response_type", "code");
+  u.searchParams.set("platform_id", "mp");
+  u.searchParams.set("state", params.state);
+  u.searchParams.set("redirect_uri", params.redirectUri);
+  return u.toString();
+}
+
+type TokenResponse = {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
+  user_id?: number | string;
+  public_key?: string;
+  live_mode?: boolean;
+  message?: string;
+  error?: string;
+};
+
+async function pedirToken(body: Record<string, string>): Promise<TokenResponse & { ok: boolean }> {
+  const res = await fetch(TOKEN, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const data = (await res.json().catch(() => ({}))) as TokenResponse;
+  return { ...data, ok: res.ok };
+}
+
+// Troca o código da autorização pelos tokens e guarda tudo.
+export async function exchangeCodeForTokens(
+  code: string,
+  redirectUri: string,
+): Promise<{ ok: true; userId: string; liveMode: boolean } | { ok: false; error: string }> {
+  const r = await row();
+  if (!r?.mpClientId || !r?.mpClientSecret) {
+    return { ok: false, error: "A aplicação não está configurada." };
+  }
+
+  const data = await pedirToken({
+    client_id: r.mpClientId,
+    client_secret: r.mpClientSecret,
+    grant_type: "authorization_code",
+    code,
+    redirect_uri: redirectUri,
+  });
+
+  if (!data.ok || !data.access_token || !data.refresh_token) {
+    return { ok: false, error: data.message ?? data.error ?? "O Mercado Pago recusou a conexão." };
+  }
+
+  const expiraEm = new Date(Date.now() + (data.expires_in ?? 0) * 1000);
+
+  await db
+    .update(siteSettings)
+    .set({
+      mpAccessToken: data.access_token,
+      mpRefreshToken: data.refresh_token,
+      mpPublicKey: data.public_key ?? "",
+      mpUserId: String(data.user_id ?? ""),
+      mpConnectedAt: new Date(),
+      mpExpiresAt: expiraEm,
+      updatedAt: new Date(),
+    })
+    .where(eq(siteSettings.id, 1));
+
+  return { ok: true, userId: String(data.user_id ?? ""), liveMode: data.live_mode !== false };
+}
+
+// Renova o access_token usando o refresh_token. Chamado sozinho quando a
+// validade está perto do fim.
+async function refresh(): Promise<boolean> {
+  const r = await row();
+  if (!r?.mpClientId || !r?.mpClientSecret || !r?.mpRefreshToken) return false;
+
+  const data = await pedirToken({
+    client_id: r.mpClientId,
+    client_secret: r.mpClientSecret,
+    grant_type: "refresh_token",
+    refresh_token: r.mpRefreshToken,
+  });
+
+  if (!data.ok || !data.access_token) {
+    console.error("Mercado Pago: falha ao renovar o token", data.message ?? data.error);
+    return false;
+  }
+
+  await db
+    .update(siteSettings)
+    .set({
+      mpAccessToken: data.access_token,
+      // O MP pode devolver um refresh novo; quando não devolve, o antigo vale.
+      mpRefreshToken: data.refresh_token || r.mpRefreshToken,
+      mpExpiresAt: new Date(Date.now() + (data.expires_in ?? 0) * 1000),
+      updatedAt: new Date(),
+    })
+    .where(eq(siteSettings.id, 1));
+
+  return true;
+}
+
+// Token pronto para cobrar. Renova antes de vencer, para a renovação nunca
+// cair no meio de uma compra.
+export async function getValidAccessToken(): Promise<string> {
+  const r = await row();
+  if (!r) return "";
+
+  const conectado = !!r.mpRefreshToken;
+  const vencendo = r.mpExpiresAt ? r.mpExpiresAt.getTime() - Date.now() < FOLGA_MS : false;
+
+  if (conectado && vencendo) {
+    await refresh();
+    const novo = await row();
+    return novo?.mpAccessToken ?? "";
+  }
+
+  return r.mpAccessToken ?? "";
+}
+
+export async function disconnect(): Promise<void> {
+  await db
+    .update(siteSettings)
+    .set({
+      mpAccessToken: "",
+      mpRefreshToken: "",
+      mpPublicKey: "",
+      mpUserId: "",
+      mpConnectedAt: null,
+      mpExpiresAt: null,
+      updatedAt: new Date(),
+    })
+    .where(eq(siteSettings.id, 1));
+}
