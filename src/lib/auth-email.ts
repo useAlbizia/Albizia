@@ -1,6 +1,6 @@
 import "server-only";
 import { adminGenerateRecoveryLink } from "./supabase/admin";
-import { sendEmail, emailShell, emailButton } from "./email";
+import { sendEmailDetailed, emailShell, emailButton } from "./email";
 import { getSiteOrigin } from "./site-url";
 
 // E-mail de recuperação de senha com a cara da ALBIZIA.
@@ -50,7 +50,7 @@ export async function sendBrandedRecoveryEmail(
     return { ok: false, error: error ?? "Não foi possível gerar o link." };
   }
 
-  const enviado = await sendEmail({
+  const enviado = await sendEmailDetailed({
     to: email,
     subject: t.assunto,
     html: emailShell(
@@ -67,6 +67,8 @@ export async function sendBrandedRecoveryEmail(
     ),
   });
 
-  if (!enviado) return { ok: false, error: "Não foi possível enviar o e-mail agora." };
+  // O motivo real sobe para quem está no painel: sem isso, "não foi possível
+  // enviar" não distingue chave ausente na Vercel de domínio não verificado.
+  if (!enviado.ok) return { ok: false, error: enviado.reason };
   return { ok: true };
 }

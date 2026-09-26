@@ -11,12 +11,33 @@ type SendArgs = {
   replyTo?: string;
 };
 
-export async function sendEmail({ to, subject, html, replyTo }: SendArgs): Promise<boolean> {
+export type SendResult = { ok: true } | { ok: false; reason: string };
+
+// Versão que explica a falha. Telas de admin usam esta: "não foi possível
+// enviar" não diz a quem está olhando se falta configurar a chave na Vercel,
+// se o domínio não está verificado ou se o Resend recusou o destinatário.
+// Fluxos voltados ao cliente continuam usando sendEmail(), que só devolve
+// true/false e nunca vaza detalhe de infraestrutura.
+export async function sendEmailDetailed({
+  to,
+  subject,
+  html,
+  replyTo,
+}: SendArgs): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM ?? "ALBIZIA <onboarding@resend.dev>";
+
   if (!key) {
     console.warn("RESEND_API_KEY not set — skipping email:", subject);
-    return false;
+    return {
+      ok: false,
+      reason:
+        "O envio de e-mail não está configurado: falta a variável RESEND_API_KEY no ambiente da Vercel.",
+    };
+  }
+
+  if (from.includes("onboarding@resend.dev")) {
+    console.warn("EMAIL_FROM not set — using Resend's test sender");
   }
 
   try {
@@ -25,17 +46,32 @@ export async function sendEmail({ to, subject, html, replyTo }: SendArgs): Promi
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
       body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
     });
+
     if (!res.ok) {
-      // Most common pre-domain-verification failure: Resend 403 for sending to
-      // a non-owner address. Logged, but never surfaced to the customer.
-      console.error("Resend send failed", res.status, await res.text().catch(() => ""));
-      return false;
+      const corpo = await res.text().catch(() => "");
+      console.error("Resend send failed", res.status, corpo);
+
+      if (res.status === 401 || res.status === 403) {
+        return {
+          ok: false,
+          reason: `O Resend recusou o envio (${res.status}). Confira se a RESEND_API_KEY da Vercel é válida e se o remetente ${from} usa um domínio verificado.`,
+        };
+      }
+      if (res.status === 429) {
+        return { ok: false, reason: "O Resend está limitando o envio agora. Tente em instantes." };
+      }
+      return { ok: false, reason: `O Resend respondeu com erro ${res.status}.` };
     }
-    return true;
+
+    return { ok: true };
   } catch (err) {
     console.error("Resend request error", err);
-    return false;
+    return { ok: false, reason: "Não foi possível falar com o Resend." };
   }
+}
+
+export async function sendEmail(args: SendArgs): Promise<boolean> {
+  return (await sendEmailDetailed(args)).ok;
 }
 
 const BRAND = "#121212";

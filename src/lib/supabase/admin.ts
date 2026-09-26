@@ -84,10 +84,14 @@ export async function adminGenerateRecoveryLink(params: {
   const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/generate_link`, {
     method: "POST",
     headers: adminHeaders(),
+    // `redirect_to` vai na RAIZ do corpo. Dentro de `options` (que é a
+    // convenção do cliente JS) a API REST ignora em silêncio e devolve o
+    // Site URL, mandando quem clica para a home em vez da tela de senha.
+    // Verificado na API real: só a forma raiz preserva o destino.
     body: JSON.stringify({
       type: "recovery",
       email: params.email,
-      options: { redirect_to: params.redirectTo },
+      redirect_to: params.redirectTo,
     }),
   });
 
