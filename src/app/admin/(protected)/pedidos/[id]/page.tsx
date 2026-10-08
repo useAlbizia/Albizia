@@ -5,9 +5,11 @@ import { orders } from "@/lib/db/schema";
 import { brl } from "@/lib/format";
 import { getSiteSettings } from "@/lib/settings";
 import { cfopFor, formatDocument, ncmFor, reais } from "@/lib/fiscal";
+import { faltaParaEtiqueta, getShippingSettings } from "@/lib/shipping";
 import { StatusControl } from "./StatusControl";
 import { TrackingForm } from "./TrackingForm";
 import { DadosNotaFiscal } from "./DadosNotaFiscal";
+import { EtiquetaPanel } from "./EtiquetaPanel";
 
 type ShippingAddress = {
   street: string;
@@ -33,6 +35,7 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
   // Dados prontos para digitar no emissor. A loja é MEI e emite manualmente,
   // então o trabalho aqui é juntar tudo em ordem, não emitir.
   const config = await getSiteSettings();
+  const freteSettings = await getShippingSettings();
   const cfop = cfopFor(config.storeUf, address.state ?? "");
   const enderecoUmaLinha = [
     `${address.street}, ${address.number}`,
@@ -171,6 +174,25 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
           Ao salvar, o pedido é marcado como “Enviado” e o cliente recebe o código por e-mail.
         </p>
       </div>
+
+      <EtiquetaPanel
+        info={{
+          orderId: order.id,
+          pago: order.status === "paid" || order.status === "shipped",
+          servico: order.meServiceName
+            ? `${order.meCompany ?? ""} ${order.meServiceName}`.trim()
+            : null,
+          meStatus: order.meStatus,
+          custo: order.meLabelCostCents === null ? null : brl(order.meLabelCostCents),
+          freteCobrado: brl(order.shippingCents),
+          margem: order.meLabelCostCents === null ? null : brl(order.shippingCents - order.meLabelCostCents),
+          margemNegativa:
+            order.meLabelCostCents !== null && order.shippingCents - order.meLabelCostCents < 0,
+          labelUrl: order.meLabelUrl,
+          trackingCode: order.trackingCode,
+          falta: faltaParaEtiqueta(freteSettings),
+        }}
+      />
 
       <DadosNotaFiscal
         destinatario={destinatario}
