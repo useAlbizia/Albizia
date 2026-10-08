@@ -7,6 +7,7 @@ import { db } from "@/lib/db/client";
 import { orders } from "@/lib/db/schema";
 import { sendEmail, emailShell } from "@/lib/email";
 import { logAudit } from "@/lib/audit";
+import { resendCustomerReceipt } from "@/lib/order-notify";
 
 const VALID_STATUSES = ["pending", "paid", "shipped", "cancelled", "refunded"] as const;
 type OrderStatus = (typeof VALID_STATUSES)[number];
@@ -65,4 +66,56 @@ export async function saveTracking(
   revalidatePath("/admin/pedidos");
   revalidatePath(`/admin/pedidos/${orderId}`);
   return { ok: true };
+}
+
+export type EmailFixState = { ok?: boolean; error?: string; mensagem?: string };
+
+/**
+ * Corrige o e-mail de um pedido pelo painel e, se pedido, reenvia o recibo.
+ *
+ * É o último elo da cadeia do cliente que digitou "gmial": ele liga com o
+ * número do pedido, vocês acham o pedido pela busca, corrigem aqui, e a
+ * confirmação que nunca chegou finalmente chega. Ao contrário da correção
+ * feita pelo próprio cliente, esta vale em qualquer status.
+ */
+export async function corrigirEmailAdmin(
+  orderId: string,
+  _prev: EmailFixState,
+  formData: FormData
+): Promise<EmailFixState> {
+  await requireAdmin();
+
+  const email = ((formData.get("email") as string | null) ?? "").trim().toLowerCase();
+  const reenviar = formData.get("reenviar") === "on";
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: "E-mail inválido." };
+
+  const order = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
+  if (!order) return { error: "Pedido não encontrado." };
+
+  const anterior = order.customerEmail;
+  await db
+    .update(orders)
+    .set({ customerEmail: email, updatedAt: new Date() })
+    .where(eq(orders.id, orderId));
+
+  await logAudit({
+    action: "order.email",
+    entity: "order",
+    entityId: orderId,
+    detail: { orderNumber: order.orderNumber, de: anterior, para: email },
+  });
+
+  let mensagem = "E-mail corrigido.";
+  // Recibo só faz sentido para pedido que foi pago. Reenviar "pagamento
+  // confirmado" de um pedido pendente seria mentir para o cliente.
+  if (reenviar && (order.status === "paid" || order.status === "shipped")) {
+    const ok = await resendCustomerReceipt(orderId);
+    mensagem = ok ? "E-mail corrigido e confirmação reenviada." : "E-mail corrigido, mas o reenvio falhou.";
+  } else if (reenviar) {
+    mensagem = "E-mail corrigido. Não reenviei a confirmação porque o pedido ainda não foi pago.";
+  }
+
+  revalidatePath("/admin/pedidos");
+  revalidatePath(`/admin/pedidos/${orderId}`);
+  return { ok: true, mensagem };
 }

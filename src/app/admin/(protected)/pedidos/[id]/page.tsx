@@ -10,6 +10,7 @@ import { StatusControl } from "./StatusControl";
 import { TrackingForm } from "./TrackingForm";
 import { DadosNotaFiscal } from "./DadosNotaFiscal";
 import { EtiquetaPanel } from "./EtiquetaPanel";
+import { EmailClienteForm } from "./EmailClienteForm";
 
 type ShippingAddress = {
   street: string;
@@ -110,8 +111,12 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
         <div>
           <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-content/50">Cliente</p>
           <p className="text-sm">{order.customerName}</p>
-          <p className="text-sm text-content/60">{order.customerEmail}</p>
           <p className="text-sm text-content/60">{order.customerPhone}</p>
+          <EmailClienteForm
+            orderId={order.id}
+            email={order.customerEmail}
+            pago={order.status === "paid" || order.status === "shipped"}
+          />
         </div>
 
         <div>

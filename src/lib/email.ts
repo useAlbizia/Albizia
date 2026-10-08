@@ -79,7 +79,7 @@ const MUTED = "#55534e";
 const FAINT = "#9a948a";
 const PAGE = "#ece6da";
 const LINE = "#eee9e0";
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://usealbizia.com.br";
+export const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://usealbizia.com.br";
 
 // A CTA button, e.g. `${emailButton("Ver coleção", `${SITE}/produtos`)}`.
 // Bulletproof-ish (padded anchor) so it renders across mail clients.
