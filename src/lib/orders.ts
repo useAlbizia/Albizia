@@ -85,3 +85,41 @@ export async function getOrderForTracking(
     })),
   };
 }
+
+export type OrderReceipt = {
+  orderNumber: number;
+  customerEmail: string;
+  trackUrl: string;
+};
+
+/**
+ * O comprovante mostrado logo depois de pagar, buscado pelo id do pedido.
+ *
+ * O id é UUID aleatório e só quem acabou de comprar tem o link, então buscar
+ * por ele não expõe pedido de ninguém. É de propósito que devolve pouca
+ * coisa: só o que a pessoa precisa para voltar ao pedido depois.
+ *
+ * POR QUE ISSO EXISTE: antes a tela dizia só "Pedido recebido" e limpava o
+ * carrinho. Quem digitasse o e-mail errado ficava sem nada: sem e-mail, sem
+ * número, e sem conseguir buscar em /acompanhar, porque lá o e-mail precisa
+ * bater. Pagou e sumiu.
+ */
+export async function getOrderReceipt(orderId: string): Promise<OrderReceipt | null> {
+  if (!orderId || !/^[0-9a-f-]{36}$/i.test(orderId)) return null;
+
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+    columns: { orderNumber: true, customerEmail: true },
+  });
+  if (!order) return null;
+
+  const params = new URLSearchParams({
+    numero: String(order.orderNumber),
+    email: order.customerEmail,
+  });
+  return {
+    orderNumber: order.orderNumber,
+    customerEmail: order.customerEmail,
+    trackUrl: `/acompanhar?${params.toString()}`,
+  };
+}

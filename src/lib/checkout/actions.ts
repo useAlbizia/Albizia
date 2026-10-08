@@ -1,6 +1,6 @@
 "use server";
 
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
@@ -262,4 +262,41 @@ export async function createPendingOrder(
   // processed the amount is re-read from THIS row, so a tampered client can
   // never change what gets charged.
   return { orderId: order.id, totalCents };
+}
+
+/**
+ * Corrige o e-mail de um pedido que ainda não foi pago.
+ *
+ * O cliente vê o próprio endereço na tela de pagamento e às vezes descobre ali
+ * que digitou "gmial". Sem isto, voltar na tela não adiantaria: o pedido já
+ * está gravado, e um e-mail errado deixa a compra inalcançável para sempre
+ * (não chega confirmação, e /acompanhar exige que o e-mail bata).
+ *
+ * Só vale enquanto está "pending", e o id é UUID aleatório que só quem comprou
+ * tem. Depois de pago, mudar para onde vai a confirmação passa a ser coisa do
+ * painel, não de quem tiver o link.
+ */
+export async function corrigirEmailDoPedido(
+  orderId: string,
+  novoEmail: string
+): Promise<{ ok: true; email: string } | { error: string }> {
+  const email = (novoEmail ?? "").trim().toLowerCase();
+  if (!z.string().email().safeParse(email).success) return { error: "E-mail inválido." };
+  if (!/^[0-9a-f-]{36}$/i.test(orderId)) return { error: "Pedido inválido." };
+
+  const order = await db.query.orders.findFirst({
+    where: eq(orders.id, orderId),
+    columns: { id: true, status: true },
+  });
+  if (!order) return { error: "Pedido não encontrado." };
+  if (order.status !== "pending") {
+    return { error: "Este pedido já foi pago. Fale com a gente para corrigir." };
+  }
+
+  await db
+    .update(orders)
+    .set({ customerEmail: email, updatedAt: new Date() })
+    .where(eq(orders.id, orderId));
+
+  return { ok: true, email };
 }

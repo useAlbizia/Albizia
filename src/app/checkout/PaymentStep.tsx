@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { initMercadoPago, Payment } from "@mercadopago/sdk-react";
+import { corrigirEmailDoPedido } from "@/lib/checkout/actions";
 
 // The Payment Brick, rendered on our own page. Mercado Pago processes the
 // charge, but the customer never leaves ALBIZIA. The card number is tokenized
@@ -31,6 +32,14 @@ export function PaymentStep({
   const [ready, setReady] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // O e-mail do pedido, corrigível aqui porque é a última tela antes de pagar
+  // e o pedido já está gravado: só mudar o que está na tela não resolveria.
+  const [emailAtual, setEmailAtual] = useState(email);
+  const [editando, setEditando] = useState(false);
+  const [rascunho, setRascunho] = useState(email);
+  const [emailErro, setEmailErro] = useState<string | null>(null);
+  const [salvandoEmail, startEmail] = useTransition();
 
   useEffect(() => {
     if (!publicKey) return;
@@ -135,9 +144,71 @@ export function PaymentStep({
 
   return (
     <div>
+      {/* A ÚLTIMA CHANCE DE PEGAR O ERRO DE DIGITAÇÃO.
+          Confirmação, rastreio e recuperação de pedido dependem todos deste
+          endereço. Dentro do campo do formulário a pessoa já parou de olhar
+          para ele; isolado numa linha, ela enxerga o próprio "gmial.com".
+          Depois que pagar, um e-mail errado deixa o pedido inalcançável. */}
+      <div className="mb-5 border border-content/15 px-4 py-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11px] uppercase tracking-[0.15em] text-content/40">
+              Confirmação e rastreio vão para
+            </p>
+            <p className="mt-0.5 break-all text-sm">{emailAtual}</p>
+          </div>
+          {!editando && (
+            <button
+              type="button"
+              onClick={() => {
+                setRascunho(emailAtual);
+                setEmailErro(null);
+                setEditando(true);
+              }}
+              className="shrink-0 text-[11px] uppercase tracking-[0.1em] text-content/45 underline underline-offset-4 transition-colors hover:text-content"
+            >
+              Não é esse, corrigir
+            </button>
+          )}
+        </div>
+
+        {editando && (
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+            <input
+              type="email"
+              value={rascunho}
+              onChange={(e) => setRascunho(e.target.value)}
+              autoFocus
+              className="flex-1 border border-content/30 bg-transparent px-3 py-2 text-sm outline-none focus:border-content"
+            />
+            <button
+              type="button"
+              disabled={salvandoEmail}
+              onClick={() =>
+                startEmail(async () => {
+                  const r = await corrigirEmailDoPedido(orderId, rascunho);
+                  if ("error" in r) {
+                    setEmailErro(r.error);
+                    return;
+                  }
+                  setEmailAtual(r.email);
+                  setEditando(false);
+                  setEmailErro(null);
+                })
+              }
+              className="shrink-0 border border-content px-5 py-2 text-[11px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50"
+            >
+              {salvandoEmail ? "..." : "Salvar"}
+            </button>
+          </div>
+        )}
+        {emailErro && <p className="mt-2 text-[12px] text-content/70">{emailErro}</p>}
+      </div>
+
       {ready && (
         <Payment
-          initialization={{ amount: amountCents / 100, payer: { email } }}
+          key={emailAtual}
+          initialization={{ amount: amountCents / 100, payer: { email: emailAtual } }}
           customization={{
             paymentMethods: {
               creditCard: "all",
