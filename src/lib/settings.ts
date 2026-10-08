@@ -18,6 +18,9 @@ export type SiteSettings = {
   shippingFlatCents: number;
   freeShippingThresholdCents: number;
   lowStockThreshold: number;
+  introEnabled: boolean;
+  brandSlideEnabled: boolean;
+  brandSlidePosition: "first" | "last";
 };
 
 const DEFAULTS: SiteSettings = {
@@ -36,6 +39,9 @@ const DEFAULTS: SiteSettings = {
   shippingFlatCents: 0,
   freeShippingThresholdCents: 0,
   lowStockThreshold: 3,
+  introEnabled: true,
+  brandSlideEnabled: true,
+  brandSlidePosition: "last",
 };
 
 export async function getSiteSettings(): Promise<SiteSettings> {
@@ -57,6 +63,9 @@ export async function getSiteSettings(): Promise<SiteSettings> {
     shippingFlatCents: row.shippingFlatCents,
     freeShippingThresholdCents: row.freeShippingThresholdCents,
     lowStockThreshold: row.lowStockThreshold,
+    introEnabled: row.introEnabled,
+    brandSlideEnabled: row.brandSlideEnabled,
+    brandSlidePosition: row.brandSlidePosition === "first" ? "first" : "last",
   };
 }
 

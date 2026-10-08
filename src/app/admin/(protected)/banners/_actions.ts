@@ -6,7 +6,7 @@ import { eq, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
-import { banners } from "@/lib/db/schema";
+import { banners, siteSettings } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
 
 export type BannerState = { ok?: boolean; error?: string };
@@ -99,4 +99,33 @@ export async function deleteBanner(id: string) {
   await db.delete(banners).where(eq(banners.id, id));
   await logAudit({ action: "banner.delete", entity: "banner", entityId: id });
   refresh();
+}
+
+/**
+ * Abertura da árvore e slide da marca.
+ *
+ * As duas coisas são decisão de marca e mudam conforme a época (numa
+ * campanha forte talvez a árvore vá para o fim; num lançamento, para o
+ * começo), então ficam no painel em vez de presas no código.
+ */
+export async function saveHomeMarca(_prev: BannerState, formData: FormData): Promise<BannerState> {
+  await requireAdmin();
+
+  const introEnabled = formData.get("introEnabled") === "on";
+  const brandSlideEnabled = formData.get("brandSlideEnabled") === "on";
+  const brandSlidePosition = formData.get("brandSlidePosition") === "first" ? "first" : "last";
+
+  await db
+    .update(siteSettings)
+    .set({ introEnabled, brandSlideEnabled, brandSlidePosition, updatedAt: new Date() })
+    .where(eq(siteSettings.id, 1));
+
+  await logAudit({
+    action: "settings.home_marca",
+    entity: "site_settings",
+    entityId: "1",
+    detail: { introEnabled, brandSlideEnabled, brandSlidePosition },
+  });
+  refresh();
+  return { ok: true };
 }

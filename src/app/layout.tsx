@@ -51,6 +51,11 @@ export const metadata: Metadata = {
 // branca a cada carregamento, que é justamente o que incomoda.
 const THEME_INIT_SCRIPT = `(function(){try{var p=location.pathname,f=null;try{f=localStorage.getItem('albizia-admin-theme')}catch(e){}var t;if((p==='/admin'||p.indexOf('/admin/')===0)&&(f==='dark'||f==='light')){t=f}else{var h=new Date().getHours();t=(h>=18||h<6)?'dark':'light'}document.documentElement.setAttribute('data-theme',t)}catch(e){}})();`;
 
+// A abertura da árvore aparece uma vez por visitante. Este script roda antes
+// da pintura e esconde ela para quem já viu; feito depois, no React, a
+// pessoa veria um quadro da abertura piscar a cada visita.
+const INTRO_INIT_SCRIPT = `(function(){try{if(localStorage.getItem('albizia-intro-visto'))document.documentElement.setAttribute('data-intro','visto')}catch(e){}})();`;
+
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [settings, menu] = await Promise.all([getSiteSettings(), getMenu()]);
   return (
@@ -61,6 +66,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: INTRO_INIT_SCRIPT }} />
       </head>
       <body className="flex min-h-full flex-col bg-surface text-content">
         <ThemeProvider>

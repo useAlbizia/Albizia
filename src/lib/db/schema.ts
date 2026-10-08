@@ -254,6 +254,14 @@ export const siteSettings = pgTable("site_settings", {
   // estado usa 5102, para fora usa 6102. Sem isso a exportação não
   // conseguiria preencher esse campo sozinha.
   storeUf: text("store_uf").notNull().default(""),
+  // ── Home: abertura e slide da marca ──────────────────────────────────
+  // A árvore desenhando na primeira visita, uma vez por visitante, e depois
+  // como um slide do banner. Os dois são chave no painel porque são decisão
+  // de marca, não de código.
+  introEnabled: boolean("intro_enabled").notNull().default(true),
+  brandSlideEnabled: boolean("brand_slide_enabled").notNull().default(true),
+  // "first" | "last": onde o slide da árvore entra entre as campanhas.
+  brandSlidePosition: text("brand_slide_position").notNull().default("last"),
   // A variant at or below this stock count is flagged "low" on the dashboard
   // and in the daily low-stock alert email.
   lowStockThreshold: integer("low_stock_threshold").notNull().default(3),

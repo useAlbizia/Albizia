@@ -98,3 +98,72 @@ input {
     animation: none;
   }
 }
+
+/* ── Abertura da árvore ────────────────────────────────────────────────
+   CSS puro de propósito. Assim ela está na tela desde o primeiro quadro
+   (sem piscar a página antes), e some sozinha aos ~2,4s mesmo que o
+   JavaScript demore ou falhe. Quem já viu recebe data-intro="visto" no <html>
+   por um script que roda antes da pintura, e nunca vê nem um quadro dela. */
+.intro-albizia {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: var(--surface);
+  color: var(--content);
+  animation: intro-sai 0.5s ease 1.9s forwards;
+  cursor: pointer;
+}
+html[data-intro="visto"] .intro-albizia {
+  display: none;
+}
+@keyframes intro-sai {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.intro-albizia .intro-traco {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: intro-desenha var(--dur) cubic-bezier(0.22, 1, 0.36, 1) var(--ini) forwards;
+}
+@keyframes intro-desenha {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.intro-albizia .intro-esboco {
+  animation: intro-some 0.4s ease 1.45s forwards;
+}
+.intro-albizia .intro-solido,
+.intro-albizia .intro-nome {
+  opacity: 0;
+  animation: intro-aparece 0.6s ease forwards;
+}
+.intro-albizia .intro-solido {
+  animation-delay: 1.15s;
+}
+.intro-albizia .intro-nome {
+  animation-delay: 1.3s;
+}
+@keyframes intro-some {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes intro-aparece {
+  to {
+    opacity: 1;
+  }
+}
+/* Quem pediu menos movimento ao sistema não recebe animação de abertura. */
+@media (prefers-reduced-motion: reduce) {
+  .intro-albizia {
+    display: none;
+  }
+}

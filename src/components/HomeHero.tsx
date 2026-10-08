@@ -2,60 +2,23 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Wordmark } from "@/components/logo/Wordmark";
-import { AnimatedSymbolDraw } from "@/components/AnimatedSymbolDraw";
 import { ProductCover } from "@/components/ProductImage";
 import { CollectionRow } from "@/components/CollectionRow";
 import type { CollectionInfo, Product } from "@/lib/products";
-import { fadeSlow, riseIn, staggerChildren } from "@/lib/motion";
+import { fadeSlow, riseIn } from "@/lib/motion";
 
+// O topo da home (árvore, nome, frase) virou o slide da marca dentro do
+// banner (ver BrandSlide e HeroBanners), configurável no painel. Daqui para
+// baixo são as vitrines.
 export function HomeHero({
   collections,
   featured,
-  hideHero = false,
 }: {
   collections: CollectionInfo[];
   featured: Product[];
-  hideHero?: boolean;
 }) {
   return (
     <>
-      {/* Hero, kept intentionally shorter than full height so the first
-          pieces peek in below the fold, inviting the scroll. Hidden when the
-          admin has active home banners (the carousel becomes the hero). */}
-      {!hideHero && (
-      <section className="relative flex min-h-[64vh] flex-col items-center justify-center overflow-hidden px-6 pt-10 pb-6 text-center">
-        <motion.div
-          initial="hidden"
-          animate="visible"
-          variants={staggerChildren(0.3)}
-          className="flex flex-col items-center gap-5"
-        >
-          <AnimatedSymbolDraw className="h-32 sm:h-40" />
-
-          <motion.div variants={riseIn}>
-            <Wordmark className="h-7 w-auto text-content sm:h-9" />
-          </motion.div>
-
-          <motion.p
-            variants={riseIn}
-            className="max-w-md text-sm uppercase tracking-[0.3em] text-content/60"
-          >
-            Silence becomes style.
-          </motion.p>
-
-          <motion.div variants={riseIn}>
-            <Link
-              href="/colecoes"
-              className="inline-block border border-content px-8 py-3 text-[13px] uppercase tracking-[0.2em] text-content transition-colors hover:bg-content hover:text-surface"
-            >
-              Ver coleções
-            </Link>
-          </motion.div>
-        </motion.div>
-      </section>
-      )}
-
       {featured.length > 0 && (
         <section className="mx-auto max-w-6xl px-6 pb-24 pt-6">
           <h2 className="mb-10 text-center text-sm uppercase tracking-[0.3em] text-content/60">
