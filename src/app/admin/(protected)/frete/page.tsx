@@ -1,4 +1,4 @@
-import { getShippingSettings } from "@/lib/shipping";
+import { faltaParaEtiqueta, getShippingSettings, tokenVemDoAmbiente } from "@/lib/shipping";
 import { FreteForm } from "./FreteForm";
 
 export const dynamic = "force-dynamic";
@@ -22,10 +22,23 @@ export default async function FretePage() {
           freeThresholdReais: (s.freeThresholdCents / 100).toFixed(2),
           meFromCep: s.meFromCep,
           hasToken: !!s.meToken,
+          tokenNoAmbiente: tokenVemDoAmbiente(s.meEnvironment),
+          meEnvironment: s.meEnvironment,
           meWeight: s.meWeightGrams,
           meLength: s.meLengthCm,
           meWidth: s.meWidthCm,
           meHeight: s.meHeightCm,
+          meFromName: s.meFrom.name,
+          meFromDocument: s.meFrom.companyDocument ?? "",
+          meFromPhone: s.meFrom.phone,
+          meFromEmail: s.meFrom.email,
+          meFromAddress: s.meFrom.address,
+          meFromNumber: s.meFrom.number,
+          meFromComplement: s.meFrom.complement,
+          meFromDistrict: s.meFrom.district,
+          meFromCity: s.meFrom.city,
+          meFromState: s.meFrom.stateAbbr,
+          falta: faltaParaEtiqueta(s),
         }}
       />
     </div>

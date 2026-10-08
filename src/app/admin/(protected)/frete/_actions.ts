@@ -6,7 +6,12 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { siteSettings } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
-import { getShippingSettings, testMelhorEnvioToken } from "@/lib/shipping";
+import {
+  activeMeToken,
+  faltaParaEtiqueta,
+  getShippingSettings,
+  testMelhorEnvioToken,
+} from "@/lib/shipping";
 
 export type FreteState = { ok?: boolean; error?: string };
 
@@ -16,10 +21,23 @@ const schema = z.object({
   freeThreshold: z.coerce.number().min(0).default(0),
   meFromCep: z.string().max(9).default(""),
   meToken: z.string().default(""), // blank = keep current
+  meEnvironment: z.enum(["production", "sandbox"]).default("production"),
   meWeight: z.coerce.number().int().min(1).default(300),
   meLength: z.coerce.number().int().min(1).default(20),
   meWidth: z.coerce.number().int().min(1).default(20),
   meHeight: z.coerce.number().int().min(1).default(4),
+  // Remetente. A cotação precisa só do CEP, mas a COMPRA da etiqueta exige
+  // tudo isto, e o Melhor Envio recusa o carrinho se faltar um campo.
+  meFromName: z.string().max(120).default(""),
+  meFromDocument: z.string().max(20).default(""),
+  meFromPhone: z.string().max(20).default(""),
+  meFromEmail: z.string().max(120).default(""),
+  meFromAddress: z.string().max(160).default(""),
+  meFromNumber: z.string().max(20).default(""),
+  meFromComplement: z.string().max(80).default(""),
+  meFromDistrict: z.string().max(80).default(""),
+  meFromCity: z.string().max(80).default(""),
+  meFromState: z.string().max(2).default(""),
 });
 
 export async function saveFrete(_prev: FreteState, formData: FormData): Promise<FreteState> {
@@ -30,10 +48,21 @@ export async function saveFrete(_prev: FreteState, formData: FormData): Promise<
     freeThreshold: formData.get("freeThreshold") ?? 0,
     meFromCep: formData.get("meFromCep") ?? "",
     meToken: formData.get("meToken") ?? "",
+    meEnvironment: formData.get("meEnvironment") ?? "production",
     meWeight: formData.get("meWeight") ?? 300,
     meLength: formData.get("meLength") ?? 20,
     meWidth: formData.get("meWidth") ?? 20,
     meHeight: formData.get("meHeight") ?? 4,
+    meFromName: formData.get("meFromName") ?? "",
+    meFromDocument: formData.get("meFromDocument") ?? "",
+    meFromPhone: formData.get("meFromPhone") ?? "",
+    meFromEmail: formData.get("meFromEmail") ?? "",
+    meFromAddress: formData.get("meFromAddress") ?? "",
+    meFromNumber: formData.get("meFromNumber") ?? "",
+    meFromComplement: formData.get("meFromComplement") ?? "",
+    meFromDistrict: formData.get("meFromDistrict") ?? "",
+    meFromCity: formData.get("meFromCity") ?? "",
+    meFromState: formData.get("meFromState") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   const d = parsed.data;
@@ -43,10 +72,21 @@ export async function saveFrete(_prev: FreteState, formData: FormData): Promise<
     shippingFlatCents: Math.round(d.flat * 100),
     freeShippingThresholdCents: Math.round(d.freeThreshold * 100),
     meFromCep: d.meFromCep.trim(),
+    meEnvironment: d.meEnvironment,
     meWeightGrams: d.meWeight,
     meLengthCm: d.meLength,
     meWidthCm: d.meWidth,
     meHeightCm: d.meHeight,
+    meFromName: d.meFromName.trim(),
+    meFromDocument: d.meFromDocument.replace(/\D/g, ""),
+    meFromPhone: d.meFromPhone.trim(),
+    meFromEmail: d.meFromEmail.trim(),
+    meFromAddress: d.meFromAddress.trim(),
+    meFromNumber: d.meFromNumber.trim(),
+    meFromComplement: d.meFromComplement.trim(),
+    meFromDistrict: d.meFromDistrict.trim(),
+    meFromCity: d.meFromCity.trim(),
+    meFromState: d.meFromState.trim().toUpperCase(),
     updatedAt: new Date(),
   };
   // Only overwrite the token when a new one is actually provided.
@@ -63,7 +103,13 @@ export async function saveFrete(_prev: FreteState, formData: FormData): Promise<
   return { ok: true };
 }
 
-export type FreteTestState = { ok?: boolean; error?: string; account?: string };
+export type FreteTestState = {
+  ok?: boolean;
+  error?: string;
+  account?: string;
+  ambiente?: string;
+  falta?: string[];
+};
 
 // Confere o token salvo contra a API do Melhor Envio e diz de qual conta é.
 // Sem isso, um token errado só aparece quando um cliente real tenta calcular
@@ -74,9 +120,19 @@ export async function testarConexaoFrete(
 ): Promise<FreteTestState> {
   await requireAdmin();
 
-  const { meToken } = await getShippingSettings();
-  const result = await testMelhorEnvioToken(meToken);
+  // Usa o token do ambiente ATIVO, que pode vir da Vercel em vez do banco.
+  // Testar o campo do banco enquanto a loja usa a variável de ambiente diria
+  // "token inválido" sobre um token que a loja nem usa.
+  const s = await getShippingSettings();
+  const result = await testMelhorEnvioToken(activeMeToken(s), s.meEnvironment);
   if (!result.ok) return { error: result.message };
 
-  return { ok: true, account: result.name || result.email || "conta conectada" };
+  return {
+    ok: true,
+    account: result.name || result.email || "conta conectada",
+    ambiente: s.meEnvironment === "sandbox" ? "sandbox" : "produção",
+    // Cotar funciona só com o CEP. Comprar etiqueta precisa do remetente
+    // inteiro, e é melhor descobrir isso aqui do que na hora de despachar.
+    falta: faltaParaEtiqueta(s),
+  };
 }

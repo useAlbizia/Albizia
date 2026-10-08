@@ -74,13 +74,32 @@ export async function getShippingSettings(): Promise<ShippingSettings> {
 /**
  * O token do ambiente ativo.
  *
- * Existem dois campos de token porque produção e sandbox são contas
- * diferentes. Todo lugar que fala com o Melhor Envio passa por aqui, para
- * ninguém mandar token de um ambiente para o host do outro, que é um 401
- * confuso de diagnosticar.
+ * VARIÁVEL DE AMBIENTE PRIMEIRO, banco como reserva, igual às credenciais do
+ * Mercado Pago (ver `appCredentials` em lib/mercadopago-oauth.ts). O token do
+ * Melhor Envio é credencial de integração, não configuração de loja: o lugar
+ * dele é o .env.local em desenvolvimento e a Vercel em produção, não uma
+ * coluna de banco que aparece em backup e no painel do Supabase.
+ *
+ * O campo no banco continua existindo para quem preferir colar pelo painel,
+ * mas quem está na Vercel ganha.
+ *
+ * Produção e sandbox são CONTAS diferentes no Melhor Envio, com tokens
+ * diferentes, por isso dois nomes de variável. Todo lugar que fala com eles
+ * passa por aqui, para ninguém mandar token de um ambiente no host do outro,
+ * que vira um 401 difícil de diagnosticar.
  */
 export function activeMeToken(s: ShippingSettings): string {
-  return s.meEnvironment === "sandbox" ? s.meTokenSandbox : s.meToken;
+  if (s.meEnvironment === "sandbox") {
+    return process.env.TOKEN_MELHOR_ENVIOS_SANDBOX || s.meTokenSandbox || "";
+  }
+  return process.env.TOKEN_MELHOR_ENVIOS || s.meToken || "";
+}
+
+/** Se o token ativo vem da Vercel, o painel não deve fingir que é dele. */
+export function tokenVemDoAmbiente(env: MeEnvironment): boolean {
+  return env === "sandbox"
+    ? !!process.env.TOKEN_MELHOR_ENVIOS_SANDBOX
+    : !!process.env.TOKEN_MELHOR_ENVIOS;
 }
 
 /** O que falta para conseguir COMPRAR etiqueta. Vazio = está pronto. */
