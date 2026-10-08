@@ -27,6 +27,8 @@ export type ShippingSettings = {
   freeThresholdCents: number;
   meToken: string; // SECRET — never send to the client
   meTokenSandbox: string; // SECRET
+  /** Ids dos serviços oferecidos no checkout, ex.: "1,2,17". */
+  meServices: string;
   meEnvironment: MeEnvironment;
   meFromCep: string;
   meWeightGrams: number;
@@ -49,6 +51,7 @@ export async function getShippingSettings(): Promise<ShippingSettings> {
     meToken: row?.meToken ?? "",
     meTokenSandbox: row?.meTokenSandbox ?? "",
     meEnvironment: normalizeEnvironment(row?.meEnvironment),
+    meServices: row?.meServices ?? "1,2,17",
     meFromCep: row?.meFromCep ?? "",
     meWeightGrams: row?.meWeightGrams ?? 300,
     meLengthCm: row?.meLengthCm ?? 20,
@@ -89,10 +92,13 @@ export async function getShippingSettings(): Promise<ShippingSettings> {
  * que vira um 401 difícil de diagnosticar.
  */
 export function activeMeToken(s: ShippingSettings): string {
+  // trim() porque colar o token no painel da Vercel deixa um espaço ou uma
+  // quebra de linha sobrando com facilidade, e "Bearer  eyJ..." com espaço a
+  // mais vira 401 sem nenhuma pista do motivo.
   if (s.meEnvironment === "sandbox") {
-    return process.env.TOKEN_MELHOR_ENVIOS_SANDBOX || s.meTokenSandbox || "";
+    return (process.env.TOKEN_MELHOR_ENVIOS_SANDBOX || s.meTokenSandbox || "").trim();
   }
-  return process.env.TOKEN_MELHOR_ENVIOS || s.meToken || "";
+  return (process.env.TOKEN_MELHOR_ENVIOS || s.meToken || "").trim();
 }
 
 /** Se o token ativo vem da Vercel, o painel não deve fingir que é dele. */
@@ -274,6 +280,9 @@ export async function quoteMelhorEnvio(
           // Valor segurado: o que a transportadora paga se extraviar. Sem
           // isso um pacote perdido é prejuízo integral da loja.
           options: { receipt: false, own_hand: false, insurance_value: segurado / 100 },
+          // Só os serviços escolhidos no painel. Vazio seria "todos", e isso
+          // incluiria transportadoras que exigem nota fiscal.
+          ...(servicosValidos(s.meServices) ? { services: servicosValidos(s.meServices) } : {}),
         }),
       }
     );
@@ -354,4 +363,88 @@ export async function quoteShipping(
     ),
     option: null,
   };
+}
+
+// ── Serviços oferecidos ──────────────────────────────────────────────────
+
+export type MeServiceInfo = {
+  id: number;
+  company: string;
+  name: string;
+  /** Por que a loja não consegue oferecer este serviço hoje. null = pode. */
+  bloqueio: string | null;
+};
+
+/** "1, 2,x,17" vira "1,2,17". Lixo no campo não pode virar filtro inválido. */
+export function servicosValidos(csv: string): string {
+  return (csv ?? "")
+    .split(",")
+    .map((p) => p.trim())
+    .filter((p) => /^\d+$/.test(p))
+    .join(",");
+}
+
+function motivoBloqueio(requisitos: unknown): string | null {
+  if (Array.isArray(requisitos)) {
+    // "invoice" = exige chave de nota fiscal. A loja é MEI e despacha com
+    // declaração de conteúdo, então o carrinho seria recusado na hora de
+    // comprar a etiqueta, com o cliente já tendo pago.
+    return requisitos.includes("invoice") ? "exige nota fiscal" : null;
+  }
+  // Regras em formato de objeto (Total Express) pedem agência de postagem e
+  // outros campos que o fluxo de etiqueta ainda não manda.
+  return requisitos ? "exige configuração de agência" : null;
+}
+
+// Retrato da lista do Melhor Envio em 2026-10-08, usado se a API não
+// responder. Com a API no ar, a lista viva sempre ganha.
+const CATALOGO_RESERVA: MeServiceInfo[] = [
+  { id: 1, company: "Correios", name: "PAC", bloqueio: null },
+  { id: 2, company: "Correios", name: "SEDEX", bloqueio: null },
+  { id: 17, company: "Correios", name: "Mini Envios", bloqueio: null },
+  { id: 31, company: "Loggi", name: "Express", bloqueio: null },
+  { id: 32, company: "Loggi", name: "Coleta", bloqueio: null },
+  { id: 34, company: "Loggi", name: "Loggi Ponto", bloqueio: null },
+  { id: 33, company: "JeT", name: "Standard", bloqueio: null },
+  { id: 3, company: "Jadlog", name: ".Package", bloqueio: "exige nota fiscal" },
+  { id: 4, company: "Jadlog", name: ".Com", bloqueio: "exige nota fiscal" },
+  { id: 27, company: "Jadlog", name: ".Package Centralizado", bloqueio: "exige nota fiscal" },
+  { id: 12, company: "LATAM Cargo", name: "éFácil", bloqueio: "exige nota fiscal" },
+  { id: 15, company: "Azul Cargo Express", name: "Expresso", bloqueio: "exige nota fiscal" },
+  { id: 16, company: "Azul Cargo Express", name: "e-commerce", bloqueio: "exige nota fiscal" },
+  { id: 22, company: "Buslog", name: "Rodoviário", bloqueio: "exige nota fiscal" },
+  { id: 35, company: "Total Express", name: "Standard", bloqueio: "exige configuração de agência" },
+];
+
+/** Todos os serviços da conta, com o motivo de bloqueio quando houver. */
+export async function listarServicosMe(s: ShippingSettings): Promise<MeServiceInfo[]> {
+  const token = activeMeToken(s);
+  if (!token) return CATALOGO_RESERVA;
+  try {
+    const res = await fetch(`${meBaseUrl(s.meEnvironment)}/api/v2/me/shipment/services`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/json",
+        "User-Agent": "ALBIZIA (contato@usealbizia.com.br)",
+      },
+      // A lista de serviços muda raramente; um dia de cache poupa uma chamada
+      // a cada abertura do painel.
+      next: { revalidate: 86400 },
+    });
+    if (!res.ok) return CATALOGO_RESERVA;
+    const data = (await res.json()) as Array<{
+      id: number;
+      name: string;
+      company?: { name?: string };
+      requirements?: unknown;
+    }>;
+    return data.map((x) => ({
+      id: x.id,
+      company: x.company?.name ?? "",
+      name: x.name,
+      bloqueio: motivoBloqueio(x.requirements),
+    }));
+  } catch {
+    return CATALOGO_RESERVA;
+  }
 }

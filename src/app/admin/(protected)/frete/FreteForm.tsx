@@ -38,6 +38,8 @@ export type FreteSettings = {
   meFromState: string;
   /** O que ainda impede emitir etiqueta. Vazio = pronto. */
   falta: string[];
+  servicos: { id: number; company: string; name: string; bloqueio: string | null }[];
+  servicosAtivos: number[];
 };
 
 export function FreteForm({ settings }: { settings: FreteSettings }) {
@@ -112,6 +114,34 @@ export function FreteForm({ settings }: { settings: FreteSettings }) {
           </p>
 
           <input name="meFromCep" defaultValue={settings.meFromCep} placeholder="CEP de origem (de onde você envia)" className={input} />
+
+          <span className={`${label} mt-3`}>Serviços oferecidos no checkout</span>
+          <p className="-mt-2 text-[11px] leading-relaxed text-content/40">
+            O cliente vê só os marcados, e só os que atendem o CEP dele. Os bloqueados exigem coisas
+            que a loja ainda não tem: com declaração de conteúdo no lugar da nota, a etiqueta seria
+            recusada depois que o cliente já pagou.
+          </p>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2">
+            {settings.servicos.map((sv) => (
+              <label
+                key={sv.id}
+                className={`flex items-baseline gap-2 text-sm ${sv.bloqueio ? "text-content/35" : ""}`}
+              >
+                <input
+                  type="checkbox"
+                  name="meServices"
+                  value={sv.id}
+                  defaultChecked={!sv.bloqueio && settings.servicosAtivos.includes(sv.id)}
+                  disabled={!!sv.bloqueio}
+                  className="accent-content"
+                />
+                <span>
+                  {sv.company} {sv.name}
+                  {sv.bloqueio && <span className="ml-1 text-[11px]">({sv.bloqueio})</span>}
+                </span>
+              </label>
+            ))}
+          </div>
 
           <span className={`${label} mt-3`}>Remetente</span>
           <p className="-mt-2 text-[11px] leading-relaxed text-content/40">

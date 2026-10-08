@@ -87,6 +87,8 @@ async function main() {
         to: { postal_code: CEP_TESTE_DESTINO },
         package: { weight: 0.22, width: 24, height: 3, length: 30 },
         options: { receipt: false, own_hand: false, insurance_value: 89.9 },
+        // Os mesmos serviços que o checkout oferece, escolhidos no painel.
+        ...(row?.meServices ? { services: row.meServices } : {}),
       }),
     });
     if (!cot.ok) {

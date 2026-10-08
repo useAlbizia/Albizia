@@ -206,6 +206,12 @@ export const siteSettings = pgTable("site_settings", {
   // Por isso são dois campos de token, e não um só que troca de valor: a
   // pessoa testa e volta para produção sem ter perdido o token bom.
   meEnvironment: text("me_environment").notNull().default("production"),
+  // Quais serviços do Melhor Envio aparecem no checkout, como ids separados
+  // por vírgula (1 = PAC, 2 = SEDEX, 17 = Mini Envios). A cotação sem filtro
+  // devolve 10 opções, demais para o cliente, e algumas a loja não consegue
+  // cumprir: Jadlog, LATAM, Azul e Buslog EXIGEM nota fiscal, e com
+  // declaração de conteúdo a etiqueta seria recusada depois do cliente pagar.
+  meServices: text("me_services").notNull().default("1,2,17"),
   meTokenSandbox: text("me_token_sandbox").notNull().default(""),
   // Remetente completo. A cotação precisa só do CEP, mas a COMPRA da etiqueta
   // exige nome, documento e endereço inteiro de quem envia. Sem isso o botão

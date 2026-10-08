@@ -1,10 +1,18 @@
-import { faltaParaEtiqueta, getShippingSettings, tokenVemDoAmbiente } from "@/lib/shipping";
+import {
+  faltaParaEtiqueta,
+  getShippingSettings,
+  listarServicosMe,
+  servicosValidos,
+  tokenVemDoAmbiente,
+} from "@/lib/shipping";
 import { FreteForm } from "./FreteForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function FretePage() {
   const s = await getShippingSettings();
+  const servicos = await listarServicosMe(s);
+  const ativos = servicosValidos(s.meServices).split(",").filter(Boolean).map(Number);
 
   return (
     <div>
@@ -39,6 +47,8 @@ export default async function FretePage() {
           meFromCity: s.meFrom.city,
           meFromState: s.meFrom.stateAbbr,
           falta: faltaParaEtiqueta(s),
+          servicos,
+          servicosAtivos: ativos,
         }}
       />
     </div>

@@ -10,6 +10,7 @@ import {
   activeMeToken,
   faltaParaEtiqueta,
   getShippingSettings,
+  servicosValidos,
   testMelhorEnvioToken,
 } from "@/lib/shipping";
 
@@ -71,24 +72,37 @@ export async function saveFrete(_prev: FreteState, formData: FormData): Promise<
     shippingMethod: d.method,
     shippingFlatCents: Math.round(d.flat * 100),
     freeShippingThresholdCents: Math.round(d.freeThreshold * 100),
-    meFromCep: d.meFromCep.trim(),
-    meEnvironment: d.meEnvironment,
-    meWeightGrams: d.meWeight,
-    meLengthCm: d.meLength,
-    meWidthCm: d.meWidth,
-    meHeightCm: d.meHeight,
-    meFromName: d.meFromName.trim(),
-    meFromDocument: d.meFromDocument.replace(/\D/g, ""),
-    meFromPhone: d.meFromPhone.trim(),
-    meFromEmail: d.meFromEmail.trim(),
-    meFromAddress: d.meFromAddress.trim(),
-    meFromNumber: d.meFromNumber.trim(),
-    meFromComplement: d.meFromComplement.trim(),
-    meFromDistrict: d.meFromDistrict.trim(),
-    meFromCity: d.meFromCity.trim(),
-    meFromState: d.meFromState.trim().toUpperCase(),
     updatedAt: new Date(),
   };
+
+  // Os campos do Melhor Envio só existem no formulário quando o método
+  // escolhido é Melhor Envio. Sem esta guarda, trocar para "frete fixo" e
+  // salvar gravaria todos eles VAZIOS e apagaria o remetente inteiro, que
+  // ninguém ia perceber até a primeira etiqueta falhar.
+  if (formData.has("meFromCep")) {
+    Object.assign(values, {
+      meFromCep: d.meFromCep.trim(),
+      meEnvironment: d.meEnvironment,
+      meWeightGrams: d.meWeight,
+      meLengthCm: d.meLength,
+      meWidthCm: d.meWidth,
+      meHeightCm: d.meHeight,
+      meFromName: d.meFromName.trim(),
+      meFromDocument: d.meFromDocument.replace(/\D/g, ""),
+      meFromPhone: d.meFromPhone.trim(),
+      meFromEmail: d.meFromEmail.trim(),
+      meFromAddress: d.meFromAddress.trim(),
+      meFromNumber: d.meFromNumber.trim(),
+      meFromComplement: d.meFromComplement.trim(),
+      meFromDistrict: d.meFromDistrict.trim(),
+      meFromCity: d.meFromCity.trim(),
+      meFromState: d.meFromState.trim().toUpperCase(),
+      // Checkbox desmarcado não vai no formulário, e serviço bloqueado vem
+      // desabilitado, então o que chega aqui é exatamente o que pode ser
+      // oferecido.
+      meServices: servicosValidos(formData.getAll("meServices").map(String).join(",")),
+    });
+  }
   // Only overwrite the token when a new one is actually provided.
   if (d.meToken.trim()) values.meToken = d.meToken.trim();
 

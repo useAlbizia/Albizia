@@ -1,0 +1,1 @@
+ALTER TABLE "site_settings" ADD COLUMN "me_services" text DEFAULT '1,2,17' NOT NULL;
