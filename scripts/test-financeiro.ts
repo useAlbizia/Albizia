@@ -21,6 +21,7 @@ import {
 } from "../src/lib/financeiro-calc";
 import { extrairValoresMp, vendaDesfeita } from "../src/lib/mp-valores";
 import { calcularDre, naturezaDe } from "../src/lib/financeiro-calc";
+import { custoDaFicha, custoLinhaExato, formatarCustoExato, parseQuantidade } from "../src/lib/ficha-calc";
 
 let falhas = 0;
 function ok(nome: string, real: unknown, esperado: unknown) {
@@ -285,6 +286,50 @@ const semCusto = calcularDre({
 });
 ok("avisa quando falta custo de peça", semCusto.avisos.length, 1);
 ok("categoria desconhecida conta como fixa (nunca infla o lucro)", naturezaDe("Categoria velha"), "fixa");
+
+console.log("\nFicha técnica, conferida à mão:");
+// Uma peça:
+//   peruana lisa: 50 por R$ 1.500,00            -> R$ 30,00 cada        = 3000
+//   DTF: R$ 60,00 o metro, usa 0,25 m           -> R$ 15,00             = 1500
+//   etiqueta de marca: 1.000 por R$ 35,00        -> 3,5 centavos         = 3,5
+//   tag: 100 por R$ 15,00                       -> 15 centavos          = 15
+//   ziplock: 100 por R$ 9,90                    -> 9,9 centavos         = 9,9
+//   total exato 4.528,4 centavos                 -> R$ 45,28
+const etiqueta = { loteValorCents: 3500, loteQuantidadeMil: 1_000_000, quantidadeMil: 1000 };
+const ficha = [
+  { loteValorCents: 150000, loteQuantidadeMil: 50_000, quantidadeMil: 1000 },
+  { loteValorCents: 6000, loteQuantidadeMil: 1000, quantidadeMil: 250 },
+  etiqueta,
+  { loteValorCents: 1500, loteQuantidadeMil: 100_000, quantidadeMil: 1000 },
+  { loteValorCents: 990, loteQuantidadeMil: 100_000, quantidadeMil: 1000 },
+];
+ok("etiqueta custa 3,5 centavos, sem arredondar", custoLinhaExato(etiqueta), 3.5);
+ok("DTF: 0,25 m de R$ 60,00", custoLinhaExato(ficha[1]), 1500);
+ok("peça completa: R$ 45,28", custoDaFicha(ficha), 4528);
+// Se arredondasse cada insumo: 3000 + 1500 + 4 + 15 + 10 = 4529, um centavo
+// a mais por peça, que em 1.000 peças vira R$ 10,00 de lucro sumido.
+ok("arredondar insumo por insumo daria errado", ficha.reduce((n, l) => n + Math.round(custoLinhaExato(l)), 0), 4529);
+ok("duas etiquetas de 3,5 = 7 centavos exatos", custoDaFicha([etiqueta, etiqueta]), 7);
+ok("meio centavo arredonda para cima", custoDaFicha([{ loteValorCents: 5, loteQuantidadeMil: 2000, quantidadeMil: 1000 }]), 3);
+ok("ficha vazia custa zero", custoDaFicha([]), 0);
+ok("lote sem quantidade não divide por zero", custoDaFicha([{ loteValorCents: 100, loteQuantidadeMil: 0, quantidadeMil: 1000 }]), 0);
+
+console.log("\nQuantidade digitada:");
+ok("2,5", parseQuantidade("2,5"), 2500);
+ok("0.25 (ponto decimal)", parseQuantidade("0.25"), 250);
+ok("0.250 é um quarto, não 250", parseQuantidade("0.250"), 250);
+ok("1.000 é mil", parseQuantidade("1.000"), 1_000_000);
+ok("3", parseQuantidade("3"), 3000);
+ok("zero não é quantidade", parseQuantidade("0"), null);
+ok("texto inválido", parseQuantidade("abc"), null);
+ok("valor 0.250 em reais é recusado, não vira R$ 250", parseReais("0.250"), null);
+ok("valor 1.500 em reais é mil e quinhentos", parseReais("1.500"), 150000);
+
+console.log("\nCusto exato na tela:");
+ok("3,5 centavos", formatarCustoExato(3.5), "3,5 centavos");
+ok("15 centavos", formatarCustoExato(15), "15 centavos");
+ok("R$ 30,00", formatarCustoExato(3000), "R$ 30,00");
+ok("R$ 1,005", formatarCustoExato(100.5), "R$ 1,005");
 
 console.log(falhas === 0 ? "\nTODOS PASSARAM\n" : `\n${falhas} FALHA(S)\n`);
 process.exit(falhas === 0 ? 0 : 1);

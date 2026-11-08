@@ -351,7 +351,9 @@ export function parseReais(entrada: string): number | null {
   if (!t) return null;
   if (t.includes(",")) {
     t = t.replace(/\./g, "").replace(",", ".");
-  } else if (/^\d{1,3}(\.\d{3})+$/.test(t)) {
+  } else if (/^[1-9]\d{0,2}(\.\d{3})+$/.test(t)) {
+    // Milhar nunca começa com zero: "0.250" é vinte e cinco centavos, não
+    // duzentos e cinquenta reais.
     t = t.replace(/\./g, "");
   }
   if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
