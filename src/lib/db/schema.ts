@@ -8,6 +8,7 @@ import {
   jsonb,
   pgEnum,
   unique,
+  date,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -454,4 +455,81 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
     fields: [orderItems.productVariantId],
     references: [productVariants.id],
   }),
+}));
+
+// ── Sócios e livro caixa ─────────────────────────────────────────────────
+//
+// O controle administrativo da empresa: quem colocou quanto, no quê, quando e
+// como, e o que a empresa pagou com o próprio dinheiro. A ideia que organiza
+// tudo é uma só: cada lançamento diz QUEM tirou dinheiro do bolso. Se foi um
+// sócio, aquilo vira capital investido por ele; se foi a empresa, sai do
+// caixa. Os saldos (caixa, capital de cada um, equilíbrio entre os três) são
+// sempre calculados a partir dos lançamentos, nunca digitados, para nunca
+// ficarem em desacordo com a história.
+
+export const socios = pgTable("socios", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  // Para ligar o sócio ao login do painel e ao robô de lançamentos.
+  email: text("email").notNull().default(""),
+  telefone: text("telefone").notNull().default(""),
+  telegramId: text("telegram_id").notNull().default(""),
+  // Participação em cotas, não em porcentagem: três sócios com 1 cota cada
+  // são exatamente um terço, sem o 33,33% + 33,33% + 33,33% = 99,99%.
+  cotas: integer("cotas").notNull().default(1),
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const lancamentos = pgTable("lancamentos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  data: date("data", { mode: "string" }).notNull(),
+  // despesa | receita | aporte | devolucao_aporte | distribuicao_lucro
+  tipo: text("tipo").notNull(),
+  descricao: text("descricao").notNull(),
+  categoria: text("categoria").notNull().default(""),
+  // Onde foi comprado / de quem: fornecedor, loja, site.
+  fornecedor: text("fornecedor").notNull().default(""),
+  formaPagamento: text("forma_pagamento").notNull().default(""),
+  valorCents: integer("valor_cents").notNull(),
+  // pago | previsto. Parcelas futuras nascem "previsto" e viram "pago"
+  // quando a fatura é paga, para o caixa não contar dinheiro que não saiu.
+  status: text("status").notNull().default("pago"),
+  // Parcelamento: todas as parcelas de uma compra dividem o mesmo grupoId.
+  grupoId: uuid("grupo_id"),
+  parcelaNum: integer("parcela_num"),
+  parcelaTotal: integer("parcela_total"),
+  // Para aporte, devolução e distribuição: de qual sócio é o dinheiro.
+  socioId: uuid("socio_id").references(() => socios.id),
+  // painel | telegram | whatsapp
+  origem: text("origem").notNull().default("painel"),
+  criadoPor: text("criado_por").notNull().default(""),
+  observacao: text("observacao").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Quem pagou cada despesa, e quanto. Uma linha com socioId nulo é a empresa
+// pagando com o caixa. Uma despesa pode ter vários pagadores: a parcela da
+// prensa é dividida entre os três.
+export const lancamentoPagadores = pgTable("lancamento_pagadores", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  lancamentoId: uuid("lancamento_id")
+    .notNull()
+    .references(() => lancamentos.id, { onDelete: "cascade" }),
+  socioId: uuid("socio_id").references(() => socios.id),
+  valorCents: integer("valor_cents").notNull(),
+});
+
+export const lancamentosRelations = relations(lancamentos, ({ many, one }) => ({
+  pagadores: many(lancamentoPagadores),
+  socio: one(socios, { fields: [lancamentos.socioId], references: [socios.id] }),
+}));
+
+export const lancamentoPagadoresRelations = relations(lancamentoPagadores, ({ one }) => ({
+  lancamento: one(lancamentos, {
+    fields: [lancamentoPagadores.lancamentoId],
+    references: [lancamentos.id],
+  }),
+  socio: one(socios, { fields: [lancamentoPagadores.socioId], references: [socios.id] }),
 }));

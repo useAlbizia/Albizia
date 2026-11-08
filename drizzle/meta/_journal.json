@@ -169,6 +169,13 @@
       "when": 1791489303308,
       "tag": "0023_fluffy_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794170305155,
+      "tag": "0024_salty_jackal",
+      "breakpoints": true
     }
   ]
 }

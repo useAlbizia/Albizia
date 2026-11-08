@@ -19,6 +19,15 @@ const GROUPS: Group[] = [
     ],
   },
   {
+    // A empresa por dentro: dinheiro dos sócios e livro caixa. Separado de
+    // "Financeiro", que é o relatório de vendas do site.
+    title: "Empresa",
+    items: [
+      { href: "/admin/socios", label: "Sócios e caixa" },
+      { href: "/admin/lancamentos", label: "Lançamentos" },
+    ],
+  },
+  {
     // Só o que se olha no dia a dia. Frete e pagamento saíram daqui: são
     // configuração que se mexe uma vez, não rotina de venda.
     title: "Vendas",
