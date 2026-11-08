@@ -4,10 +4,17 @@ import { randomBytes } from "node:crypto";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
 import { isAdminEmail } from "@/lib/auth/admins";
-import { adminCreateUser, adminListUsers, adminSetPassword } from "@/lib/supabase/admin";
+import { adminCreateUser, adminListUsers, adminPromote, adminSetPassword } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sendBrandedRecoveryEmail } from "@/lib/auth-email";
 import { logAudit } from "@/lib/audit";
+
+/** Admin pela lista de e-mails ou pela marca gravada na conta. */
+async function ehAdministrador(email: string): Promise<boolean> {
+  if (isAdminEmail(email)) return true;
+  const users = await adminListUsers();
+  return !!users.find((u) => u.email.toLowerCase() === email.toLowerCase())?.admin;
+}
 
 export type CreateAdminState = { error?: string; success?: { email: string; password: string } };
 
@@ -35,10 +42,27 @@ export async function createAdminUser(
     email: email.data,
     password: tempPassword,
     user_metadata: { must_change_password: true },
+    // A marca que deixa a pessoa entrar no painel sem depender do
+    // ADMIN_EMAILS da Vercel. Só o servidor consegue gravar app_metadata.
+    app_metadata: { role: "admin" },
   });
 
   if (error) {
-    return { error };
+    // A conta já existe (um sócio criado antes desta marca existir, ou alguém
+    // que tinha conta de cliente). Quem está aqui é um admin pedindo,
+    // deliberadamente, acesso ao painel para esse e-mail: então a conta
+    // existente recebe a marca e uma senha provisória nova, mostrada uma vez.
+    const users = await adminListUsers();
+    const existente = users.find((u) => u.email.toLowerCase() === email.data.toLowerCase());
+    if (!existente) return { error };
+
+    const promovido = await adminPromote(existente.id);
+    if (promovido.error) return { error: promovido.error };
+    const senha = await adminSetPassword({ userId: existente.id, password: tempPassword });
+    if (senha.error) return { error: senha.error };
+
+    await logAudit({ action: "user.promote", entity: "user", entityId: email.data });
+    return { success: { email: email.data, password: tempPassword } };
   }
 
   await logAudit({ action: "user.create", entity: "user", entityId: email.data });
@@ -62,7 +86,7 @@ export async function sendAdminResetLink(
 
   const email = z.string().email().safeParse(formData.get("email"));
   if (!email.success) return { error: "E-mail inválido." };
-  if (!isAdminEmail(email.data)) return { error: "Este e-mail não é de um administrador." };
+  if (!(await ehAdministrador(email.data))) return { error: "Este e-mail não é de um administrador." };
 
   const { ok, error } = await sendBrandedRecoveryEmail(email.data, "admin");
   if (!ok) return { error: error ?? "Não foi possível enviar agora. Tente de novo." };
@@ -82,11 +106,13 @@ export async function resetAdminPassword(
 
   const email = z.string().email().safeParse(formData.get("email"));
   if (!email.success) return { error: "E-mail inválido." };
-  if (!isAdminEmail(email.data)) return { error: "Este e-mail não é de um administrador." };
 
   const users = await adminListUsers();
   const alvo = users.find((u) => u.email.toLowerCase() === email.data.toLowerCase());
   if (!alvo) return { error: "Usuário não encontrado no Supabase." };
+  // Nunca redefinir a senha de um cliente por aqui: esta tela é só para
+  // quem administra a loja.
+  if (!alvo.admin) return { error: "Este e-mail não é de um administrador." };
 
   const tempPassword = generateTempPassword();
   const { error } = await adminSetPassword({ userId: alvo.id, password: tempPassword });

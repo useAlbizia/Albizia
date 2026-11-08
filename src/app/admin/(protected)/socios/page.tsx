@@ -55,7 +55,7 @@ export default async function SociosPage() {
         />
       </section>
 
-      <section>
+      <section data-tour="socios-tabela">
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/60">Cada sócio</p>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-sm">

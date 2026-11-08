@@ -33,7 +33,7 @@ export default async function InsumosPage() {
         </p>
       </div>
 
-      <section>
+      <section data-tour="insumo-novo">
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/60">Novo insumo</p>
         <InsumoForm />
       </section>

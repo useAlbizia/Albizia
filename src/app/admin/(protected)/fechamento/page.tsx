@@ -139,7 +139,7 @@ export default async function FechamentoPage(props: PageProps<"/admin/fechamento
         )}
       </section>
 
-      <section className="border border-content/15 px-5 py-4">
+      <section data-tour="resultado" className="border border-content/15 px-5 py-4">
         <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-content/60">Resultado do mês</p>
         <Linha rotulo="Vendas" valor={d.receitaBrutaCents} sinal="+" />
         <Linha rotulo="Estornos a clientes" valor={d.estornosCents} sinal="−" />

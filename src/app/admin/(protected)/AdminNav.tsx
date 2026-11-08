@@ -14,6 +14,7 @@ const GROUPS: Group[] = [
     title: "Visão geral",
     items: [
       { href: "/admin", label: "Início" },
+      { href: "/admin/manual", label: "Manual e tour" },
       { href: "/admin/analytics", label: "Analytics" },
       { href: "/admin/financeiro", label: "Financeiro" },
     ],
@@ -141,6 +142,7 @@ export function AdminNav({
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-label="Abrir menu"
+          data-tour="menu-celular"
           aria-expanded={open}
           className="flex h-8 w-8 flex-col items-center justify-center gap-1.5"
         >
@@ -171,7 +173,7 @@ export function AdminNav({
       )}
 
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col overflow-y-auto border-r border-content/10 px-5 py-6 md:flex">
+      <aside data-tour="menu" className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col overflow-y-auto border-r border-content/10 px-5 py-6 md:flex">
         <span className="mb-8 text-sm uppercase tracking-[0.3em]">
           ALBIZIA <span className="text-content/40">admin</span>
         </span>

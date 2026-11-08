@@ -23,3 +23,24 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
   return adminEmails().includes(email.toLowerCase());
 }
+
+type QuemPodeSerAdmin = { email?: string | null; app_metadata?: Record<string, unknown> | null } | null | undefined;
+
+/**
+ * Esta conta é de administrador?
+ *
+ * Duas formas valem: o e-mail estar na lista (os fundadores e ADMIN_EMAILS),
+ * ou a conta ter `app_metadata.role = "admin"`, que é o que Admin → Usuários
+ * grava ao criar um acesso. Assim um sócio novo entra sem ninguém precisar
+ * mexer em variável da Vercel.
+ *
+ * Por que isso é seguro: no Supabase, `app_metadata` só pode ser escrito com
+ * a chave de serviço, que só existe no servidor. O próprio usuário não
+ * consegue alterá-lo (ao contrário de `user_metadata`, que ele consegue). Por
+ * isso a decisão NUNCA olha `user_metadata`.
+ */
+export function isAdminUser(user: QuemPodeSerAdmin): boolean {
+  if (!user) return false;
+  if (user.app_metadata?.role === "admin") return true;
+  return isAdminEmail(user.email);
+}

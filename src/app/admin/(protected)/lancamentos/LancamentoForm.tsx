@@ -38,7 +38,7 @@ export function LancamentoForm({
   const deSocio = tipo === "aporte" || tipo === "devolucao_aporte" || tipo === "distribuicao_lucro";
 
   return (
-    <form action={action} className="flex flex-col gap-4 border border-content/15 px-5 py-5">
+    <form data-tour="lancar" action={action} className="flex flex-col gap-4 border border-content/15 px-5 py-5">
       <p className="text-[11px] uppercase tracking-[0.2em] text-content/60">Novo lançamento</p>
 
       <div className="flex flex-wrap gap-2">

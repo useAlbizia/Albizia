@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { isAdminEmail } from "./admins";
+import { isAdminUser } from "./admins";
 
 // The current Supabase user, whoever they are (admin OR customer), or null.
 // getUser() round-trips to Supabase to verify the JWT — unlike getSession(),
@@ -23,7 +23,7 @@ export const getSessionUser = cache(async () => {
 // is necessary but not sufficient.
 export const getAdminUser = cache(async () => {
   const user = await getSessionUser();
-  if (!user || !isAdminEmail(user.email)) return null;
+  if (!user || !isAdminUser(user)) return null;
   return user;
 });
 

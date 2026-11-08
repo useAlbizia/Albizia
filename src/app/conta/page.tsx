@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getSessionUser } from "@/lib/auth/dal";
-import { isAdminEmail } from "@/lib/auth/admins";
+import { isAdminUser } from "@/lib/auth/admins";
 import { getCustomerOrders } from "@/lib/orders";
 import { customerSignOut } from "@/lib/customer/actions";
 import { brl, shortDate } from "@/lib/format";
@@ -45,7 +45,7 @@ export default async function ContaPage() {
         </form>
       </div>
 
-      {isAdminEmail(user.email) && (
+      {isAdminUser(user) && (
         <Link
           href="/admin"
           className="mt-6 inline-block border border-content/30 px-4 py-2 text-[12px] uppercase tracking-[0.15em] hover:border-content"

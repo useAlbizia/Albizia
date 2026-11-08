@@ -61,7 +61,7 @@ export default async function AdminPedidosPage(props: PageProps<"/admin/pedidos"
     <div>
       <h1 className="mb-6 text-sm uppercase tracking-[0.3em] text-content/60">Pedidos</h1>
 
-      <form className="mb-8 flex max-w-xl gap-2">
+      <form data-tour="pedidos-busca" className="mb-8 flex max-w-xl gap-2">
         <input
           name="q"
           defaultValue={q}

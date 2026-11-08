@@ -11,7 +11,9 @@ function fmt(iso: string | null): string {
 }
 
 export default async function UsuariosPage() {
-  const users = await adminListUsers();
+  // Só quem administra. Sem o filtro, todo cliente que criasse conta na loja
+  // apareceria aqui como se fosse administrador.
+  const users = (await adminListUsers()).filter((u) => u.admin);
 
   return (
     <div className="flex flex-col gap-14">

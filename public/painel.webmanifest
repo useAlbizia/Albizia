@@ -1,0 +1,16 @@
+{
+  "name": "ALBIZIA Painel",
+  "short_name": "ALBIZIA",
+  "description": "Painel administrativo da ALBIZIA: pedidos, produtos, caixa e sócios.",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#121212",
+  "theme_color": "#121212",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/painel-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/painel-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

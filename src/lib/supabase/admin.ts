@@ -1,4 +1,5 @@
 import "server-only";
+import { isAdminUser } from "@/lib/auth/admins";
 
 // Plain REST calls to Supabase's Admin (GoTrue) API instead of the full
 // @supabase/supabase-js client — that client's constructor unconditionally
@@ -22,6 +23,8 @@ export async function adminCreateUser(params: {
   email: string;
   password: string;
   user_metadata?: Record<string, unknown>;
+  // Só a chave de serviço escreve app_metadata; é onde fica o "role: admin".
+  app_metadata?: Record<string, unknown>;
 }): Promise<{ error?: string }> {
   const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users`, {
     method: "POST",
@@ -31,6 +34,7 @@ export async function adminCreateUser(params: {
       password: params.password,
       email_confirm: true,
       user_metadata: params.user_metadata,
+      app_metadata: params.app_metadata,
     }),
   });
 
@@ -111,6 +115,8 @@ export type AdminUser = {
   email: string;
   createdAt: string | null;
   lastSignInAt: string | null;
+  /** Se esta conta entra no painel (lista de e-mails ou marca de admin). */
+  admin: boolean;
 };
 
 export async function adminListUsers(): Promise<AdminUser[]> {
@@ -125,11 +131,31 @@ export async function adminListUsers(): Promise<AdminUser[]> {
     email?: string;
     created_at?: string;
     last_sign_in_at?: string;
+    app_metadata?: Record<string, unknown>;
   }>;
   return users.map((u) => ({
     id: u.id,
     email: u.email ?? "—",
     createdAt: u.created_at ?? null,
     lastSignInAt: u.last_sign_in_at ?? null,
+    admin: isAdminUser({ email: u.email, app_metadata: u.app_metadata }),
   }));
+}
+
+/**
+ * Marca uma conta existente como administrador (app_metadata.role).
+ * Faz MERGE no app_metadata: o Supabase guarda ali o provedor de login, que
+ * não pode ser apagado.
+ */
+export async function adminPromote(userId: string): Promise<{ error?: string }> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/users/${userId}`, {
+    method: "PUT",
+    headers: adminHeaders(),
+    body: JSON.stringify({ app_metadata: { role: "admin" } }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    return { error: body.msg ?? body.message ?? `Erro ${res.status}` };
+  }
+  return {};
 }

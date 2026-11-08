@@ -1,7 +1,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-import { isAdminEmail } from "@/lib/auth/admins";
+import { isAdminUser } from "@/lib/auth/admins";
 
 // Called from src/proxy.ts on every /admin/* request. Two jobs at once:
 // refreshes the Supabase session cookie (getUser() has this side effect,
@@ -43,7 +43,7 @@ export async function updateSession(request: NextRequest) {
 
   // Admin area requires an admin session — a logged-in customer (valid session
   // but not on the allowlist) is treated like a logged-out visitor here.
-  const isAdmin = isAdminEmail(user?.email);
+  const isAdmin = isAdminUser(user);
 
   if (!isAdmin && pathname.startsWith("/admin") && !isPublic) {
     const url = request.nextUrl.clone();

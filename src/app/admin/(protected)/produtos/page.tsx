@@ -37,7 +37,7 @@ export default async function AdminProdutosPage() {
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div data-tour="produtos-lista" className="overflow-x-auto">
         <table className="w-full min-w-[680px] text-left text-sm">
           <thead>
             <tr className="border-b border-content/10 text-[11px] uppercase tracking-[0.1em] text-content/50">
