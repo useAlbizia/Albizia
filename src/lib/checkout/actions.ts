@@ -148,6 +148,7 @@ export async function createPendingOrder(
     lengthCm: number;
     widthCm: number;
     heightCm: number;
+    custoCents: number;
   }[] = [];
 
   for (const item of items) {
@@ -169,6 +170,7 @@ export async function createPendingOrder(
       lengthCm: variant.product.lengthCm,
       widthCm: variant.product.widthCm,
       heightCm: variant.product.heightCm,
+      custoCents: variant.product.custoCents,
     });
   }
 
@@ -249,6 +251,10 @@ export async function createPendingOrder(
       size: li.size,
       unitPriceCents: li.unitPriceCents,
       quantity: li.quantity,
+      // Custo da peça neste dia, para o lucro desta venda não mudar se o
+      // custo do produto for editado depois. Zero (não informado) vira nulo:
+      // "sem custo" é diferente de "custo zero".
+      unitCostCents: li.custoCents > 0 ? li.custoCents : null,
     }))
   );
 

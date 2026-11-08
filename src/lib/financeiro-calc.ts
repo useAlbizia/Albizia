@@ -114,17 +114,47 @@ export type LinhaSocio = {
   previstoCents: number;
 };
 
+/**
+ * O que entra no caixa sozinho, pelas integrações, sem ninguém lançar.
+ *
+ * Vendas, taxa e estorno vêm do Mercado Pago; etiquetas, do Melhor Envio.
+ * Ficam fora da tabela de lançamentos de propósito: se fossem copiados para
+ * lá, qualquer correção no Mercado Pago (um estorno uma semana depois)
+ * deixaria as duas cópias discordando.
+ */
+export type Automaticos = {
+  vendasCents: number;
+  taxasMpCents: number;
+  estornosCents: number;
+  etiquetasCents: number;
+  /** Já é da empresa, mas o Mercado Pago ainda não liberou para saque. */
+  aLiberarCents: number;
+};
+
+export const SEM_AUTOMATICOS: Automaticos = {
+  vendasCents: 0,
+  taxasMpCents: 0,
+  estornosCents: 0,
+  etiquetasCents: 0,
+  aLiberarCents: 0,
+};
+
 export type Resumo = {
   caixa: {
     vendasCents: number;
     receitasCents: number;
     aportesCents: number;
     entradasCents: number;
+    taxasMpCents: number;
+    estornosCents: number;
+    etiquetasCents: number;
     despesasEmpresaCents: number;
     devolucoesCents: number;
     distribuicoesCents: number;
     saidasCents: number;
     saldoCents: number;
+    /** Parte do saldo que ainda está presa no Mercado Pago. */
+    aLiberarCents: number;
   };
   capitalTotalCents: number;
   /** Tudo que a empresa gastou, não importa quem pagou. */
@@ -133,7 +163,7 @@ export type Resumo = {
   previsto: { totalCents: number; empresaCents: number };
 };
 
-export function resumir(socios: SocioBase[], movimentos: Movimento[], vendasCents: number): Resumo {
+export function resumir(socios: SocioBase[], movimentos: Movimento[], auto: Automaticos = SEM_AUTOMATICOS): Resumo {
   const linhas = new Map<string, LinhaSocio>();
   for (const s of socios) {
     linhas.set(s.id, {
@@ -223,23 +253,30 @@ export function resumir(socios: SocioBase[], movimentos: Movimento[], vendasCent
   ativos.forEach((l, i) => (l.parteJustaCents = partes[i]));
   for (const l of lista) l.diferencaCents = l.capitalCents - l.parteJustaCents;
 
-  const entradas = vendasCents + receitas + aportes;
-  const saidas = despesasEmpresa + devolucoes + distribuicoes;
+  // Taxa, estorno e etiqueta são pagos pela empresa: saem do caixa e contam
+  // como gasto, exatamente como uma despesa lançada à mão paga pela empresa.
+  const automaticosSaida = auto.taxasMpCents + auto.estornosCents + auto.etiquetasCents;
+  const entradas = auto.vendasCents + receitas + aportes;
+  const saidas = despesasEmpresa + automaticosSaida + devolucoes + distribuicoes;
 
   return {
     caixa: {
-      vendasCents,
+      vendasCents: auto.vendasCents,
       receitasCents: receitas,
       aportesCents: aportes,
       entradasCents: entradas,
+      taxasMpCents: auto.taxasMpCents,
+      estornosCents: auto.estornosCents,
+      etiquetasCents: auto.etiquetasCents,
       despesasEmpresaCents: despesasEmpresa,
       devolucoesCents: devolucoes,
       distribuicoesCents: distribuicoes,
       saidasCents: saidas,
       saldoCents: entradas - saidas,
+      aLiberarCents: auto.aLiberarCents,
     },
     capitalTotalCents: capitalTotal,
-    despesasTotalCents: despesasTotal,
+    despesasTotalCents: despesasTotal + auto.taxasMpCents + auto.etiquetasCents,
     socios: lista,
     previsto: { totalCents: previstoTotal, empresaCents: previstoEmpresa },
   };
@@ -319,4 +356,127 @@ export function parseReais(entrada: string): number | null {
   }
   if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
   return Math.round(Number(t) * 100);
+}
+
+// ── Resultado do mês (DRE gerencial) ─────────────────────────────────────
+//
+// A mesma estrutura que o Sebrae e qualquer contador usam para dizer se o mês
+// deu lucro. Ela responde uma pergunta diferente da do caixa:
+//
+// - CAIXA: quanto dinheiro a empresa tem.
+// - RESULTADO: se o que ela vendeu pagou o que custou.
+//
+// Por isso duas coisas que saem do caixa NÃO entram aqui:
+// - Compra de estoque: as camisetas compradas viram custo só quando são
+//   vendidas (o CMV, custo da mercadoria vendida). Comprar 200 camisetas
+//   num mês e vender 20 não é prejuízo de 180 camisetas.
+// - Equipamento: a prensa é investimento, dura anos, não é gasto de um mês.
+// E distribuição de lucro também não entra: é o lucro sendo dividido, não um
+// custo para gerar lucro.
+
+export type Natureza = "variavel" | "fixa" | "imposto" | "estoque" | "investimento";
+
+/** As categorias de gasto e o lugar de cada uma no resultado. */
+export const CATEGORIAS_DESPESA: { nome: string; natureza: Natureza }[] = [
+  { nome: "Estoque (peças)", natureza: "estoque" },
+  { nome: "Equipamento", natureza: "investimento" },
+  { nome: "Embalagem", natureza: "variavel" },
+  { nome: "Frete e etiquetas", natureza: "variavel" },
+  { nome: "Taxas (Mercado Pago, banco)", natureza: "variavel" },
+  { nome: "Marketing e anúncios", natureza: "fixa" },
+  { nome: "Sistemas e domínio", natureza: "fixa" },
+  { nome: "Serviços (fotos, design)", natureza: "fixa" },
+  { nome: "Impostos (DAS do MEI)", natureza: "imposto" },
+  { nome: "Outros", natureza: "fixa" },
+];
+
+export function naturezaDe(categoria: string): Natureza {
+  // Categoria desconhecida (digitada antes de uma mudança de nome, por
+  // exemplo) conta como gasto fixo: na dúvida, o resultado fica menor, não
+  // maior. Errar para o lado do lucro inventado é o erro que não pode.
+  return CATEGORIAS_DESPESA.find((c) => c.nome === categoria)?.natureza ?? "fixa";
+}
+
+export type DadosMes = {
+  vendasCents: number;
+  receitasAvulsasCents: number;
+  estornosCents: number;
+  /** Custo das peças vendidas no mês. */
+  cmvCents: number;
+  /** Peças vendidas cujo custo não está informado: o lucro aparece maior do que é. */
+  itensSemCusto: number;
+  taxasMpCents: number;
+  etiquetasCents: number;
+  /** Gastos lançados à mão no mês, por categoria, não importa quem pagou. */
+  despesasPorCategoria: Record<string, number>;
+  metaCents: number | null;
+};
+
+export type Dre = {
+  receitaBrutaCents: number;
+  estornosCents: number;
+  receitaLiquidaCents: number;
+  cmvCents: number;
+  lucroBrutoCents: number;
+  variaveisCents: number;
+  margemContribuicaoCents: number;
+  /** Em décimos de por cento (285 = 28,5%), inteiro para não arredondar errado. */
+  margemPermil: number | null;
+  fixasCents: number;
+  impostosCents: number;
+  resultadoCents: number;
+  /** Quanto vender no mês para empatar: gastos fixos divididos pela margem. */
+  pontoEquilibrioCents: number | null;
+  foraDoResultado: { estoqueCents: number; investimentoCents: number };
+  meta: { metaCents: number; realizadoCents: number; permil: number } | null;
+  avisos: string[];
+};
+
+export function calcularDre(d: DadosMes): Dre {
+  const porNatureza: Record<Natureza, number> = { variavel: 0, fixa: 0, imposto: 0, estoque: 0, investimento: 0 };
+  for (const [cat, v] of Object.entries(d.despesasPorCategoria)) porNatureza[naturezaDe(cat)] += v;
+
+  const receitaBruta = d.vendasCents + d.receitasAvulsasCents;
+  const receitaLiquida = receitaBruta - d.estornosCents;
+  const lucroBruto = receitaLiquida - d.cmvCents;
+  const variaveis = d.taxasMpCents + d.etiquetasCents + porNatureza.variavel;
+  const margem = lucroBruto - variaveis;
+  const fixas = porNatureza.fixa;
+  const impostos = porNatureza.imposto;
+  const resultado = margem - fixas - impostos;
+
+  // Margem sobre a receita líquida. Sem receita não há margem, e sem margem
+  // positiva não existe ponto de equilíbrio (nenhuma venda paga os fixos).
+  const margemPermil = receitaLiquida > 0 ? Math.round((margem * 1000) / receitaLiquida) : null;
+  const custoFixo = fixas + impostos;
+  const pontoEquilibrio =
+    margem > 0 && receitaLiquida > 0 ? Math.ceil((custoFixo * receitaLiquida) / margem) : null;
+
+  const avisos: string[] = [];
+  if (d.itensSemCusto > 0) {
+    avisos.push(
+      `${d.itensSemCusto} peça(s) vendida(s) sem custo informado no produto. O lucro aparece maior do que é até o custo ser preenchido.`,
+    );
+  }
+
+  return {
+    receitaBrutaCents: receitaBruta,
+    estornosCents: d.estornosCents,
+    receitaLiquidaCents: receitaLiquida,
+    cmvCents: d.cmvCents,
+    lucroBrutoCents: lucroBruto,
+    variaveisCents: variaveis,
+    margemContribuicaoCents: margem,
+    margemPermil,
+    fixasCents: fixas,
+    impostosCents: impostos,
+    resultadoCents: resultado,
+    pontoEquilibrioCents: pontoEquilibrio,
+    foraDoResultado: { estoqueCents: porNatureza.estoque, investimentoCents: porNatureza.investimento },
+    meta:
+      d.metaCents && d.metaCents > 0
+        ? { metaCents: d.metaCents, realizadoCents: receitaBruta, permil: Math.round((receitaBruta * 1000) / d.metaCents) }
+        : null,
+    avisos,
+  };
 }

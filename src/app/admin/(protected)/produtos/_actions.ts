@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { products, productVariants, productImages, collections } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
+import { parseReais } from "@/lib/financeiro-calc";
 import { generateProductDescription, type AiText } from "@/lib/ai";
 
 // Generates a brand-voice product description with Claude from the current form
@@ -54,6 +55,13 @@ const productSchema = z.object({
   lengthCm: z.coerce.number().int().min(0).max(105).optional(),
   widthCm: z.coerce.number().int().min(0).max(105).optional(),
   heightCm: z.coerce.number().int().min(0).max(105).optional(),
+  // Custo de uma peça pronta, digitado em reais ("45,90"). Vazio = não
+  // informado; o painel financeiro avisa em vez de inventar lucro.
+  custo: z
+    .string()
+    .max(20)
+    .optional()
+    .refine((v) => !v?.trim() || parseReais(v) !== null, "Custo inválido. Use, por exemplo, 45,90."),
   description: z.string().min(1, "Descrição obrigatória"),
   colorGroup: z.string().optional(),
   colorName: z.string().max(40).optional(),
@@ -90,6 +98,7 @@ export async function createProduct(
     lengthCm: formData.get("lengthCm") || 0,
     widthCm: formData.get("widthCm") || 0,
     heightCm: formData.get("heightCm") || 0,
+    custo: (formData.get("custo") as string | null) ?? "",
     description: formData.get("description"),
     colorGroup: formData.get("colorGroup") || undefined,
     colorName: formData.get("colorName") || undefined,
@@ -126,6 +135,7 @@ export async function createProduct(
       lengthCm: data.lengthCm ?? 0,
       widthCm: data.widthCm ?? 0,
       heightCm: data.heightCm ?? 0,
+      custoCents: parseReais(data.custo ?? "") ?? 0,
       description: data.description,
       colorGroup: data.colorGroup || null,
       colorName: data.colorName ?? "",
@@ -167,6 +177,7 @@ export async function updateProduct(
       lengthCm: formData.get("lengthCm") || 0,
       widthCm: formData.get("widthCm") || 0,
       heightCm: formData.get("heightCm") || 0,
+      custo: (formData.get("custo") as string | null) ?? "",
       description: formData.get("description"),
       colorGroup: formData.get("colorGroup") || undefined,
       colorName: formData.get("colorName") || undefined,
@@ -203,6 +214,7 @@ export async function updateProduct(
       lengthCm: data.lengthCm ?? 0,
       widthCm: data.widthCm ?? 0,
       heightCm: data.heightCm ?? 0,
+      custoCents: parseReais(data.custo ?? "") ?? 0,
       description: data.description,
       colorGroup: data.colorGroup || null,
       colorName: data.colorName ?? "",

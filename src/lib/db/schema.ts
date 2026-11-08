@@ -61,6 +61,11 @@ export const products = pgTable("products", {
   lengthCm: integer("length_cm").notNull().default(0),
   widthCm: integer("width_cm").notNull().default(0),
   heightCm: integer("height_cm").notNull().default(0),
+  // Quanto custa UMA peça pronta para vender: a camiseta lisa, a estampa e a
+  // embalagem dela. É o que permite saber o lucro de cada venda (o CMV, custo
+  // da mercadoria vendida). Zero = ainda não informado, e o painel avisa em
+  // vez de mostrar um lucro que não existe.
+  custoCents: integer("custo_cents").notNull().default(0),
   fabric: text("fabric").notNull(),
   description: text("description").notNull(),
   active: boolean("active").notNull().default(true),
@@ -149,6 +154,20 @@ export const orders = pgTable("orders", {
   mpPaymentId: text("mp_payment_id"),
   mpStatus: text("mp_status"),
   paymentMethod: text("payment_method"),
+  // ── O que o Mercado Pago diz sobre o dinheiro deste pedido ───────────
+  // Lido da API deles (webhook e sincronização), nunca digitado: é o que
+  // deixa o caixa da empresa certo sem ninguém lançar venda à mão.
+  // Taxa cobrada da loja (processamento, parcelamento quando é da loja).
+  mpFeeCents: integer("mp_fee_cents"),
+  // O que de fato cai na conta: valor pago menos a taxa.
+  mpNetCents: integer("mp_net_cents"),
+  // Estorno ao cliente. Sem isso uma venda devolvida continuaria contando
+  // como receita.
+  mpRefundedCents: integer("mp_refunded_cents").notNull().default(0),
+  // Quando o dinheiro fica disponível para saque. Até lá ele é da empresa,
+  // mas ainda não dá para usar.
+  mpReleaseDate: timestamp("mp_release_date", { withTimezone: true }),
+  mpSyncedAt: timestamp("mp_synced_at", { withTimezone: true }),
   paidAt: timestamp("paid_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -169,6 +188,11 @@ export const orderItems = pgTable("order_items", {
   size: text("size").notNull(),
   unitPriceCents: integer("unit_price_cents").notNull(),
   quantity: integer("quantity").notNull(),
+  // Custo da peça NO DIA DA VENDA, copiado do produto. Pelo mesmo motivo do
+  // preço acima: se o custo da camiseta subir no mês que vem, o lucro das
+  // vendas antigas não pode mudar sozinho. Nulo em pedido anterior a este
+  // campo; aí a conta usa o custo atual do produto e avisa.
+  unitCostCents: integer("unit_cost_cents"),
 });
 
 // Singleton row (id = 1) holding brand/company/contact data shown in the
@@ -533,3 +557,13 @@ export const lancamentoPagadoresRelations = relations(lancamentoPagadores, ({ on
   }),
   socio: one(socios, { fields: [lancamentoPagadores.socioId], references: [socios.id] }),
 }));
+
+// Meta de vendas de cada mês, para o painel comparar o planejado com o
+// realizado. Uma linha por mês ("2026-12"); mês sem meta simplesmente não
+// mostra comparação.
+export const metasMensais = pgTable("metas_mensais", {
+  mes: text("mes").primaryKey(),
+  vendasCents: integer("vendas_cents").notNull().default(0),
+  observacao: text("observacao").notNull().default(""),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});

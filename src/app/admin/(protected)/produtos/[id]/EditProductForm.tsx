@@ -25,6 +25,7 @@ type Product = {
   lengthCm: number;
   widthCm: number;
   heightCm: number;
+  custoCents: number;
   description: string;
   active: boolean;
   colorGroup: string | null;
@@ -185,6 +186,19 @@ export function EditProductForm({
           <p className="text-[11px] text-content/40">
             Medidas do pacote fechado, não da peça aberta. É o que o cliente paga de frete e o que
             a etiqueta vai custar. Em branco, usa o pacote padrão de Entrega e frete.
+          </p>
+        </div>
+        <div className="flex flex-col gap-1">
+          <input
+            name="custo"
+            inputMode="decimal"
+            defaultValue={product.custoCents ? (product.custoCents / 100).toFixed(2).replace(".", ",") : ""}
+            placeholder="Custo de uma peça (R$)"
+            className={inputClass}
+          />
+          <p className="text-[11px] text-content/40">
+            Quanto custa uma peça pronta para vender: camiseta lisa, estampa e embalagem. Só vocês
+            veem. É o que permite o painel calcular o lucro real de cada venda.
           </p>
         </div>
         <div className="flex flex-col gap-2">

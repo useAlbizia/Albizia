@@ -11,6 +11,8 @@ import { orders, productVariants, analyticsEvents } from "@/lib/db/schema";
 import { sendOrderPaidEmails } from "@/lib/order-notify";
 import { incrementCouponUse } from "@/lib/coupons";
 import { getPaymentSettings } from "@/lib/payments";
+import { aplicarValoresMp } from "@/lib/mp-sync";
+import type { PagamentoMp } from "@/lib/mp-valores";
 
 // Mercado Pago is the only source of truth for payment status — this
 // endpoint never trusts anything the customer's browser reports back.
@@ -77,6 +79,14 @@ export async function POST(request: NextRequest) {
   if (!order) {
     return NextResponse.json({ ok: true });
   }
+
+  // Taxa, líquido, estorno e data de liberação, para o caixa da empresa se
+  // montar sozinho. Vale para qualquer status: é assim que um estorno feito
+  // semanas depois tira a venda do caixa. Falha aqui nunca derruba o resto
+  // do webhook, que cuida de coisa mais importante (estoque, e-mail).
+  await aplicarValoresMp(order.id, payment as PagamentoMp).catch((err) =>
+    console.error("Falha ao gravar valores do Mercado Pago", order.id, err),
+  );
 
   if (payment.status === "approved") {
     const justPaid = await db.transaction(async (tx) => {

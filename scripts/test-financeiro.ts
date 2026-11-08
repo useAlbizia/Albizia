@@ -17,7 +17,10 @@ import {
   somarMeses,
   type Movimento,
   type SocioBase,
+  SEM_AUTOMATICOS,
 } from "../src/lib/financeiro-calc";
+import { extrairValoresMp, vendaDesfeita } from "../src/lib/mp-valores";
+import { calcularDre, naturezaDe } from "../src/lib/financeiro-calc";
 
 let falhas = 0;
 function ok(nome: string, real: unknown, esperado: unknown) {
@@ -82,7 +85,7 @@ const movs: Movimento[] = [
 ];
 
 // Vendas pagas no site: R$ 1.000.
-const r = resumir(socios, movs, 100000);
+const r = resumir(socios, movs, { ...SEM_AUTOMATICOS, vendasCents: 100000 });
 const s = (id: string) => r.socios.find((x) => x.id === id)!;
 
 console.log("\nCapital de cada sócio (só o que foi pago):");
@@ -127,7 +130,7 @@ const r2 = resumir(
     { tipo: "devolucao_aporte", status: "pago", valorCents: 100000, socioId: D, pagadores: [] },
     { tipo: "distribuicao_lucro", status: "pago", valorCents: 10000, socioId: N, pagadores: [] },
   ],
-  100000,
+  { ...SEM_AUTOMATICOS, vendasCents: 100000 },
 );
 const s2 = (id: string) => r2.socios.find((x) => x.id === id)!;
 ok("devolução diminui o capital do David", s2(D).capitalCents, 326664 - 100000);
@@ -139,7 +142,7 @@ console.log("\nSócio inativo sai da divisão, mas não da história:");
 const r3 = resumir(
   [...socios.slice(0, 2), { id: D, nome: "David", cotas: 1, ativo: false }],
   movs,
-  0,
+  SEM_AUTOMATICOS,
 );
 const s3 = (id: string) => r3.socios.find((x) => x.id === id)!;
 ok("capital dele continua registrado", s3(D).capitalCents, 326664);
@@ -161,6 +164,127 @@ ok("2.400.000,00", parseReais("2.400.000,00"), 240000000);
 ok("texto inválido", parseReais("abc"), null);
 ok("vazio", parseReais(""), null);
 ok("três casas decimais não adivinha", parseReais("10,555"), null);
+
+console.log("\nPagamento do Mercado Pago virando números do caixa:");
+// Cartão aprovado de R$ 219,00 com taxa de R$ 10,93 da loja.
+const cartao = extrairValoresMp({
+  status: "approved",
+  transaction_amount: 219,
+  money_release_date: "2026-12-08T10:00:00.000-03:00",
+  fee_details: [{ type: "mercadopago_fee", amount: 10.93, fee_payer: "collector" }],
+  transaction_details: { net_received_amount: 208.07 },
+});
+ok("bruto", cartao.brutoCents, 21900);
+ok("taxa da loja", cartao.taxaCents, 1093);
+ok("líquido", cartao.liquidoCents, 20807);
+ok("data de liberação", cartao.liberacao, "2026-12-08T10:00:00.000-03:00");
+
+// Cliente parcelou com juros: o juro é dele, não é custo da loja.
+const parcelado = extrairValoresMp({
+  status: "approved",
+  transaction_amount: 219,
+  fee_details: [
+    { type: "mercadopago_fee", amount: 10.93, fee_payer: "collector" },
+    { type: "financing_fee", amount: 25.4, fee_payer: "payer" },
+  ],
+  transaction_details: { net_received_amount: 208.07 },
+});
+ok("juros pagos pelo cliente não viram taxa da loja", parcelado.taxaCents, 1093);
+
+// Pix gerado e não pago: o MP devolve líquido 0, que significa "ainda não".
+const pixPendente = extrairValoresMp({
+  status: "pending",
+  transaction_amount: 219,
+  transaction_details: { net_received_amount: 0 },
+});
+ok("pendente não tem líquido", pixPendente.liquidoCents, null);
+ok("pendente não tem taxa", pixPendente.taxaCents, 0);
+
+// Sem detalhe de taxa, mas com líquido: a diferença é a taxa.
+ok("taxa deduzida do líquido", extrairValoresMp({ status: "approved", transaction_amount: 100, transaction_details: { net_received_amount: 99.01 } }).taxaCents, 99);
+ok("estorno parcial lido", extrairValoresMp({ status: "approved", transaction_amount: 219, transaction_amount_refunded: 50 }).estornadoCents, 5000);
+ok("estorno total desfaz a venda", vendaDesfeita("refunded"), true);
+ok("contestação perdida desfaz a venda", vendaDesfeita("charged_back"), true);
+ok("aprovado não desfaz", vendaDesfeita("approved"), false);
+
+console.log("\nIntegrações entrando no caixa sozinhas:");
+const auto = resumir(socios, [], {
+  vendasCents: 100000,
+  taxasMpCents: 4990,
+  estornosCents: 5000,
+  etiquetasCents: 2272,
+  aLiberarCents: 30000,
+});
+ok("venda entra", auto.caixa.entradasCents, 100000);
+ok("taxa, estorno e etiqueta saem", auto.caixa.saidasCents, 4990 + 5000 + 2272);
+ok("saldo", auto.caixa.saldoCents, 100000 - 4990 - 5000 - 2272);
+ok("taxa e etiqueta contam como gasto da empresa", auto.despesasTotalCents, 4990 + 2272);
+ok("o que falta liberar é informado à parte", auto.caixa.aLiberarCents, 30000);
+ok("automático não mexe no capital de ninguém", auto.capitalTotalCents, 0);
+
+console.log("\nResultado do mês (DRE), conferido à mão:");
+// Mês de exemplo:
+//   vendas R$ 2.000,00, estorno R$ 100,00          -> receita líquida 1.900,00
+//   10 peças vendidas a R$ 45,00 de custo           -> CMV 450,00, lucro bruto 1.450,00
+//   taxa MP 99,80 + etiquetas 220,00 + embalagem 30 -> variáveis 349,80, margem 1.100,20
+//   anúncios 300 + sistemas 50 (fixas) e DAS 82     -> resultado 1.100,20 - 350 - 82 = 668,20
+//   comprou estoque 1.500 e a prensa 2.400          -> fora do resultado
+const dre = calcularDre({
+  vendasCents: 200000,
+  receitasAvulsasCents: 0,
+  estornosCents: 10000,
+  cmvCents: 45000,
+  itensSemCusto: 0,
+  taxasMpCents: 9980,
+  etiquetasCents: 22000,
+  despesasPorCategoria: {
+    Embalagem: 3000,
+    "Marketing e anúncios": 30000,
+    "Sistemas e domínio": 5000,
+    "Impostos (DAS do MEI)": 8200,
+    "Estoque (peças)": 150000,
+    Equipamento: 240000,
+  },
+  metaCents: 300000,
+});
+ok("receita bruta", dre.receitaBrutaCents, 200000);
+ok("receita líquida (menos estorno)", dre.receitaLiquidaCents, 190000);
+ok("lucro bruto (menos custo das peças)", dre.lucroBrutoCents, 145000);
+ok("despesas variáveis", dre.variaveisCents, 34980);
+ok("margem de contribuição", dre.margemContribuicaoCents, 110020);
+ok("margem 57,9%", dre.margemPermil, 579);
+ok("fixas", dre.fixasCents, 35000);
+ok("impostos", dre.impostosCents, 8200);
+ok("resultado do mês: R$ 668,20", dre.resultadoCents, 66820);
+ok("compra de estoque fica fora", dre.foraDoResultado.estoqueCents, 150000);
+ok("prensa fica fora (investimento)", dre.foraDoResultado.investimentoCents, 240000);
+// Fixos + DAS = 432,00. Com margem de 1.100,20 sobre 1.900,00, empata em
+// 432 x 1900 / 1100,20 = 746,05 (arredonda para cima: empatar exige vender).
+ok("ponto de equilíbrio R$ 746,05", dre.pontoEquilibrioCents, 74605);
+ok("meta: 66,7% de R$ 3.000", dre.meta?.permil, 667);
+ok("sem aviso quando todo custo está preenchido", dre.avisos.length, 0);
+
+const semReceita = calcularDre({
+  vendasCents: 0, receitasAvulsasCents: 0, estornosCents: 0, cmvCents: 0, itensSemCusto: 0,
+  taxasMpCents: 0, etiquetasCents: 0, despesasPorCategoria: { "Sistemas e domínio": 5000 }, metaCents: null,
+});
+ok("mês sem venda: prejuízo dos fixos", semReceita.resultadoCents, -5000);
+ok("mês sem venda: sem margem", semReceita.margemPermil, null);
+ok("mês sem venda: sem ponto de equilíbrio", semReceita.pontoEquilibrioCents, null);
+ok("sem meta, sem comparação", semReceita.meta, null);
+
+const margemNegativa = calcularDre({
+  vendasCents: 10000, receitasAvulsasCents: 0, estornosCents: 0, cmvCents: 12000, itensSemCusto: 0,
+  taxasMpCents: 0, etiquetasCents: 0, despesasPorCategoria: {}, metaCents: null,
+});
+ok("vendendo abaixo do custo não tem ponto de equilíbrio", margemNegativa.pontoEquilibrioCents, null);
+
+const semCusto = calcularDre({
+  vendasCents: 20000, receitasAvulsasCents: 0, estornosCents: 0, cmvCents: 0, itensSemCusto: 3,
+  taxasMpCents: 0, etiquetasCents: 0, despesasPorCategoria: {}, metaCents: null,
+});
+ok("avisa quando falta custo de peça", semCusto.avisos.length, 1);
+ok("categoria desconhecida conta como fixa (nunca infla o lucro)", naturezaDe("Categoria velha"), "fixa");
 
 console.log(falhas === 0 ? "\nTODOS PASSARAM\n" : `\n${falhas} FALHA(S)\n`);
 process.exit(falhas === 0 ? 0 : 1);

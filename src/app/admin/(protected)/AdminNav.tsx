@@ -23,6 +23,7 @@ const GROUPS: Group[] = [
     // "Financeiro", que é o relatório de vendas do site.
     title: "Empresa",
     items: [
+      { href: "/admin/fechamento", label: "Fechamento do mês" },
       { href: "/admin/socios", label: "Sócios e caixa" },
       { href: "/admin/lancamentos", label: "Lançamentos" },
     ],

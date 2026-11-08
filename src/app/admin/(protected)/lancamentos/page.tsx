@@ -1,6 +1,13 @@
 import Link from "next/link";
 import { brl, isoDay, shortDate } from "@/lib/format";
-import { CATEGORIAS, FORMAS_PAGAMENTO, listarLancamentos, listarSocios } from "@/lib/financeiro";
+import {
+  CATEGORIAS,
+  FORMAS_PAGAMENTO,
+  listarAutomaticos,
+  listarLancamentos,
+  listarSocios,
+  type LinhaAutomatica,
+} from "@/lib/financeiro";
 import { LancamentoForm } from "./LancamentoForm";
 import { LancamentoAcoes } from "./LancamentoAcoes";
 
@@ -18,12 +25,27 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
   const sp = await props.searchParams;
   const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
   const filtro = { mes: um(sp.mes), tipo: um(sp.tipo), socioId: um(sp.socio) };
+  const mostrar = um(sp.mostrar); // "" = tudo | "lancados" | "automaticos"
 
-  const [socios, rows] = await Promise.all([listarSocios(), listarLancamentos(filtro)]);
+  const [socios, rows, autos] = await Promise.all([
+    listarSocios(),
+    mostrar === "automaticos" ? Promise.resolve([]) : listarLancamentos(filtro),
+    // Venda, taxa e etiqueta são da empresa, não de um sócio: no extrato de
+    // um sócio elas não aparecem.
+    mostrar === "lancados" || filtro.socioId ? Promise.resolve([]) : listarAutomaticos(filtro),
+  ]);
+
+  type Item =
+    | { k: "manual"; data: string; ordem: number; l: (typeof rows)[number] }
+    | { k: "auto"; data: string; ordem: number; a: LinhaAutomatica };
+  const itens: Item[] = [
+    ...rows.map((l) => ({ k: "manual" as const, data: l.data, ordem: l.createdAt.getTime(), l })),
+    ...autos.map((a) => ({ k: "auto" as const, data: a.data, ordem: 0, a })),
+  ].sort((x, y) => y.data.localeCompare(x.data) || y.ordem - x.ordem);
   const ativos = socios.filter((s) => s.ativo).map((s) => ({ id: s.id, nome: s.nome }));
   const nomeSocio = (id: string | null) => socios.find((s) => s.id === id)?.nome ?? "";
   const hoje = isoDay(new Date());
-  const filtrando = !!(filtro.mes || filtro.tipo || filtro.socioId);
+  const filtrando = !!(filtro.mes || filtro.tipo || filtro.socioId || mostrar);
   const sel = "border border-content/30 bg-transparent px-3 py-2 text-sm outline-none focus:border-content";
 
   return (
@@ -61,6 +83,11 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
               </option>
             ))}
           </select>
+          <select name="mostrar" defaultValue={mostrar} className={sel} aria-label="Mostrar">
+            <option value="">Lançados e automáticos</option>
+            <option value="lancados">Só lançados à mão</option>
+            <option value="automaticos">Só automáticos (vendas, taxas, etiquetas)</option>
+          </select>
           <button
             type="submit"
             className="border border-content px-4 py-2 text-[11px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface"
@@ -88,7 +115,36 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
               </tr>
             </thead>
             <tbody className="divide-y divide-content/10">
-              {rows.map((l) => {
+              {itens.map((it) => {
+                if (it.k === "auto") {
+                  const a = it.a;
+                  // Linha automática: só leitura. A verdade dela está no
+                  // Mercado Pago ou no Melhor Envio; corrige-se lá.
+                  return (
+                    <tr key={a.id} className="bg-content/[0.02]">
+                      <td className="py-3 pr-3 whitespace-nowrap">{shortDate(`${a.data}T12:00:00`)}</td>
+                      <td className="py-3 pr-3 text-content/60">{a.tipo === "receita" ? "Venda" : "Gasto"}</td>
+                      <td className="py-3 pr-3">
+                        <span className="block">{a.descricao}</span>
+                        <span className="block text-[11px] text-content/40">
+                          {["automático", a.fonte, a.detalhe].filter(Boolean).join(" · ")}
+                        </span>
+                      </td>
+                      <td className="py-3 pr-3 text-content/70">Empresa</td>
+                      <td className="py-3 pr-3 whitespace-nowrap">{brl(a.valorCents)}</td>
+                      <td className="py-3 pr-3 text-[12px]">pago</td>
+                      <td className="py-3 text-right">
+                        <Link
+                          href={`/admin/pedidos/${a.pedidoId}`}
+                          className="text-[11px] uppercase tracking-[0.1em] text-content/45 underline-offset-4 hover:text-content hover:underline"
+                        >
+                          ver pedido
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                }
+                const l = it.l;
                 const quem =
                   l.tipo === "despesa"
                     ? l.pagadores.length > 1
@@ -129,7 +185,7 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
               })}
             </tbody>
           </table>
-          {rows.length === 0 && (
+          {itens.length === 0 && (
             <p className="py-10 text-center text-sm text-content/50">
               {filtrando ? "Nada com esses filtros." : "Nenhum lançamento ainda. Comece pelo primeiro gasto da marca."}
             </p>

@@ -5,10 +5,11 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
-import { lancamentoPagadores, lancamentos, socios } from "@/lib/db/schema";
+import { lancamentoPagadores, lancamentos, metasMensais, socios } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
 import { isoDay } from "@/lib/format";
 import { dividirPorPeso, gerarParcelas, parseReais } from "@/lib/financeiro-calc";
+import { sincronizarPendentes } from "@/lib/mp-sync";
 
 export type FinState = { ok?: boolean; error?: string; mensagem?: string };
 
@@ -193,3 +194,38 @@ export async function salvarSocio(id: string, _prev: FinState, fd: FormData): Pr
   return { ok: true };
 }
 
+
+/**
+ * Lê agora no Mercado Pago as vendas que ainda estão sem taxa e liberação.
+ * A tela já faz isso sozinha, poucas por vez; o botão serve para quando há
+ * muitas acumuladas (por exemplo, depois de reconectar a conta).
+ */
+export async function sincronizarMercadoPago(): Promise<FinState> {
+  await requireAdmin();
+  const r = await sincronizarPendentes(100);
+  refresh();
+  if (r.semToken) return { error: "A conta do Mercado Pago não está conectada." };
+  if (r.erros > 0) return { error: `${r.atualizados} venda(s) atualizada(s), ${r.erros} com erro.` };
+  return { ok: true, mensagem: r.atualizados ? `${r.atualizados} venda(s) atualizada(s).` : "Tudo já estava em dia." };
+}
+
+/** Meta de vendas de um mês. Valor vazio ou zero apaga a meta. */
+export async function salvarMeta(mes: string, _prev: FinState, fd: FormData): Promise<FinState> {
+  await requireAdmin();
+  if (!/^\d{4}-\d{2}$/.test(mes)) return { error: "Mês inválido." };
+  const texto = String(fd.get("meta") ?? "").trim();
+  const valor = texto ? parseReais(texto) : 0;
+  if (valor === null) return { error: "Valor inválido. Use, por exemplo, 5.000,00." };
+
+  if (!valor) {
+    await db.delete(metasMensais).where(eq(metasMensais.mes, mes));
+  } else {
+    await db
+      .insert(metasMensais)
+      .values({ mes, vendasCents: valor, updatedAt: new Date() })
+      .onConflictDoUpdate({ target: metasMensais.mes, set: { vendasCents: valor, updatedAt: new Date() } });
+  }
+  await logAudit({ action: "financeiro.meta", entity: "meta", entityId: mes, detail: { vendasCents: valor } });
+  revalidatePath("/admin/fechamento");
+  return { ok: true };
+}

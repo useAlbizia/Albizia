@@ -2,6 +2,7 @@ import Link from "next/link";
 import { brl } from "@/lib/format";
 import { listarSocios, painelFinanceiro } from "@/lib/financeiro";
 import { SocioForm } from "./SocioForm";
+import { SincronizarMp } from "./SincronizarMp";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ function Cartao({ titulo, valor, dica }: { titulo: string; valor: string; dica?:
 }
 
 export default async function SociosPage() {
-  const [{ resumo, acertos, mei }, lista] = await Promise.all([painelFinanceiro(), listarSocios()]);
+  const [{ resumo, acertos, mei, sync }, lista] = await Promise.all([painelFinanceiro(), listarSocios()]);
   const { caixa } = resumo;
   const usoMei = mei.limiteCents > 0 ? Math.min(100, (mei.faturadoCents / mei.limiteCents) * 100) : 0;
   const ativos = resumo.socios.filter((l) => lista.find((s) => s.id === l.id)?.ativo);
@@ -136,21 +137,48 @@ export default async function SociosPage() {
             <dd>{brl(caixa.aportesCents)}</dd>
             <dt className="border-t border-content/10 pt-1.5">Entrou</dt>
             <dd className="border-t border-content/10 pt-1.5">{brl(caixa.entradasCents)}</dd>
-            <dt className="pt-3 text-content/60">Despesas pagas pela empresa</dt>
-            <dd className="pt-3">{brl(caixa.despesasEmpresaCents)}</dd>
+            <dt className="pt-3 text-content/60">Taxas do Mercado Pago (automático)</dt>
+            <dd className="pt-3">{brl(caixa.taxasMpCents)}</dd>
+            <dt className="text-content/60">Estornos a clientes (automático)</dt>
+            <dd>{brl(caixa.estornosCents)}</dd>
+            <dt className="text-content/60">Etiquetas do Melhor Envio (automático)</dt>
+            <dd>{brl(caixa.etiquetasCents)}</dd>
+            <dt className="text-content/60">Despesas pagas pela empresa</dt>
+            <dd>{brl(caixa.despesasEmpresaCents)}</dd>
             <dt className="text-content/60">Devolvido aos sócios</dt>
             <dd>{brl(caixa.devolucoesCents)}</dd>
             <dt className="text-content/60">Lucro distribuído</dt>
             <dd>{brl(caixa.distribuicoesCents)}</dd>
             <dt className="border-t border-content/10 pt-1.5">Saiu</dt>
             <dd className="border-t border-content/10 pt-1.5">{brl(caixa.saidasCents)}</dd>
+            {caixa.aLiberarCents > 0 && (
+              <>
+                <dt className="pt-3 text-content/60">Ainda preso no Mercado Pago</dt>
+                <dd className="pt-3">{brl(caixa.aLiberarCents)}</dd>
+              </>
+            )}
           </dl>
           <p className="mt-3 text-[11px] leading-relaxed text-content/40">
-            As vendas aparecem pelo valor que o cliente pagou. A taxa do Mercado Pago ainda não é
-            descontada sozinha: lance como despesa até essa parte ficar automática.
+            Vendas, taxas, estornos e etiquetas entram sozinhos, lidos do Mercado Pago e do Melhor
+            Envio. O que está "preso" já é da empresa, mas o Mercado Pago só libera para saque na data
+            dele.
             {resumo.previsto.totalCents > 0 &&
               ` Há ${brl(resumo.previsto.totalCents)} em parcelas futuras que ainda não contam aqui.`}
           </p>
+          {sync.semToken && (
+            <p className="mt-2 text-[12px] text-content/75">
+              A conta do Mercado Pago não está conectada, então taxas e liberações não estão sendo lidas.
+            </p>
+          )}
+          {!sync.semToken && (sync.pendentes > 0 || sync.erros > 0) && (
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              <p className="text-[12px] text-content/70">
+                {sync.pendentes > 0 && `${sync.pendentes} venda(s) ainda sem os dados do Mercado Pago. `}
+                {sync.erros > 0 && `${sync.erros} leitura(s) falharam agora.`}
+              </p>
+              <SincronizarMp />
+            </div>
+          )}
         </div>
 
         <div className="border border-content/15 px-5 py-4">
