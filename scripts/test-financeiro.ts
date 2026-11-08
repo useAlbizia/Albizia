@@ -227,7 +227,7 @@ console.log("\nResultado do mês (DRE), conferido à mão:");
 // Mês de exemplo:
 //   vendas R$ 2.000,00, estorno R$ 100,00          -> receita líquida 1.900,00
 //   10 peças vendidas a R$ 45,00 de custo           -> CMV 450,00, lucro bruto 1.450,00
-//   taxa MP 99,80 + etiquetas 220,00 + embalagem 30 -> variáveis 349,80, margem 1.100,20
+//   taxa MP 99,80 + etiquetas 220,00 + envelopes 30 -> variáveis 349,80, margem 1.100,20
 //   anúncios 300 + sistemas 50 (fixas) e DAS 82     -> resultado 1.100,20 - 350 - 82 = 668,20
 //   comprou estoque 1.500 e a prensa 2.400          -> fora do resultado
 const dre = calcularDre({
@@ -238,8 +238,9 @@ const dre = calcularDre({
   itensSemCusto: 0,
   taxasMpCents: 9980,
   etiquetasCents: 22000,
+  embalagensPedidoCents: 3000,
   despesasPorCategoria: {
-    Embalagem: 3000,
+
     "Marketing e anúncios": 30000,
     "Sistemas e domínio": 5000,
     "Impostos (DAS do MEI)": 8200,
@@ -286,6 +287,8 @@ const semCusto = calcularDre({
 });
 ok("avisa quando falta custo de peça", semCusto.avisos.length, 1);
 ok("categoria desconhecida conta como fixa (nunca infla o lucro)", naturezaDe("Categoria velha"), "fixa");
+ok("compra de insumos fica fora do resultado", naturezaDe("Estoque e insumos"), "estoque");
+ok("nome antigo Embalagem também (não conta o envelope duas vezes)", naturezaDe("Embalagem"), "estoque");
 
 console.log("\nFicha técnica, conferida à mão:");
 // Uma peça:

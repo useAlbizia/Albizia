@@ -168,6 +168,9 @@ export const orders = pgTable("orders", {
   // mas ainda não dá para usar.
   mpReleaseDate: timestamp("mp_release_date", { withTimezone: true }),
   mpSyncedAt: timestamp("mp_synced_at", { withTimezone: true }),
+  // Custo do envelope de envio deste pedido, no dia da venda (insumos do
+  // tipo "embalagem do pedido"). Entra no resultado do mês, não no caixa.
+  embalagemCents: integer("embalagem_cents").notNull().default(0),
   paidAt: timestamp("paid_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
@@ -567,3 +570,51 @@ export const metasMensais = pgTable("metas_mensais", {
   observacao: text("observacao").notNull().default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ── Ficha técnica ────────────────────────────────────────────────────────
+//
+// Insumos são o que se compra para fazer as peças (peça lisa, DTF,
+// autorrelevo, etiqueta, tag, ziplock, envelope). O custo fica guardado como o
+// LOTE ("1.000 etiquetas por R$ 35,00"), nunca como um preço unitário
+// arredondado: uma etiqueta custa 3,5 centavos, e arredondar insumo por
+// insumo erra o custo de toda peça. Ver lib/ficha-calc.ts.
+
+export const insumos = pgTable("insumos", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  // peca | estampa | etiqueta | acabamento | embalagem_peca | embalagem_pedido | outro
+  tipo: text("tipo").notNull().default("outro"),
+  // un | m | cm | g
+  unidade: text("unidade").notNull().default("un"),
+  loteValorCents: integer("lote_valor_cents").notNull().default(0),
+  // Em milésimos: 1.000 etiquetas = 1.000.000; 2,5 m = 2.500.
+  loteQuantidadeMil: integer("lote_quantidade_mil").notNull().default(1000),
+  fornecedor: text("fornecedor").notNull().default(""),
+  // Insumo usado em ficha não se apaga, só se desativa, para o custo das
+  // fichas antigas continuar explicável.
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// A receita de cada modelo: quanto de cada insumo vai em UMA peça.
+export const fichaTecnica = pgTable(
+  "ficha_tecnica",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productId: uuid("product_id")
+      .notNull()
+      .references(() => products.id, { onDelete: "cascade" }),
+    insumoId: uuid("insumo_id")
+      .notNull()
+      .references(() => insumos.id),
+    // Em milésimos: 1 unidade = 1000; 0,25 m de DTF = 250.
+    quantidadeMil: integer("quantidade_mil").notNull(),
+  },
+  (t) => [unique("ficha_produto_insumo").on(t.productId, t.insumoId)],
+);
+
+export const fichaTecnicaRelations = relations(fichaTecnica, ({ one }) => ({
+  insumo: one(insumos, { fields: [fichaTecnica.insumoId], references: [insumos.id] }),
+  product: one(products, { fields: [fichaTecnica.productId], references: [products.id] }),
+}));

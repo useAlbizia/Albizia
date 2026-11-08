@@ -13,6 +13,7 @@ import {
 } from "@/lib/shipping";
 import { validateCoupon, type CouponResult } from "@/lib/coupons";
 import { isValidDocument, onlyDigits } from "@/lib/fiscal";
+import { custoEmbalagemPedidoCents } from "@/lib/ficha";
 
 /**
  * As linhas do carrinho com peso e medida, lidas do BANCO.
@@ -245,6 +246,9 @@ export async function createPendingOrder(
       meServiceId: frete.option?.id ?? null,
       meServiceName: frete.option?.name ?? null,
       meCompany: frete.option?.company ?? null,
+      // Envelope de envio no dia da venda, para o lucro deste pedido não
+      // mudar se o preço do envelope subir depois.
+      embalagemCents: await custoEmbalagemPedidoCents(),
     })
     .returning();
 

@@ -379,10 +379,16 @@ export function parseReais(entrada: string): number | null {
 export type Natureza = "variavel" | "fixa" | "imposto" | "estoque" | "investimento";
 
 /** As categorias de gasto e o lugar de cada uma no resultado. */
+//
+// "Estoque e insumos" junta TUDO que se compra em lote para virar peça:
+// peça lisa, DTF, autorrelevo, etiqueta, tag, ziplock, envelope. Antes havia
+// uma categoria "Embalagem" contada como gasto do mês; com a ficha técnica
+// isso contaria o mesmo envelope duas vezes (na compra do lote e de novo em
+// cada venda). Comprar insumo tira dinheiro do caixa; o custo entra no
+// resultado só quando a peça é vendida, pela ficha.
 export const CATEGORIAS_DESPESA: { nome: string; natureza: Natureza }[] = [
-  { nome: "Estoque (peças)", natureza: "estoque" },
+  { nome: "Estoque e insumos", natureza: "estoque" },
   { nome: "Equipamento", natureza: "investimento" },
-  { nome: "Embalagem", natureza: "variavel" },
   { nome: "Frete e etiquetas", natureza: "variavel" },
   { nome: "Taxas (Mercado Pago, banco)", natureza: "variavel" },
   { nome: "Marketing e anúncios", natureza: "fixa" },
@@ -396,7 +402,11 @@ export function naturezaDe(categoria: string): Natureza {
   // Categoria desconhecida (digitada antes de uma mudança de nome, por
   // exemplo) conta como gasto fixo: na dúvida, o resultado fica menor, não
   // maior. Errar para o lado do lucro inventado é o erro que não pode.
-  return CATEGORIAS_DESPESA.find((c) => c.nome === categoria)?.natureza ?? "fixa";
+  const atual = CATEGORIAS_DESPESA.find((c) => c.nome === categoria)?.natureza;
+  if (atual) return atual;
+  // Nomes antigos, para nenhum lançamento antigo mudar de lugar se existir.
+  if (categoria === "Estoque (peças)" || categoria === "Embalagem") return "estoque";
+  return "fixa";
 }
 
 export type DadosMes = {
@@ -409,6 +419,12 @@ export type DadosMes = {
   itensSemCusto: number;
   taxasMpCents: number;
   etiquetasCents: number;
+  /**
+   * Envelope de envio dos pedidos vendidos no mês (um por pedido). Entra no
+   * resultado, não no caixa: o dinheiro do envelope saiu quando o lote foi
+   * comprado, como "Estoque e insumos".
+   */
+  embalagensPedidoCents?: number;
   /** Gastos lançados à mão no mês, por categoria, não importa quem pagou. */
   despesasPorCategoria: Record<string, number>;
   metaCents: number | null;
@@ -441,7 +457,7 @@ export function calcularDre(d: DadosMes): Dre {
   const receitaBruta = d.vendasCents + d.receitasAvulsasCents;
   const receitaLiquida = receitaBruta - d.estornosCents;
   const lucroBruto = receitaLiquida - d.cmvCents;
-  const variaveis = d.taxasMpCents + d.etiquetasCents + porNatureza.variavel;
+  const variaveis = d.taxasMpCents + d.etiquetasCents + (d.embalagensPedidoCents ?? 0) + porNatureza.variavel;
   const margem = lucroBruto - variaveis;
   const fixas = porNatureza.fixa;
   const impostos = porNatureza.imposto;

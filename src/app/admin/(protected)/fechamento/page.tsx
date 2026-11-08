@@ -150,7 +150,7 @@ export default async function FechamentoPage(props: PageProps<"/admin/fechamento
           rotulo="Gastos que crescem com a venda"
           valor={d.variaveisCents}
           sinal="−"
-          dica="Taxa do Mercado Pago, etiquetas, embalagem."
+          dica="Taxa do Mercado Pago, etiquetas de frete e o envelope de cada pedido."
         />
         <Linha
           rotulo={`Margem de contribuição${d.margemPermil !== null ? ` (${pct(d.margemPermil)})` : ""}`}

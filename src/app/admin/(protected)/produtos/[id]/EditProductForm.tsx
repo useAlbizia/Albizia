@@ -37,9 +37,11 @@ type Product = {
 export function EditProductForm({
   product,
   collections,
+  temFicha = false,
 }: {
   product: Product;
   collections: CollectionInfo[];
+  temFicha?: boolean;
 }) {
   const boundUpdate = updateProduct.bind(null, product.id);
   const [state, formAction, pending] = useActionState(boundUpdate, initialState);
@@ -188,19 +190,28 @@ export function EditProductForm({
             a etiqueta vai custar. Em branco, usa o pacote padrão de Entrega e frete.
           </p>
         </div>
-        <div className="flex flex-col gap-1">
-          <input
-            name="custo"
-            inputMode="decimal"
-            defaultValue={product.custoCents ? (product.custoCents / 100).toFixed(2).replace(".", ",") : ""}
-            placeholder="Custo de uma peça (R$)"
-            className={inputClass}
-          />
-          <p className="text-[11px] text-content/40">
-            Quanto custa uma peça pronta para vender: camiseta lisa, estampa e embalagem. Só vocês
-            veem. É o que permite o painel calcular o lucro real de cada venda.
+        {temFicha ? (
+          // Com ficha, o custo é dela. Mostrar um campo editável aqui seria
+          // convidar alguém a digitar um número que não vale.
+          <p className="border border-content/15 px-4 py-3 text-[12px] leading-relaxed text-content/60">
+            Custo de uma peça: <strong>R$ {(product.custoCents / 100).toFixed(2).replace(".", ",")}</strong>,
+            calculado pela ficha técnica ao lado.
           </p>
-        </div>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <input
+              name="custo"
+              inputMode="decimal"
+              defaultValue={product.custoCents ? (product.custoCents / 100).toFixed(2).replace(".", ",") : ""}
+              placeholder="Custo de uma peça (R$)"
+              className={inputClass}
+            />
+            <p className="text-[11px] text-content/40">
+              Quanto custa uma peça pronta para vender. Para o custo exato, monte a ficha técnica ao
+              lado com os insumos: aí ele é calculado e este campo some.
+            </p>
+          </div>
+        )}
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-[11px] uppercase tracking-[0.2em] text-content/50">Descrição</span>

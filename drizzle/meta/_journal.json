@@ -183,6 +183,13 @@
       "when": 1794171862131,
       "tag": "0025_cold_alex_wilder",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1794174539014,
+      "tag": "0026_famous_patriot",
+      "breakpoints": true
     }
   ]
 }

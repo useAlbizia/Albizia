@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
-import { products, productVariants, productImages, collections } from "@/lib/db/schema";
+import { products, productVariants, productImages, collections, fichaTecnica } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
 import { parseReais } from "@/lib/financeiro-calc";
 import { generateProductDescription, type AiText } from "@/lib/ai";
@@ -200,6 +200,11 @@ export async function updateProduct(
     return { error: "Produto não encontrado." };
   }
 
+  // Com ficha técnica, o custo é calculado por ela e o campo manual nem
+  // aparece na tela. Se este salvamento gravasse o campo (vazio = zero), o
+  // custo do produto sumiria e o lucro de toda venda seguinte sairia errado.
+  const temFicha = await db.query.fichaTecnica.findFirst({ where: eq(fichaTecnica.productId, productId) });
+
   await db
     .update(products)
     .set({
@@ -214,7 +219,7 @@ export async function updateProduct(
       lengthCm: data.lengthCm ?? 0,
       widthCm: data.widthCm ?? 0,
       heightCm: data.heightCm ?? 0,
-      custoCents: parseReais(data.custo ?? "") ?? 0,
+      ...(temFicha ? {} : { custoCents: parseReais(data.custo ?? "") ?? 0 }),
       description: data.description,
       colorGroup: data.colorGroup || null,
       colorName: data.colorName ?? "",

@@ -338,7 +338,7 @@ function limitesDoMes(mes: string) {
 export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
   const { inicioData, fimData, inicio, fim } = limitesDoMes(mes);
 
-  const [auto, receitasMes, despesasMes, itens, meta, base, movsAntes, movsAte, autoAntes, autoAte] =
+  const [auto, receitasMes, despesasMes, itens, meta, base, movsAntes, movsAte, autoAntes, autoAte, embalagens] =
     await Promise.all([
       automaticos(inicio, fim),
       db
@@ -390,6 +390,11 @@ export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
       movimentos(fimData),
       automaticos(undefined, inicio),
       automaticos(undefined, fim),
+      // Um envelope por pedido vendido no mês, pelo custo do dia da venda.
+      db
+        .select({ n: sql<number>`coalesce(sum(${orders.embalagemCents}), 0)::int` })
+        .from(orders)
+        .where(and(vendaValida(), ...noPeriodo(dataVenda, inicio, fim))),
     ]);
 
   let cmv = 0;
@@ -438,6 +443,7 @@ export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
     itensSemCusto: semCusto,
     taxasMpCents: auto.taxasMpCents,
     etiquetasCents: auto.etiquetasCents,
+    embalagensPedidoCents: embalagens[0]?.n ?? 0,
     despesasPorCategoria,
     metaCents: meta?.vendasCents ?? null,
   });
