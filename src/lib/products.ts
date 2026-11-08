@@ -1,4 +1,4 @@
-import { asc, eq, or, ilike } from "drizzle-orm";
+import { and, asc, eq, or, ilike } from "drizzle-orm";
 import { db } from "./db/client";
 import { collections as collectionsTable, products as productsTable } from "./db/schema";
 
@@ -152,8 +152,11 @@ export async function getProductsByLine(line: ProductLine): Promise<Product[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
+  // Só produto ativo. Sem isso, um modelo que saiu do catálogo continuava
+  // abrindo (e podendo ser comprado) por qualquer link antigo: Google,
+  // Instagram, mensagem compartilhada.
   const row = await db.query.products.findFirst({
-    where: eq(productsTable.slug, slug),
+    where: and(eq(productsTable.slug, slug), eq(productsTable.active, true)),
     with: { collection: true, variants: true, images: true },
   });
   if (!row) return undefined;

@@ -156,6 +156,12 @@ export async function createPendingOrder(
     if (!variant) {
       return { error: `Item não encontrado: ${item.name}.` };
     }
+    // O carrinho fica guardado no navegador: alguém pode ter colocado a peça
+    // lá antes de ela sair do catálogo. A trava tem que ser aqui, no
+    // servidor, e não só na página do produto.
+    if (!variant.product.active) {
+      return { error: `${variant.product.name} não está mais disponível. Remova do carrinho para continuar.` };
+    }
     if (variant.stock < item.quantity) {
       return { error: `Estoque insuficiente para ${variant.product.name} (${variant.size}).` };
     }
