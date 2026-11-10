@@ -98,8 +98,14 @@ export async function enviarEmail(_prev: EnvioState, fd: FormData): Promise<Envi
   }
 
   const corpo = texto + citacao;
-  const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#202124;white-space:pre-wrap">${esc(corpo)}</div>
-<p style="font-family:Arial,Helvetica,sans-serif;font-size:13px;color:#8a857c;margin-top:24px">ALBIZIA · usealbizia.com.br</p>`;
+  // Resposta com cara de conversa (sem a faixa preta dos e-mails de pedido),
+  // mas assinada com o símbolo e o nome oficiais da marca, em imagem.
+  const html = `<div style="font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.6;color:#202124;white-space:pre-wrap">${esc(corpo)}</div>
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;border-top:1px solid #e6e0d5;padding-top:16px"><tr>
+<td style="padding:16px 12px 0 0;vertical-align:middle"><img src="https://www.usealbizia.com.br/logo/symbol-black.png" width="26" height="27" alt="" style="display:block;border:0;width:26px;height:27px"></td>
+<td style="padding:16px 0 0;vertical-align:middle"><a href="https://www.usealbizia.com.br" style="text-decoration:none;color:#121212"><img src="https://www.usealbizia.com.br/logo/wordmark-black.png" width="110" height="13" alt="ALBIZIA" style="display:block;border:0;width:110px;height:13px;font-family:Arial,sans-serif;font-size:13px;letter-spacing:5px;color:#121212"></a>
+<p style="margin:6px 0 0;font-family:Montserrat,Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:1px;color:#8a857c">usealbizia.com.br</p></td>
+</tr></table>`;
 
   const r = await sendEmailDetailed({ from: CONTATO, to: para, subject: assunto, html, text: corpo, replyTo: CONTATO, headers });
   if (!r.ok) return { error: r.reason };
