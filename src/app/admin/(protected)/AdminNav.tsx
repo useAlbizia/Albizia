@@ -237,7 +237,7 @@ export function AdminNav({
             <form action={logout}>
               <button
                 type="submit"
-                className="text-[12px] uppercase tracking-[0.15em] text-content/50 hover:text-content"
+                className="btn-sec"
               >
                 Sair
               </button>
@@ -265,7 +265,7 @@ export function AdminNav({
           <form action={logout}>
             <button
               type="submit"
-              className="mt-2 text-[12px] uppercase tracking-[0.15em] text-content/50 hover:text-content"
+              className="btn-sec mt-2"
             >
               Sair
             </button>

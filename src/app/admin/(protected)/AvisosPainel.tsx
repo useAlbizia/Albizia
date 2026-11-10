@@ -180,7 +180,7 @@ export function AvisosPainel({
                 {ocupado ? "Ligando..." : "Ligar notificações"}
               </button>
             )}
-            <button type="button" onClick={adiar} className="px-3 py-2.5 text-[11px] uppercase tracking-[0.12em] text-content/50">
+            <button type="button" onClick={adiar} className="btn-sec">
               Agora não
             </button>
           </div>

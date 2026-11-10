@@ -12,8 +12,7 @@ import {
   type EnvioState,
 } from "./_actions";
 
-const botao =
-  "border border-content/25 px-3 py-1.5 text-[11px] uppercase tracking-[0.12em] text-content/70 transition-colors hover:border-content hover:text-content disabled:opacity-40";
+const botao = "btn-sec";
 
 export function AcoesEmail({
   id,

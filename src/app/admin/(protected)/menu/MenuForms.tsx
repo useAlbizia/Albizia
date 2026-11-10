@@ -55,14 +55,14 @@ export function MenuItemEditor({ item }: { item: Item }) {
           <button
             onClick={() => startTransition(() => toggleMenuItem(item.id, !item.active))}
             disabled={busy}
-            className="text-[11px] uppercase tracking-[0.1em] text-content/50 hover:text-content"
+            className="btn-sec"
           >
             {item.active ? "Ativo" : "Inativo"}
           </button>
           <button
             onClick={() => startTransition(() => deleteMenuItem(item.id))}
             disabled={busy}
-            className="text-[11px] uppercase tracking-[0.1em] text-content/40 hover:text-content"
+            className="btn-perigo"
           >
             Excluir item
           </button>
@@ -100,7 +100,7 @@ export function MenuItemEditor({ item }: { item: Item }) {
                 <button
                   onClick={() => startTransition(() => deleteMenuLink(l.id))}
                   disabled={busy}
-                  className="text-[11px] uppercase tracking-[0.1em] text-content/40 hover:text-content"
+                  className="btn-perigo"
                 >
                   remover
                 </button>

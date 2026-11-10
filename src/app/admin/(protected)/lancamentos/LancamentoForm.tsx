@@ -32,7 +32,7 @@ function Chip({ ativo, onClick, children }: { ativo: boolean; onClick: () => voi
       onClick={onClick}
       aria-pressed={ativo}
       className={`rounded-full border px-4 py-2.5 text-[14px] transition-colors ${
-        ativo ? "border-content bg-content text-surface" : "border-content/25 text-content/80 hover:border-content/60"
+        ativo ? "border-content bg-content text-surface" : "border-content/60 text-content hover:border-content"
       }`}
     >
       {children}
@@ -134,7 +134,7 @@ export function LancamentoForm({
         <p className="text-[11px] uppercase tracking-[0.2em] text-content/55">
           {passo < 4 ? `Novo lançamento · passo ${passo} de 3` : "Pronto"}
         </p>
-        <button type="button" onClick={onFechar} className="px-2 py-1 text-[12px] text-content/50 hover:text-content">
+        <button type="button" onClick={onFechar} className="btn-sec">
           Fechar
         </button>
       </div>
@@ -158,7 +158,7 @@ export function LancamentoForm({
             </button>
           ))}
           {!mostrarOutros && (
-            <button type="button" onClick={() => setMostrarOutros(true)} className="py-2 text-[13px] text-content/55 underline underline-offset-4">
+            <button type="button" onClick={() => setMostrarOutros(true)} className="btn-sec self-start">
               Devolver a um sócio ou dividir lucro
             </button>
           )}
@@ -191,7 +191,7 @@ export function LancamentoForm({
           </div>
           {valor && centavos === null && <p className="text-[13px] text-content/80">Valor não entendido. Digite como 1.234,56 ou 89,90.</p>}
           <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => setPasso(1)} className="border border-content/25 px-5 py-3 text-[13px]">Voltar</button>
+            <button type="button" onClick={() => setPasso(1)} className="btn-sec px-5! py-3!">Voltar</button>
             <button type="button" disabled={!podeAvancar2} onClick={() => setPasso(3)} className="flex-1 bg-content py-3 text-[13px] uppercase tracking-[0.15em] text-surface disabled:opacity-30">
               Continuar
             </button>
@@ -315,9 +315,9 @@ export function LancamentoForm({
               {fixa && (
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-3">
-                    <button type="button" onClick={() => setMeses((m) => Math.max(2, m - 1))} className="h-11 w-11 border border-content/30 text-lg" aria-label="Menos meses">−</button>
+                    <button type="button" onClick={() => setMeses((m) => Math.max(2, m - 1))} className="h-11 w-11 border-[1.5px] border-content text-lg font-medium" aria-label="Menos meses">−</button>
                     <span className="min-w-[110px] text-center text-base">{meses} meses</span>
-                    <button type="button" onClick={() => setMeses((m) => Math.min(24, m + 1))} className="h-11 w-11 border border-content/30 text-lg" aria-label="Mais meses">+</button>
+                    <button type="button" onClick={() => setMeses((m) => Math.min(24, m + 1))} className="h-11 w-11 border-[1.5px] border-content text-lg font-medium" aria-label="Mais meses">+</button>
                   </div>
                   <p className="text-[12px] leading-relaxed text-content/50">
                     O mesmo valor todo mês, no mesmo dia da data escolhida (DAS, domínio, internet). Cada mês aparece em
@@ -332,9 +332,9 @@ export function LancamentoForm({
             <div className="flex flex-col gap-2">
               <p className="text-base">Parcelado?</p>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setParcelas((p) => Math.max(1, p - 1))} className="h-11 w-11 border border-content/30 text-lg" aria-label="Menos parcelas">−</button>
+                <button type="button" onClick={() => setParcelas((p) => Math.max(1, p - 1))} className="h-11 w-11 border-[1.5px] border-content text-lg font-medium" aria-label="Menos parcelas">−</button>
                 <span className="min-w-[90px] text-center text-base">{parcelas === 1 ? "À vista" : `${parcelas}x`}</span>
-                <button type="button" onClick={() => setParcelas((p) => Math.min(48, p + 1))} className="h-11 w-11 border border-content/30 text-lg" aria-label="Mais parcelas">+</button>
+                <button type="button" onClick={() => setParcelas((p) => Math.min(48, p + 1))} className="h-11 w-11 border-[1.5px] border-content text-lg font-medium" aria-label="Mais parcelas">+</button>
               </div>
               {parcelas > 1 && (
                 <p className="text-[12px] leading-relaxed text-content/50">
@@ -359,7 +359,7 @@ export function LancamentoForm({
           {state.error && <p className="text-[14px] text-content/85">{state.error}</p>}
 
           <div className="flex gap-2">
-            <button type="button" onClick={() => setPasso(2)} className="border border-content/25 px-5 py-3 text-[13px]">Voltar</button>
+            <button type="button" onClick={() => setPasso(2)} className="btn-sec px-5! py-3!">Voltar</button>
             <button type="submit" disabled={!podeAvancar3 || pending} className="flex-1 bg-content py-3 text-[13px] uppercase tracking-[0.15em] text-surface disabled:opacity-30">
               {pending ? "Lançando..." : "Lançar"}
             </button>

@@ -178,3 +178,44 @@ html[data-intro="visto"] .intro-albizia {
     font-size: 16px !important;
   }
 }
+
+/* Botões do painel. Antes as ações secundárias (excluir, desfazer, ativar)
+   eram texto miúdo e cinza claro, quase invisíveis no celular. Agora toda
+   ação tem cara de botão, com contraste cheio e área boa para o dedo:
+   - btn-sec: secundário, contorno escuro;
+   - btn-perigo: excluir/apagar, contorno grosso (o ícone vem no componente);
+   Para a ação principal continua o fundo cheio (bg-content text-surface). */
+@utility btn-sec {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.9rem;
+  border: 1.5px solid var(--color-content);
+  color: var(--color-content);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background-color 0.15s, color 0.15s;
+  &:hover { background-color: var(--color-content); color: var(--color-surface); }
+  &:disabled { opacity: 0.45; }
+}
+@utility btn-perigo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.9rem;
+  border: 2px solid var(--color-content);
+  color: var(--color-content);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: background-color 0.15s, color 0.15s;
+  &:hover { background-color: var(--color-content); color: var(--color-surface); }
+  &:disabled { opacity: 0.45; }
+}

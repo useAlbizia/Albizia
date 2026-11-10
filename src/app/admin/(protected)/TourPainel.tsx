@@ -278,7 +278,7 @@ export function TourPainel() {
         )}
 
         <div className="mt-5 flex items-center justify-between gap-3">
-          <button type="button" onClick={fechar} className="text-[11px] uppercase tracking-[0.12em] text-content/45 hover:text-content">
+          <button type="button" onClick={fechar} className="btn-sec">
             Sair do tour
           </button>
           <div className="flex gap-2">

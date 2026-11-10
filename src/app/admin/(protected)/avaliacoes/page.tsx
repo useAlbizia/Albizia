@@ -66,20 +66,20 @@ export default async function AvaliacoesPage() {
             <div className="mt-4 flex gap-4">
               {r.status !== "approved" && (
                 <form action={approveReview.bind(null, r.id)}>
-                  <button className="text-[11px] uppercase tracking-[0.1em] text-green-700 hover:underline dark:text-green-400">
+                  <button className="btn-sec">
                     Aprovar
                   </button>
                 </form>
               )}
               {r.status !== "rejected" && (
                 <form action={rejectReview.bind(null, r.id)}>
-                  <button className="text-[11px] uppercase tracking-[0.1em] text-content/50 hover:text-content">
+                  <button className="btn-sec">
                     Rejeitar
                   </button>
                 </form>
               )}
               <form action={deleteReview.bind(null, r.id)}>
-                <button className="text-[11px] uppercase tracking-[0.1em] text-content/40 hover:text-content">
+                <button className="btn-perigo">
                   Excluir
                 </button>
               </form>

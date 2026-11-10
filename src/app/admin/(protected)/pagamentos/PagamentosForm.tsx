@@ -73,7 +73,7 @@ export function PagamentosForm({ settings }: { settings: PagamentosSettings }) {
           <form action={desconectarMp}>
             <button
               type="submit"
-              className="border border-content/20 px-4 py-2 text-[11px] uppercase tracking-[0.12em] text-content/40 transition-colors hover:border-content/50 hover:text-content/70"
+              className="btn-sec"
             >
               Trocar de conta
             </button>

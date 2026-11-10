@@ -153,7 +153,7 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
 
       <section>
         <details className="mb-4" open={filtrando}>
-          <summary className="cursor-pointer text-[12px] uppercase tracking-[0.15em] text-content/55">Filtrar</summary>
+          <summary className="btn-sec cursor-pointer list-none">Filtrar</summary>
           <form className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             <input type="month" name="mes" defaultValue={filtro.mes} className={sel} aria-label="Mês" />
             <select name="tipo" defaultValue={filtro.tipo} className={sel} aria-label="Tipo">
@@ -286,7 +286,7 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                 </div>
                 {parcelado && completo && (
                   <details className="mt-2">
-                    <summary className="cursor-pointer text-[11px] uppercase tracking-[0.1em] text-content/50">
+                    <summary className="btn-sec cursor-pointer list-none">
                       Ver parcelas e pagar
                     </summary>
                     <ul className="mt-2 flex flex-col gap-3 border-l border-content/15 pl-3 text-[12px]">

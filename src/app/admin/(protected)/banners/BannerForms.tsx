@@ -82,10 +82,10 @@ export function BannerEditor({ banner }: { banner: Banner }) {
           <button disabled={pending} className="border border-content px-5 py-2 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50">
             {pending ? "Salvando..." : "Salvar"}
           </button>
-          <button type="button" onClick={() => start(() => toggleBanner(banner.id, !banner.active))} disabled={busy} className="text-[11px] uppercase tracking-[0.1em] text-content/50 hover:text-content">
+          <button type="button" onClick={() => start(() => toggleBanner(banner.id, !banner.active))} disabled={busy} className="btn-sec">
             {banner.active ? "Ativo" : "Inativo"}
           </button>
-          <button type="button" onClick={() => start(() => deleteBanner(banner.id))} disabled={busy} className="text-[11px] uppercase tracking-[0.1em] text-content/40 hover:text-content">
+          <button type="button" onClick={() => start(() => deleteBanner(banner.id))} disabled={busy} className="btn-perigo">
             Excluir
           </button>
           {state.ok && <span className="text-[12px] text-content/50">Salvo ✓</span>}

@@ -36,7 +36,7 @@ export function PagarParte({
           onClick={() => {
             if (confirm("Desfazer este pagamento? Ele volta para Contas a pagar.")) start(() => desfazerPagamento(pagadorId));
           }}
-          className="text-[11px] text-content/40 underline underline-offset-2"
+          className="btn-sec min-h-0! px-2.5! py-1! text-[11px]!"
         >
           desfazer
         </button>
@@ -79,7 +79,7 @@ export function PagarParte({
       >
         {pending ? "..." : "Confirmar"}
       </button>
-      <button type="button" onClick={() => setAberto(false)} className="text-[11px] text-content/50">
+      <button type="button" onClick={() => setAberto(false)} className="btn-sec min-h-0! px-2.5! py-1.5! text-[11px]!">
         cancelar
       </button>
       {erro && <span className="w-full text-[12px] text-content/80">{erro}</span>}

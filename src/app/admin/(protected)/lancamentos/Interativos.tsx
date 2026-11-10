@@ -67,7 +67,7 @@ export function CartaoAprovar({ chave, titulo, detalhe, valor, autor }: { chave:
             className="border border-content/30 bg-transparent px-3 py-2.5 text-base outline-none focus:border-content"
           />
           <div className="flex gap-2">
-            <button type="button" onClick={() => setContestando(false)} className="border border-content/25 px-4 py-2.5 text-[12px]">
+            <button type="button" onClick={() => setContestando(false)} className="btn-sec">
               Voltar
             </button>
             <button
@@ -94,7 +94,7 @@ export function CartaoAprovar({ chave, titulo, detalhe, valor, autor }: { chave:
             type="button"
             disabled={pend}
             onClick={() => setContestando(true)}
-            className="flex-1 border border-content/40 py-3 text-[12px] uppercase tracking-[0.15em]"
+            className="btn-sec flex-1 py-3!"
           >
             Contestar
           </button>

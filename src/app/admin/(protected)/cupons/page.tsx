@@ -52,7 +52,7 @@ export default async function CuponsPage() {
                     <form action={toggleCoupon.bind(null, c.id, !c.active)}>
                       <button
                         type="submit"
-                        className="text-[11px] uppercase tracking-[0.1em] text-content/50 hover:text-content"
+                        className="btn-sec"
                       >
                         {c.active ? "Desativar" : "Ativar"}
                       </button>
@@ -60,7 +60,7 @@ export default async function CuponsPage() {
                     <form action={deleteCoupon.bind(null, c.id)}>
                       <button
                         type="submit"
-                        className="text-[11px] uppercase tracking-[0.1em] text-content/40 hover:text-content"
+                        className="btn-perigo"
                       >
                         Excluir
                       </button>
