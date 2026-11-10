@@ -133,8 +133,8 @@ export default function ManualPage() {
 
         <Tarefa titulo="Aprovar o lançamento de outro sócio">
           <p>
-            Todo lançamento feito por um sócio chega por e-mail para os outros e só entra nas contas depois que todos
-            aprovam. Em Lançamentos, os que esperam o seu voto aparecem no topo, com <strong>Aprovar</strong> e{" "}
+            Todo lançamento feito por um sócio avisa os outros (e-mail e notificação) e entra nas contas quando mais
+            um sócio aprova: vale a maioria. Se qualquer um contestar, ele trava até ser corrigido. Em Lançamentos, os que esperam o seu voto aparecem no topo, com <strong>Aprovar</strong> e{" "}
             <strong>Contestar</strong>. Ao contestar, escreva o motivo: quem lançou recebe o aviso por e-mail.
           </p>
           <p>Cada lançamento mostra quem lançou e quem já aprovou.</p>

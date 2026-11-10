@@ -4,6 +4,7 @@ import { db } from "./db/client";
 import { lancamentos, metasMensais, orderItems, orders, products, socios } from "./db/schema";
 import { isoDay } from "./format";
 import { sincronizarPendentes } from "./mp-sync";
+import { reavaliarPendentes } from "./aprovacao";
 import {
   acertos,
   CATEGORIAS_DESPESA,
@@ -266,8 +267,33 @@ export async function liquidarParcelasVencidas(): Promise<number> {
   }
 }
 
+/**
+ * Quanto de cada sócio está lançado mas ainda espera aprovação (só o que já
+ * venceu). Não entra em nenhuma conta: serve para o equalizador mostrar, em
+ * tom claro, o que vai entrar, em vez de uma tela zerada.
+ */
+export async function pendentePorSocio(): Promise<Map<string, number>> {
+  const mapa = new Map<string, number>();
+  try {
+    const rows = await db.query.lancamentos.findMany({
+      where: and(eq(lancamentos.aprovacao, "pendente"), eq(lancamentos.status, "pago")),
+      with: { pagadores: true },
+    });
+    const soma = (id: string | null, v: number) => {
+      if (id) mapa.set(id, (mapa.get(id) ?? 0) + v);
+    };
+    for (const l of rows) {
+      if (l.tipo === "despesa") for (const p of l.pagadores) soma(p.socioId, p.valorCents);
+      else if (l.tipo === "aporte") soma(l.socioId, l.valorCents);
+    }
+  } catch (err) {
+    console.error("pendentePorSocio falhou", err);
+  }
+  return mapa;
+}
+
 export async function painelFinanceiro(): Promise<PainelFinanceiro> {
-  await liquidarParcelasVencidas();
+  await Promise.all([liquidarParcelasVencidas(), reavaliarPendentes()]);
   // Antes de somar, traz do Mercado Pago o que ainda falta (pedido pago que o
   // webhook perdeu, estorno recente). Poucos por vez, para a tela não
   // demorar; falha aqui nunca impede a tela de abrir.
@@ -321,7 +347,7 @@ export async function painelFinanceiro(): Promise<PainelFinanceiro> {
 }
 
 export async function listarLancamentos(filtro: { mes?: string; tipo?: string; socioId?: string }) {
-  await liquidarParcelasVencidas();
+  await Promise.all([liquidarParcelasVencidas(), reavaliarPendentes()]);
   const conds = [];
   if (filtro.mes && /^\d{4}-\d{2}$/.test(filtro.mes)) {
     const [a, m] = filtro.mes.split("-").map(Number);

@@ -88,13 +88,29 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
       })
     : [];
 
+  // Compra parcelada vira UM item na lista, com as parcelas dentro. Antes
+  // cada parcela era uma linha, e a prensa em 10x enchia a tela com dez
+  // "Prensa Térmica R$ 150" iguais.
+  type Linha = (typeof rows)[number];
   type Item =
-    | { k: "manual"; data: string; ordem: number; l: (typeof rows)[number] }
+    | { k: "manual"; data: string; ordem: number; linhas: Linha[] }
     | { k: "auto"; data: string; ordem: number; a: LinhaAutomatica };
+  const porChave = new Map<string, Linha[]>();
+  for (const l of rows) {
+    const c = l.grupoId ?? l.id;
+    porChave.set(c, [...(porChave.get(c) ?? []), l]);
+  }
   const itens: Item[] = [
-    ...rows.map((l) => ({ k: "manual" as const, data: l.data, ordem: l.createdAt.getTime(), l })),
+    ...[...porChave.values()].map((ls) => {
+      const linhas = [...ls].sort((a, b) => (a.parcelaNum ?? 0) - (b.parcelaNum ?? 0));
+      return { k: "manual" as const, data: linhas[0].data, ordem: linhas[0].createdAt.getTime(), linhas };
+    }),
     ...autos.map((a) => ({ k: "auto" as const, data: a.data, ordem: 0, a })),
   ].sort((x, y) => y.data.localeCompare(x.data) || y.ordem - x.ordem);
+
+  // "Nilson e Jair", "Nilson, Jair e Devid".
+  const juntar = (nomes: string[]) =>
+    nomes.length <= 1 ? nomes.join("") : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
 
   const filtrando = !!(filtro.mes || filtro.tipo || filtro.socioId || mostrar);
   const sel = "border border-content/30 bg-transparent px-3 py-2.5 text-sm outline-none focus:border-content";
@@ -105,7 +121,7 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
         <h1 className="mb-2 text-sm uppercase tracking-[0.3em] text-content/60">Lançamentos</h1>
         <p className="text-[13px] leading-relaxed text-content/55">
           Todo dinheiro que entra e sai da empresa. Vendas do site, taxas e etiquetas entram sozinhas.
-          O que um sócio lança só vale depois que os outros aprovam. Saldos em{" "}
+          O que um sócio lança vale quando mais um sócio aprova, e qualquer um pode contestar. Saldos em{" "}
           <Link href="/admin/socios" className="underline underline-offset-4">
             Sócios e caixa
           </Link>
@@ -187,34 +203,61 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                 </li>
               );
             }
-            const l = it.l;
+            const linhas = it.linhas;
+            const l = linhas[0];
             const chave = l.grupoId ?? l.id;
+            const parcelado = linhas.length > 1 || !!l.grupoId;
+            const total = linhas.reduce((n, x) => n + x.valorCents, 0);
+            const pagas = linhas.filter((x) => x.status === "pago");
+            const proxima = linhas.find((x) => x.status === "previsto");
+            // Quem pagou, com nome: "Nilson e Jair, em partes iguais".
+            const pagadores = [...new Set(l.pagadores.map((p) => p.socioId))];
             const quem =
               l.tipo === "despesa"
-                ? l.pagadores.length > 1
-                  ? "dividido entre os sócios"
-                  : l.pagadores[0]?.socioId
-                    ? `pago por ${nome(l.pagadores[0].socioId)}`
+                ? pagadores.length > 1
+                  ? `pago por ${juntar(pagadores.map((id) => (id ? nome(id) : "empresa")))}, em partes iguais`
+                  : pagadores[0]
+                    ? `pago por ${nome(pagadores[0])}`
                     : "pago pela empresa"
                 : l.tipo === "receita"
                   ? "para a empresa"
                   : nome(l.socioId);
             const aprovaram = votos.filter((v) => v.chave === chave && v.decisao === "aprovado").map((v) => nome(v.socioId));
             const contestacao = votos.find((v) => v.chave === chave && v.decisao === "contestado");
+            const n = l.parcelaTotal ?? linhas.length;
+            // Com filtro de mês chega só a parcela daquele mês: aí o cartão
+            // fala dela, sem fingir total e contagem da compra inteira.
+            const completo = !parcelado || linhas.length >= n;
             return (
-              <li key={l.id} className={`py-3.5 ${l.status === "previsto" ? "opacity-60" : ""}`}>
+              <li key={chave} className="py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[15px]">
+                    <p className="text-[15px] font-medium">
                       {l.descricao}
-                      {l.parcelaTotal ? <span className="ml-1 text-[12px] text-content/45">{l.parcelaNum}/{l.parcelaTotal}</span> : null}
                       <Selo aprovacao={l.aprovacao} />
                     </p>
-                    <p className="mt-0.5 text-[12px] text-content/50">
-                      {dataBr(l.data)} · {NOME_TIPO[l.tipo] ?? l.tipo} · {quem}
-                      {l.categoria ? ` · ${l.categoria}` : ""}
-                      {l.status === "previsto" ? " · previsto" : ""}
+                    <p className="mt-1 text-[13px] text-content/65">
+                      {NOME_TIPO[l.tipo] ?? l.tipo} · {quem}
                     </p>
+                    {parcelado && !completo ? (
+                      <p className="mt-0.5 text-[12px] text-content/50">
+                        {linhas.map((p) => `parcela ${p.parcelaNum} de ${n} · ${dataBr(p.data)} · ${p.status === "pago" ? "paga" : "a vencer"}`).join("; ")}
+                      </p>
+                    ) : parcelado ? (
+                      <p className="mt-0.5 text-[12px] text-content/50">
+                        {n}x de {brl(l.valorCents)} no {(l.formaPagamento || "cartão").toLowerCase()} ·{" "}
+                        <strong className="font-medium text-content/75">
+                          {pagas.length} de {n} pagas
+                        </strong>
+                        {proxima ? ` · próxima em ${dataBr(proxima.data)}` : " · quitado"}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-[12px] text-content/50">
+                        {dataBr(l.data)}
+                        {l.categoria ? ` · ${l.categoria}` : ""}
+                        {l.formaPagamento ? ` · ${l.formaPagamento}` : ""}
+                      </p>
+                    )}
                     <p className="mt-0.5 text-[12px] text-content/45">
                       Lançado por {nome(l.criadoPorSocioId) || l.criadoPor || "?"}
                       {aprovaram.length > 0 && ` · aprovado por ${aprovaram.join(" e ")}`}
@@ -225,12 +268,32 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                       </p>
                     )}
                   </div>
-                  <p className="shrink-0 text-[15px]">
-                    {ENTRA.has(l.tipo) ? "+" : "−"} {brl(l.valorCents)}
-                  </p>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[15px] font-medium">
+                      {ENTRA.has(l.tipo) ? "+" : "−"} {brl(total)}
+                    </p>
+                    {parcelado && completo && <p className="mt-0.5 text-[11px] text-content/45">total</p>}
+                  </div>
                 </div>
+                {parcelado && completo && (
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-[11px] uppercase tracking-[0.1em] text-content/50">
+                      Ver parcelas
+                    </summary>
+                    <ul className="mt-2 flex flex-col gap-1 border-l border-content/15 pl-3 text-[12px]">
+                      {linhas.map((p) => (
+                        <li key={p.id} className={`flex justify-between gap-3 ${p.status === "pago" ? "" : "text-content/45"}`}>
+                          <span>
+                            {p.parcelaNum ?? 1}/{n} · {dataBr(p.data)} · {p.status === "pago" ? "paga" : "vence nesse dia"}
+                          </span>
+                          <span>{brl(p.valorCents)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 <div className="mt-2">
-                  <LancamentoAcoes id={l.id} status={l.status} parcelado={!!l.grupoId} descricao={l.descricao} />
+                  <LancamentoAcoes id={l.id} parcelado={!!l.grupoId} descricao={l.descricao} />
                 </div>
               </li>
             );

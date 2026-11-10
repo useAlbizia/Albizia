@@ -1,16 +1,17 @@
 "use client";
 
 import { useTransition } from "react";
-import { alternarStatus, excluirLancamento } from "../socios/_actions";
+import { excluirLancamento } from "../socios/_actions";
 
+// O "marcar pago" saiu: parcela de cartão passa a contar sozinha no dia do
+// vencimento (lib/financeiro.ts, liquidarParcelasVencidas), e lançamento
+// avulso já nasce pago. Sobrou só excluir.
 export function LancamentoAcoes({
   id,
-  status,
   parcelado,
   descricao,
 }: {
   id: string;
-  status: string;
   parcelado: boolean;
   descricao: string;
 }) {
@@ -20,28 +21,14 @@ export function LancamentoAcoes({
 
   // Dinheiro de sócio: excluir sempre pede confirmação, e o que some fica
   // na auditoria com valor e descrição.
-  function excluir(tudo: boolean) {
-    const msg = tudo
-      ? `Excluir TODAS as parcelas de "${descricao}"?`
-      : parcelado
-        ? `Excluir só esta parcela de "${descricao}"?`
-        : `Excluir "${descricao}"?`;
-    if (confirm(`${msg}\n\nFica registrado na auditoria.`)) start(() => excluirLancamento(id, tudo));
+  function excluir() {
+    const msg = parcelado ? `Excluir a compra "${descricao}" com TODAS as parcelas?` : `Excluir "${descricao}"?`;
+    if (confirm(`${msg}\n\nFica registrado na auditoria.`)) start(() => excluirLancamento(id, parcelado));
   }
 
   return (
-    <div className="flex flex-wrap gap-4">
-      <button type="button" disabled={pending} onClick={() => start(() => alternarStatus(id))} className={botao}>
-        {status === "pago" ? "marcar previsto" : "marcar pago"}
-      </button>
-      <button type="button" disabled={pending} onClick={() => excluir(false)} className={botao}>
-        {parcelado ? "excluir parcela" : "excluir"}
-      </button>
-      {parcelado && (
-        <button type="button" disabled={pending} onClick={() => excluir(true)} className={botao}>
-          excluir compra
-        </button>
-      )}
-    </div>
+    <button type="button" disabled={pending} onClick={excluir} className={botao}>
+      {pending ? "excluindo..." : parcelado ? "excluir compra" : "excluir"}
+    </button>
   );
 }

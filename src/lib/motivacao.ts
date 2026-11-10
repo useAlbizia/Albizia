@@ -8,7 +8,7 @@ import { MOTIVACOES, type Motivacao } from "@/lib/motivacao-conteudo";
 // E-mails de motivação para os sócios: uma história real de quem começou do
 // zero, um versículo e uma tarefa do dia. Saem sozinhos pelo agendamento
 // diário (api/low-stock-check, 10h de Brasília) e podem ser ligados,
-// desligados e espaçados na tela Sócios.
+// desligados e espaçados pela tabela motivacao (fora do painel, a pedido).
 //
 // Destinatários: os sócios ATIVOS com e-mail no cadastro. Nenhum endereço
 // fica no código.

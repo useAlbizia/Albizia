@@ -159,7 +159,7 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
     ok: true,
     mensagem:
       sit === "pendente"
-        ? parcelado + "Os outros sócios receberam um e-mail para aprovar; até lá ele não entra nas contas."
+        ? parcelado + "Os outros sócios foram avisados. Ele entra nas contas quando mais um sócio aprovar."
         : parcelado,
   };
 }

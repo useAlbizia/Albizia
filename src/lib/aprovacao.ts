@@ -48,6 +48,24 @@ export async function recalcularAprovacao(chave: string): Promise<"pendente" | "
   return sit;
 }
 
+/**
+ * Recalcula todos os pendentes. Serve para quando a regra ou os sócios
+ * mudam (a troca de unanimidade para maioria, um sócio desativado): o que
+ * já tinha votos suficientes passa a contar sem ninguém votar de novo.
+ */
+export async function reavaliarPendentes(): Promise<void> {
+  try {
+    const pend = await db
+      .select({ id: lancamentos.id, grupoId: lancamentos.grupoId })
+      .from(lancamentos)
+      .where(eq(lancamentos.aprovacao, "pendente"));
+    const chaves = [...new Set(pend.map((l) => l.grupoId ?? l.id))];
+    for (const c of chaves) await recalcularAprovacao(c);
+  } catch (err) {
+    console.error("reavaliarPendentes falhou", err);
+  }
+}
+
 /** Resumo do lançamento para o e-mail: "Gasto · Prensa · R$ 2.400,00 em 12x". */
 async function resumo(chave: string) {
   const linhas = await db.select().from(lancamentos).where(daChave(chave));
@@ -91,7 +109,7 @@ export async function avisarAprovadores(chave: string, autorNome: string): Promi
         subject: `Aprove: ${primeiro} lançou ${texto}`,
         html: emailShell(
           "Lançamento para aprovar",
-          `<p style="font-size:14px;line-height:1.7;color:#55534e;margin:0 0 10px;">Olá, ${esc(s.nome.split(" ")[0])}. ${esc(autorNome)} fez um lançamento no caixa da ALBIZIA, e ele só entra nas contas depois que todos os sócios aprovam.</p>
+          `<p style="font-size:14px;line-height:1.7;color:#55534e;margin:0 0 10px;">Olá, ${esc(s.nome.split(" ")[0])}. ${esc(autorNome)} fez um lançamento no caixa da ALBIZIA, e ele entra nas contas quando mais um sócio aprovar. Se algo estiver errado, conteste.</p>
            <p style="font-size:16px;line-height:1.6;color:#121212;margin:14px 0;"><strong>${esc(texto)}</strong></p>
            <p style="font-size:13px;line-height:1.6;color:#8a857c;margin:0;">Data: ${esc(l.data.split("-").reverse().join("/"))}${l.formaPagamento ? ` · ${esc(l.formaPagamento)}` : ""}${l.fornecedor ? ` · ${esc(l.fornecedor)}` : ""}</p>
            ${emailButton("Ver e aprovar", link)}

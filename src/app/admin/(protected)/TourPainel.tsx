@@ -44,7 +44,7 @@ const PASSOS: Passo[] = [
     alvos: ["lancar"],
     titulo: "Lançar um gasto ou uma entrada",
     texto:
-      "Toque em Novo lançamento e responda três perguntas: o que aconteceu, quanto e quem pagou. No fim aparece uma frase com tudo para conferir. O lançamento de um sócio só entra nas contas depois que os outros aprovam, e eles recebem um e-mail para isso. Vendas do site, taxas e etiquetas entram sozinhas.",
+      "Toque em Novo lançamento e responda três perguntas: o que aconteceu, quanto e quem pagou. No fim aparece uma frase com tudo para conferir. O lançamento de um sócio entra nas contas quando mais um sócio aprova; os outros recebem aviso, e qualquer um pode contestar. Vendas do site, taxas e etiquetas entram sozinhas.",
   },
   {
     rota: "/admin/socios",

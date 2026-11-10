@@ -506,10 +506,11 @@ export type Voto = { socioId: string; decisao: "aprovado" | "contestado" };
 /**
  * Situação de um lançamento a partir dos votos.
  *
- * Quem lançou não vota: o lançamento dele precisa do sim de TODOS os outros
- * sócios ativos. Uma contestação basta para travar, porque dinheiro de sócio
- * só entra na conta com a concordância de todos. Se não houver outro sócio
- * para aprovar (empresa com um sócio só), entra aprovado.
+ * Vale a MAIORIA dos sócios ativos, com quem lançou contando como um sim:
+ * entre três, quem lançou mais um aprovando já basta. Uma contestação de
+ * qualquer um trava, mesmo com maioria: é o veto de quem viu algo errado.
+ * Se não houver outro sócio para aprovar (empresa com um sócio só), entra
+ * aprovado.
  */
 export function situacaoAprovacao(
   autorId: string | null,
@@ -521,5 +522,11 @@ export function situacaoAprovacao(
   const validos = votos.filter((v) => aprovadores.includes(v.socioId));
   if (validos.some((v) => v.decisao === "contestado")) return "contestado";
   const sim = new Set(validos.filter((v) => v.decisao === "aprovado").map((v) => v.socioId));
-  return aprovadores.every((s) => sim.has(s)) ? "aprovado" : "pendente";
+  // MAIORIA dos sócios ativos, contando quem lançou como um "sim" (ele
+  // concorda com o que lançou). Com três sócios: quem lançou + um aprovando.
+  // Antes era unanimidade, e um sócio sem abrir o e-mail travava a conta de
+  // todos. A contestação acima continua valendo como veto.
+  const autorEhSocio = !!autorId && sociosAtivos.includes(autorId);
+  const favor = sim.size + (autorEhSocio ? 1 : 0);
+  return favor * 2 > sociosAtivos.length ? "aprovado" : "pendente";
 }

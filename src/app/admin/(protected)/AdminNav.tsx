@@ -129,8 +129,10 @@ function GroupList({ pathname, contadores }: { pathname: string; contadores: Con
 }
 
 /**
- * Menu do celular: blocos grandes, dois por linha, fáceis de acertar com o
- * polegar, separados por grupo. O que tem pendência aparece com o número.
+ * Menu do celular. Cada seção começa com o título escuro e uma linha
+ * atravessando a tela, para o olho achar o grupo de cara; os itens são texto
+ * limpo em duas colunas, sem caixa em volta (caixa em tudo cansava a
+ * leitura). Só o que tem pendência ganha destaque, com o número.
  */
 function MenuCelular({
   pathname,
@@ -142,11 +144,14 @@ function MenuCelular({
   onNavigate: () => void;
 }) {
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       {GROUPS.map((group) => (
         <div key={group.title}>
-          <p className="mb-2 text-[10px] uppercase tracking-[0.22em] text-content/45">{group.title}</p>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="mb-1.5 flex items-center gap-3">
+            <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-content">{group.title}</p>
+            <span aria-hidden="true" className="h-px flex-1 bg-content/30" />
+          </div>
+          <div className="grid grid-cols-2 gap-x-4">
             {group.items.map((item) => {
               const active = isActive(pathname, item.href);
               const c = contadorDe(item.href, contadores);
@@ -156,16 +161,16 @@ function MenuCelular({
                   href={item.href}
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
-                  className={`flex min-h-[52px] items-center justify-between gap-2 border px-3.5 py-3 text-[14px] leading-tight transition-colors ${
+                  className={`flex items-center justify-between gap-2 border-l-2 py-2.5 pl-2.5 pr-1 text-[15px] leading-tight ${
                     active
-                      ? "border-content bg-content text-surface"
+                      ? "border-content font-semibold text-content"
                       : c.n > 0
-                        ? "border-content text-content"
-                        : "border-content/15 text-content/80"
+                        ? "border-transparent font-semibold text-content"
+                        : "border-transparent text-content/70"
                   }`}
                 >
                   <span>{item.label}</span>
-                  {active ? null : <Contador {...c} />}
+                  <Contador {...c} />
                 </Link>
               );
             })}

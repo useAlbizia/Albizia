@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { desc, ilike, or, sql, eq, type SQL } from "drizzle-orm";
+import { desc, ilike, inArray, or, sql, eq, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { orders } from "@/lib/db/schema";
+import { orderItems, orders } from "@/lib/db/schema";
 import { brl, shortDate } from "@/lib/format";
 import { expirarPedidosAbandonados } from "@/lib/orders";
 
@@ -59,6 +59,20 @@ export default async function AdminPedidosPage(props: PageProps<"/admin/pedidos"
     .orderBy(desc(orders.createdAt))
     .limit(100);
 
+  // Os itens de cada pedido, numa consulta só, para a lista já mostrar o que
+  // foi comprado sem precisar abrir um por um.
+  const itens = rows.length
+    ? await db
+        .select({ orderId: orderItems.orderId, nome: orderItems.productName, tamanho: orderItems.size, qtd: orderItems.quantity })
+        .from(orderItems)
+        .where(inArray(orderItems.orderId, rows.map((o) => o.id)))
+    : [];
+  const itensDe = (id: string) =>
+    itens
+      .filter((i) => i.orderId === id)
+      .map((i) => `${i.qtd > 1 ? `${i.qtd}x ` : ""}${i.nome} (${i.tamanho})`)
+      .join(", ");
+
   return (
     <div>
       <h1 className="mb-6 text-sm uppercase tracking-[0.3em] text-content/60">Pedidos</h1>
@@ -87,7 +101,37 @@ export default async function AdminPedidosPage(props: PageProps<"/admin/pedidos"
         )}
       </form>
 
-      <div className="overflow-x-auto">
+      {/* Celular: um cartão por pedido, e o cartão INTEIRO abre o pedido.
+          Antes só o número "#123" era clicável, um alvo pequeno demais. */}
+      <div className="flex flex-col gap-2 md:hidden">
+        {rows.map((o) => {
+          const pendenteEtiqueta = o.status === "paid" && o.meStatus !== "generated";
+          return (
+            <Link
+              key={o.id}
+              href={`/admin/pedidos/${o.id}`}
+              className="flex flex-col gap-1.5 border border-content/15 px-4 py-3.5 active:bg-surface-soft"
+            >
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-[15px] font-medium">
+                  #{o.orderNumber} · {brl(o.totalCents)}
+                </span>
+                <span className={`text-[12px] ${o.status === "paid" ? "font-medium text-content" : "text-content/55"}`}>
+                  {STATUS_LABEL[o.status] ?? o.status}
+                </span>
+              </div>
+              <span className="text-[13px] text-content/75">{o.customerName}</span>
+              {itensDe(o.id) && <span className="text-[12px] leading-snug text-content/55">{itensDe(o.id)}</span>}
+              <div className="flex items-center justify-between text-[11px] text-content/45">
+                <span>{shortDate(o.createdAt)}</span>
+                {pendenteEtiqueta ? <span className="font-medium text-content">Emitir etiqueta</span> : <span>Ver pedido ›</span>}
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
         <table className="w-full min-w-[720px] text-left text-sm">
           <thead>
             <tr className="border-b border-content/10 text-[11px] uppercase tracking-[0.1em] text-content/50">
@@ -105,15 +149,18 @@ export default async function AdminPedidosPage(props: PageProps<"/admin/pedidos"
               // precisa sair hoje.
               const pendenteEtiqueta = o.status === "paid" && o.meStatus !== "generated";
               return (
-                <tr key={o.id} className="hover:bg-surface-soft">
+                <tr key={o.id} className="relative cursor-pointer hover:bg-surface-soft">
                   <td className="py-3 pr-4">
-                    <Link href={`/admin/pedidos/${o.id}`} className="hover:underline">
+                    {/* O link se estica sobre a linha inteira: clicar em
+                        qualquer parte abre o pedido. */}
+                    <Link href={`/admin/pedidos/${o.id}`} className="after:absolute after:inset-0 hover:underline">
                       #{o.orderNumber}
                     </Link>
                   </td>
                   <td className="py-3 pr-4 text-content/60">
                     <span className="block">{o.customerName}</span>
                     <span className="block text-[11px] text-content/40">{o.customerEmail}</span>
+                    {itensDe(o.id) && <span className="block text-[11px] text-content/50">{itensDe(o.id)}</span>}
                   </td>
                   <td className="py-3 pr-4 text-content/60">{brl(o.totalCents)}</td>
                   <td className="py-3 pr-4 text-content/60">{STATUS_LABEL[o.status] ?? o.status}</td>
@@ -133,6 +180,8 @@ export default async function AdminPedidosPage(props: PageProps<"/admin/pedidos"
           </tbody>
         </table>
 
+      </div>
+      <div>
         {rows.length === 0 && (
           <p className="py-10 text-center text-sm text-content/50">
             {q ? `Nenhum pedido encontrado para "${q}".` : "Nenhum pedido ainda."}

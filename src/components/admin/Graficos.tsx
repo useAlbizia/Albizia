@@ -9,11 +9,6 @@
 type Ponto = { rotulo: string; valor: number; dica?: string };
 
 const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-const curto = (c: number) => {
-  const r = Math.abs(c) / 100;
-  const s = r >= 1000 ? `${(r / 1000).toLocaleString("pt-BR", { maximumFractionDigits: 1 })} mil` : r.toLocaleString("pt-BR", { maximumFractionDigits: 0 });
-  return `${c < 0 ? "−" : ""}R$ ${s}`;
-};
 
 /** Barras verticais por período. Aceita valores negativos (prejuízo). */
 export function BarrasMensais({ titulo, pontos, id }: { titulo: string; pontos: Ponto[]; id: string }) {
@@ -91,35 +86,59 @@ export function BarrasMensais({ titulo, pontos, id }: { titulo: string; pontos: 
 }
 
 /** Capital de cada sócio em barras, com a linha da parte justa. */
-// Cada linha traz a própria parte justa: com participações diferentes (50%,
-// 25%, 25%), o traço de cada sócio fica num lugar diferente.
-export function CapitalSocios({ linhas }: { linhas: { nome: string; capital: number; parteJusta: number }[] }) {
-  const max = Math.max(...linhas.map((l) => Math.max(l.parteJusta, l.capital)), 1);
-  const iguais = linhas.every((l) => l.parteJusta === linhas[0]?.parteJusta);
-  const pct = (v: number) => `${Math.max(0, (v / max) * 100)}%`;
+// O equalizador dos sócios: uma barra por sócio com o que ele colocou, o
+// traço de onde ele deveria estar (a parte justa) e, em tom mais claro, o
+// que ele lançou e ainda espera aprovação. Ao lado, em palavras, se tem a
+// receber ou está abaixo. Quando as barras batem no traço, está equilibrado.
+export function CapitalSocios({
+  linhas,
+}: {
+  linhas: { nome: string; capital: number; parteJusta: number; pendente?: number }[];
+}) {
+  const max = Math.max(...linhas.map((l) => Math.max(l.parteJusta, l.capital + (l.pendente ?? 0))), 1);
+  const pct = (v: number) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
+  const algumPendente = linhas.some((l) => (l.pendente ?? 0) > 0);
   return (
-    <figure className="border border-content/15 px-4 py-4">
-      <figcaption className="mb-3 text-[11px] uppercase tracking-[0.18em] text-content/60">Quanto cada um colocou</figcaption>
-      <div className="relative flex flex-col gap-3">
-        {linhas.map((l) => (
-          <div key={l.nome} title={`${l.nome}: ${brl(l.capital)}`}>
-            <div className="mb-1 flex items-baseline justify-between text-[13px]">
-              <span>{l.nome}</span>
-              <span className="text-content/70">{curto(l.capital)}</span>
+    <figure className="border border-content/20 px-4 py-5 sm:px-6">
+      <figcaption className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-content">
+        Equilíbrio entre os sócios
+      </figcaption>
+      <div className="flex flex-col gap-5">
+        {linhas.map((l) => {
+          const dif = l.capital - l.parteJusta;
+          return (
+            <div key={l.nome}>
+              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                <span className="text-[15px] font-medium">{l.nome}</span>
+                <span className="text-[15px]">{brl(l.capital)}</span>
+              </div>
+              <div className="relative h-3 w-full rounded-full bg-content/10">
+                <div className="absolute inset-y-0 left-0 rounded-full bg-content" style={{ width: pct(l.capital) }} />
+                {(l.pendente ?? 0) > 0 && (
+                  <div
+                    className="absolute inset-y-0 rounded-r-full bg-content/30"
+                    style={{ left: pct(l.capital), width: pct(l.pendente ?? 0) }}
+                  />
+                )}
+                <div className="absolute -top-1.5 h-6 w-[3px] rounded-full bg-content" style={{ left: `calc(${pct(l.parteJusta)} - 1px)` }} aria-hidden="true" />
+              </div>
+              <p className="mt-1.5 text-[12px] text-content/65">
+                {l.capital === 0 && l.parteJusta === 0
+                  ? "Nada aprovado ainda"
+                  : dif === 0
+                    ? "Equilibrado"
+                    : dif > 0
+                      ? `Colocou ${brl(dif)} a mais: tem a receber`
+                      : `Está ${brl(-dif)} abaixo da parte dele`}
+                {(l.pendente ?? 0) > 0 && ` · ${brl(l.pendente ?? 0)} esperando aprovação`}
+              </p>
             </div>
-            <div className="relative h-2.5 w-full rounded-full bg-content/10">
-              <div className="h-2.5 rounded-full bg-content/80" style={{ width: pct(l.capital) }} />
-              {/* Onde este sócio deveria estar, pela participação dele. */}
-              <div className="absolute -top-1 w-0.5 bg-content" style={{ left: pct(l.parteJusta), height: "18px" }} aria-hidden="true" />
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <p className="mt-3 text-[11px] text-content/50">
-        {iguais
-          ? `O traço vertical é a parte justa (${curto(linhas[0]?.parteJusta ?? 0)} para cada um).`
-          : "O traço vertical é a parte justa de cada um, pela participação na sociedade."}{" "}
-        Quem passa dele colocou a mais.
+      <p className="mt-4 text-[11px] leading-relaxed text-content/50">
+        O traço é a parte justa de cada um. Barra passando do traço: colocou a mais. Barra antes do traço: falta
+        colocar.{algumPendente ? " A parte clara é o que foi lançado e ainda espera aprovação." : ""}
       </p>
     </figure>
   );
