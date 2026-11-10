@@ -152,6 +152,12 @@ export type AdminUser = {
   lastSignInAt: string | null;
   /** Se esta conta entra no painel (lista de e-mails ou marca de admin). */
   admin: boolean;
+  /**
+   * Criada pelo painel (tem senha provisória) mas sem acesso: o caso das
+   * contas criadas antes da marca de admin existir. Aparece na tela Usuários
+   * com aviso, em vez de sumir.
+   */
+  semAcesso: boolean;
 };
 
 export async function adminListUsers(): Promise<AdminUser[]> {
@@ -167,6 +173,7 @@ export async function adminListUsers(): Promise<AdminUser[]> {
     created_at?: string;
     last_sign_in_at?: string;
     app_metadata?: Record<string, unknown>;
+    user_metadata?: Record<string, unknown>;
   }>;
   return users.map((u) => ({
     id: u.id,
@@ -174,6 +181,8 @@ export async function adminListUsers(): Promise<AdminUser[]> {
     createdAt: u.created_at ?? null,
     lastSignInAt: u.last_sign_in_at ?? null,
     admin: isAdminUser({ email: u.email, app_metadata: u.app_metadata }),
+    semAcesso:
+      !isAdminUser({ email: u.email, app_metadata: u.app_metadata }) && u.user_metadata?.must_change_password === true,
   }));
 }
 

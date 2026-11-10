@@ -9,6 +9,21 @@ export function CreateUserForm() {
   const [state, formAction, pending] = useActionState(createAdminUser, initialState);
   const [copied, setCopied] = useState(false);
 
+  if (state.liberado) {
+    return (
+      <div className="max-w-md border border-content/20 bg-surface-soft p-6">
+        <p className="text-sm leading-relaxed text-content/70">
+          Acesso liberado para <strong className="text-content">{state.liberado}</strong>. A conta já existia,
+          então a senha <strong className="text-content">não mudou</strong>: a senha provisória que você já mandou
+          continua valendo, e o painel pede uma nova no primeiro acesso.
+        </p>
+        <p className="mt-3 text-[12px] text-content/50">
+          Se a pessoa não tiver mais a senha, use Recuperar acesso, logo abaixo.
+        </p>
+      </div>
+    );
+  }
+
   if (state.success) {
     return (
       <div className="max-w-md border border-content/20 bg-surface-soft p-6">

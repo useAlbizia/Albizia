@@ -16,7 +16,12 @@ async function ehAdministrador(email: string): Promise<boolean> {
   return !!users.find((u) => u.email.toLowerCase() === email.toLowerCase())?.admin;
 }
 
-export type CreateAdminState = { error?: string; success?: { email: string; password: string } };
+export type CreateAdminState = {
+  error?: string;
+  success?: { email: string; password: string };
+  /** Conta que já existia e só recebeu o acesso, com a mesma senha. */
+  liberado?: string;
+};
 
 function generateTempPassword() {
   return randomBytes(12).toString("base64url");
@@ -48,21 +53,21 @@ export async function createAdminUser(
   });
 
   if (error) {
-    // A conta já existe (um sócio criado antes desta marca existir, ou alguém
-    // que tinha conta de cliente). Quem está aqui é um admin pedindo,
-    // deliberadamente, acesso ao painel para esse e-mail: então a conta
-    // existente recebe a marca e uma senha provisória nova, mostrada uma vez.
+    // A conta já existe: um acesso criado antes desta marca existir (o caso
+    // do Devid, criado em outubro e que nunca conseguiu entrar), ou alguém
+    // que tinha conta de cliente. Quem está aqui é um admin pedindo,
+    // deliberadamente, acesso ao painel para esse e-mail: a conta recebe a
+    // marca e MANTÉM a senha. Trocar a senha aqui invalidaria a senha
+    // provisória que já foi mandada para a pessoa.
     const users = await adminListUsers();
     const existente = users.find((u) => u.email.toLowerCase() === email.data.toLowerCase());
     if (!existente) return { error };
 
     const promovido = await adminPromote(existente.id);
     if (promovido.error) return { error: promovido.error };
-    const senha = await adminSetPassword({ userId: existente.id, password: tempPassword });
-    if (senha.error) return { error: senha.error };
 
     await logAudit({ action: "user.promote", entity: "user", entityId: email.data });
-    return { success: { email: email.data, password: tempPassword } };
+    return { liberado: email.data };
   }
 
   await logAudit({ action: "user.create", entity: "user", entityId: email.data });
