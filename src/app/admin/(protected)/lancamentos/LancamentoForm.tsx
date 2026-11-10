@@ -65,7 +65,8 @@ export function LancamentoForm({
   const [valor, setValor] = useState("");
   const [descricao, setDescricao] = useState("");
   const [data, setData] = useState(hoje);
-  const [quem, setQuem] = useState(""); // empresa | dividir | id do sócio
+  const [quem, setQuem] = useState(""); // empresa | dividir | alguns | id do sócio
+  const [marcados, setMarcados] = useState<string[]>([]); // quando quem = "alguns"
   const [socioId, setSocioId] = useState("");
   const [categoria, setCategoria] = useState("");
   const [forma, setForma] = useState("Pix");
@@ -84,7 +85,19 @@ export function LancamentoForm({
   }, [state]);
 
   const podeAvancar2 = centavos !== null && centavos > 0 && descricao.trim().length > 0 && /^\d{4}-\d{2}-\d{2}$/.test(data);
-  const podeAvancar3 = despesa ? !!quem && !!categoria : deSocio ? !!socioId : true;
+  const podeAvancar3 = despesa
+    ? !!quem && !!categoria && (quem !== "alguns" || marcados.length >= 2)
+    : deSocio
+      ? !!socioId
+      : true;
+  // Nomes em ordem natural: "Nilson e Jair", "Nilson, Jair e Devid".
+  const juntar = (nomes: string[]) =>
+    nomes.length <= 1 ? nomes.join("") : `${nomes.slice(0, -1).join(", ")} e ${nomes[nomes.length - 1]}`;
+  // Quanto cada marcado paga por parcela (ou no total, se for à vista).
+  const parteDeCada =
+    quem === "alguns" && marcados.length >= 2 && centavos
+      ? Math.floor(Math.round(centavos / Math.max(1, parcelas)) / marcados.length)
+      : null;
 
   // A frase de conferência: lê como alguém contaria o que aconteceu.
   const frase = useMemo(() => {
@@ -93,14 +106,21 @@ export function LancamentoForm({
     const quando = data.split("-").reverse().join("/");
     const parc = despesa && parcelas > 1 ? ` em ${parcelas}x de ${brl(Math.round(centavos / parcelas))}` : "";
     if (despesa) {
-      const pagou = quem === "empresa" ? "A empresa pagou" : quem === "dividir" ? "Os sócios dividiram" : `${nomeSocio(quem)} pagou`;
+      const pagou =
+        quem === "empresa"
+          ? "A empresa pagou"
+          : quem === "dividir"
+            ? "Todos os sócios dividiram"
+            : quem === "alguns"
+              ? `${juntar(marcados.map(nomeSocio))} dividiram em partes iguais`
+              : `${nomeSocio(quem)} pagou`;
       return `${pagou} ${v}${parc} em ${descricao.trim()} (${categoria}), no ${forma.toLowerCase()}, em ${quando}.`;
     }
     if (tipo === "aporte") return `${nomeSocio(socioId)} colocou ${v} na empresa (${descricao.trim()}), no ${forma.toLowerCase()}, em ${quando}.`;
     if (tipo === "receita") return `Entraram ${v} na empresa: ${descricao.trim()}, no ${forma.toLowerCase()}, em ${quando}.`;
     if (tipo === "devolucao_aporte") return `A empresa devolveu ${v} a ${nomeSocio(socioId)} (${descricao.trim()}), em ${quando}.`;
     return `${nomeSocio(socioId)} recebeu ${v} de lucro (${descricao.trim()}), em ${quando}.`;
-  }, [tipo, centavos, data, despesa, parcelas, quem, descricao, categoria, forma, socioId]);
+  }, [tipo, centavos, data, despesa, parcelas, quem, marcados, descricao, categoria, forma, socioId]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -180,7 +200,7 @@ export function LancamentoForm({
           <input type="hidden" name="valor" value={valor} />
           <input type="hidden" name="descricao" value={descricao} />
           <input type="hidden" name="data" value={data} />
-          <input type="hidden" name="quemPagou" value={quem} />
+          <input type="hidden" name="quemPagou" value={quem === "alguns" ? `alguns:${marcados.join(",")}` : quem} />
           <input type="hidden" name="socioId" value={socioId} />
           <input type="hidden" name="categoria" value={categoria} />
           <input type="hidden" name="formaPagamento" value={forma} />
@@ -196,8 +216,37 @@ export function LancamentoForm({
                   {socios.map((s) => (
                     <Chip key={s.id} ativo={quem === s.id} onClick={() => setQuem(s.id)}>{s.nome.split(" ")[0]}</Chip>
                   ))}
-                  <Chip ativo={quem === "dividir"} onClick={() => setQuem("dividir")}>Dividido entre os sócios</Chip>
+                  <Chip ativo={quem === "dividir"} onClick={() => setQuem("dividir")}>Todos os sócios</Chip>
+                  <Chip ativo={quem === "alguns"} onClick={() => setQuem("alguns")}>Só alguns sócios</Chip>
                 </div>
+                {quem === "alguns" && (
+                  <div className="mt-1 flex flex-col gap-2 border border-content/15 px-4 py-3">
+                    <p className="text-[13px] text-content/60">Marque quem pagou. O valor é dividido em partes iguais só entre eles.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {socios.map((s) => (
+                        <Chip
+                          key={s.id}
+                          ativo={marcados.includes(s.id)}
+                          onClick={() =>
+                            setMarcados((m) => (m.includes(s.id) ? m.filter((x) => x !== s.id) : [...m, s.id]))
+                          }
+                        >
+                          {marcados.includes(s.id) ? "✓ " : ""}
+                          {s.nome.split(" ")[0]}
+                        </Chip>
+                      ))}
+                    </div>
+                    {parteDeCada !== null && (
+                      <p className="text-[13px] text-content/75">
+                        Cada um paga {brl(parteDeCada)}
+                        {parcelas > 1 ? " por parcela" : ""}.
+                      </p>
+                    )}
+                    {marcados.length === 1 && (
+                      <p className="text-[13px] text-content/75">Marque pelo menos dois, ou escolha o nome dele lá em cima.</p>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex flex-col gap-2">
                 <p className="text-base">Em quê?</p>

@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 import { db } from "./db/client";
 import { lancamentos, metasMensais, orderItems, orders, products, socios } from "./db/schema";
 import { isoDay } from "./format";
@@ -238,7 +238,36 @@ export type PainelFinanceiro = {
   sync: { semToken: boolean; erros: number; pendentes: number };
 };
 
+/**
+ * Parcela de cartão que já venceu passa a contar como paga, sozinha.
+ *
+ * A fatura do cartão é cobrada todo mês de qualquer jeito; esperar alguém
+ * lembrar de marcar "pago" deixava a conta de quem paga atrasada (e foi
+ * exatamente o que os sócios pediram para não precisar lembrar). Roda ao
+ * abrir as telas de dinheiro e no agendamento diário. Nunca derruba a tela.
+ */
+export async function liquidarParcelasVencidas(): Promise<number> {
+  try {
+    const r = await db
+      .update(lancamentos)
+      .set({ status: "pago", updatedAt: new Date() })
+      .where(
+        and(
+          eq(lancamentos.status, "previsto"),
+          isNotNull(lancamentos.grupoId),
+          lte(lancamentos.data, isoDay(new Date())),
+        ),
+      )
+      .returning({ id: lancamentos.id });
+    return r.length;
+  } catch (err) {
+    console.error("liquidarParcelasVencidas falhou", err);
+    return 0;
+  }
+}
+
 export async function painelFinanceiro(): Promise<PainelFinanceiro> {
+  await liquidarParcelasVencidas();
   // Antes de somar, traz do Mercado Pago o que ainda falta (pedido pago que o
   // webhook perdeu, estorno recente). Poucos por vez, para a tela não
   // demorar; falha aqui nunca impede a tela de abrir.
@@ -292,6 +321,7 @@ export async function painelFinanceiro(): Promise<PainelFinanceiro> {
 }
 
 export async function listarLancamentos(filtro: { mes?: string; tipo?: string; socioId?: string }) {
+  await liquidarParcelasVencidas();
   const conds = [];
   if (filtro.mes && /^\d{4}-\d{2}$/.test(filtro.mes)) {
     const [a, m] = filtro.mes.split("-").map(Number);
@@ -340,6 +370,7 @@ function limitesDoMes(mes: string) {
 }
 
 export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
+  await liquidarParcelasVencidas();
   const { inicioData, fimData, inicio, fim } = limitesDoMes(mes);
 
   const [auto, receitasMes, despesasMes, itens, meta, base, movsAntes, movsAte, autoAntes, autoAte, embalagens] =

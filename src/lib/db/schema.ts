@@ -522,6 +522,20 @@ export const motivacao = pgTable("motivacao", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Aparelhos que aceitaram notificação do aplicativo do painel (Web Push).
+// Um por aparelho e navegador: o mesmo sócio pode ter celular e computador.
+// O endpoint é o endereço do serviço de push do navegador; as chaves cifram
+// a mensagem para só aquele aparelho ler.
+export const pushInscricoes = pgTable("push_inscricoes", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull(),
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  aparelho: text("aparelho").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const lancamentos = pgTable("lancamentos", {
   id: uuid("id").primaryKey().defaultRandom(),
   data: date("data", { mode: "string" }).notNull(),

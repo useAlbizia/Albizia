@@ -345,5 +345,32 @@ ok("voto de quem não é sócio ativo não conta", situacaoAprovacao("n", tres, 
 ok("lançado por quem não é sócio: os três aprovam", situacaoAprovacao(null, tres, [{ socioId: "j", decisao: "aprovado" }, { socioId: "d", decisao: "aprovado" }]), "pendente");
 ok("empresa com um sócio só: aprovado direto", situacaoAprovacao("n", ["n"], []), "aprovado");
 
+console.log("\nSó alguns sócios pagaram (a prensa):");
+{
+  const S3 = [
+    { id: "n", nome: "Nilson", cotas: 1, ativo: true },
+    { id: "j", nome: "Jair", cotas: 1, ativo: true },
+    { id: "d", nome: "Devid", cotas: 1, ativo: true },
+  ];
+  // O Devid já tinha posto R$ 1.500; a prensa de R$ 1.500 em 10x de R$ 150
+  // é paga só por Nilson e Jair, meio a meio.
+  const devidAntes = { tipo: "despesa" as const, status: "pago" as const, valorCents: 150000, socioId: null, pagadores: [{ socioId: "d", valorCents: 150000 }] };
+  const parcela = (status: "pago" | "previsto") => {
+    const [a, b] = dividirIgual(15000, 2);
+    return { tipo: "despesa" as const, status, valorCents: 15000, socioId: null, pagadores: [{ socioId: "n", valorCents: a }, { socioId: "j", valorCents: b }] };
+  };
+  const quitada = resumir(S3, [devidAntes, ...Array.from({ length: 10 }, () => parcela("pago"))]);
+  const de = (id: string) => quitada.socios.find((l) => l.id === id)!;
+  ok("Nilson colocou R$ 750 na prensa", de("n").capitalCents, 75000);
+  ok("Jair colocou R$ 750 na prensa", de("j").capitalCents, 75000);
+  ok("Devid não colocou nada na prensa", de("d").capitalCents, 150000);
+  ok("a vantagem do Devid cai de R$ 1.000 para R$ 500 sozinha", de("d").diferencaCents, 50000);
+  ok("a soma das diferenças é zero", quitada.socios.reduce((a, l) => a + l.diferencaCents, 0), 0);
+  // Parcela futura não conta antes de vencer.
+  const comPrevista = resumir(S3, [devidAntes, parcela("pago"), parcela("previsto")]);
+  ok("parcela prevista ainda não conta", comPrevista.socios.find((l) => l.id === "n")!.capitalCents, 7500);
+  ok("parcela ímpar: R$ 150,01 vira 75,01 + 75,00", dividirIgual(15001, 2), [7501, 7500]);
+}
+
 console.log(falhas === 0 ? "\nTODOS PASSARAM\n" : `\n${falhas} FALHA(S)\n`);
 process.exit(falhas === 0 ? 0 : 1);

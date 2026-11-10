@@ -5,6 +5,7 @@ import { lancamentoAprovacoes, lancamentos, socios } from "./db/schema";
 import { brl } from "./format";
 import { emailButton, emailShell, esc, sendEmail, SITE } from "./email";
 import { situacaoAprovacao, type Voto } from "./financeiro-calc";
+import { enviarPush } from "./push";
 
 // Aprovação de lançamentos entre sócios.
 //
@@ -66,11 +67,28 @@ export async function avisarAprovadores(chave: string, autorNome: string): Promi
     .where(eq(socios.ativo, true));
   const destinos = outros.filter((s) => s.id !== l.criadoPorSocioId && s.email);
   const link = `${SITE.replace(/\/$/, "")}/admin/lancamentos?aprovar=1`;
+  const primeiro = autorNome.split(" ")[0];
+  // Notificação no celular de cada um, com o número atualizado de pendências
+  // dele no ícone do app. É reforço: o e-mail abaixo sai de qualquer jeito.
+  await Promise.all(
+    destinos.map(async (s) =>
+      enviarPush([s.email], {
+        titulo: `${primeiro} lançou: aprove`,
+        corpo: texto,
+        url: "/admin/lancamentos?aprovar=1",
+        tag: `aprovar-${chave}`,
+        contador: (await pendentesDe(s.id).catch(() => [])).length,
+      }),
+    ),
+  );
   await Promise.all(
     destinos.map((s) =>
       sendEmail({
+        // Mesmo remetente dos e-mails de acesso, que os sócios já salvaram
+        // como contato; "pedidos@" caía na aba de promoções do Gmail.
+        from: "ALBIZIA <acesso@usealbizia.com.br>",
         to: s.email,
-        subject: `Aprovar lançamento de ${autorNome}: ${texto}`,
+        subject: `Aprove: ${primeiro} lançou ${texto}`,
         html: emailShell(
           "Lançamento para aprovar",
           `<p style="font-size:14px;line-height:1.7;color:#55534e;margin:0 0 10px;">Olá, ${esc(s.nome.split(" ")[0])}. ${esc(autorNome)} fez um lançamento no caixa da ALBIZIA, e ele só entra nas contas depois que todos os sócios aprovam.</p>
@@ -90,7 +108,14 @@ export async function avisarContestacao(chave: string, quemContestou: string, mo
   if (!l?.criadoPorSocioId) return;
   const [autor] = await db.select().from(socios).where(eq(socios.id, l.criadoPorSocioId));
   if (!autor?.email) return;
+  await enviarPush([autor.email], {
+    titulo: `${quemContestou.split(" ")[0]} contestou seu lançamento`,
+    corpo: motivo ? `${texto}. Motivo: ${motivo}` : texto,
+    url: "/admin/lancamentos",
+    tag: `contestado-${chave}`,
+  });
   await sendEmail({
+    from: "ALBIZIA <acesso@usealbizia.com.br>",
     to: autor.email,
     subject: `${quemContestou} contestou seu lançamento: ${texto}`,
     html: emailShell(

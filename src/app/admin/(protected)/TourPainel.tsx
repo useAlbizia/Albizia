@@ -30,7 +30,7 @@ const PASSOS: Passo[] = [
     alvos: ["menu", "menu-celular"],
     titulo: "O menu",
     texto:
-      "Tudo fica agrupado: Visão geral para os números, Empresa para o dinheiro, Vendas para pedidos e clientes, Loja para produtos e vitrine, Configurações para o resto. No celular, o menu abre pelo botão de três linhas.",
+      "Tudo fica agrupado: Dia a dia para pedidos e lançamentos, Dinheiro para sócios e fechamento, Clientes, Loja para produtos e vitrine, Ajustes para o resto. Um número ao lado do item mostra o que espera por você. No celular, o menu abre pelo botão de três linhas.",
   },
   {
     rota: "/admin/pedidos",

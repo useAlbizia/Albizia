@@ -3,6 +3,7 @@ import { getLowStockVariants } from "@/lib/metrics";
 import { getSiteSettings } from "@/lib/settings";
 import { sendEmail, emailShell } from "@/lib/email";
 import { enviarMotivacao } from "@/lib/motivacao";
+import { liquidarParcelasVencidas } from "@/lib/financeiro";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,10 @@ export async function GET(request: NextRequest) {
   // Carona no agendamento diário: a mensagem de motivação dos sócios. Fica
   // separada num try para um problema nela nunca impedir o aviso de estoque.
   // Ela mesma garante no máximo uma por dia (lib/motivacao.ts).
+  // Parcelas de cartão que venceram hoje passam a contar, mesmo que ninguém
+  // abra o painel.
+  await liquidarParcelasVencidas();
+
   let motivacao: unknown = null;
   try {
     motivacao = await enviarMotivacao();

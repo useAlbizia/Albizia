@@ -8,7 +8,7 @@ import { db } from "@/lib/db/client";
 import { lancamentoAprovacoes, lancamentoPagadores, lancamentos, metasMensais, socios } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
 import { isoDay } from "@/lib/format";
-import { dividirPorPeso, gerarParcelas, parseReais } from "@/lib/financeiro-calc";
+import { dividirIgual, dividirPorPeso, gerarParcelas, parseReais } from "@/lib/financeiro-calc";
 import { sincronizarPendentes } from "@/lib/mp-sync";
 import { avisarAprovadores, avisarContestacao, recalcularAprovacao, socioPorEmail } from "@/lib/aprovacao";
 
@@ -60,7 +60,16 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   if (tipo === "aporte" || tipo === "devolucao_aporte" || tipo === "distribuicao_lucro") {
     if (!existe(socioId)) return { error: "Escolha o sócio." };
   }
-  if (tipo === "despesa" && quemPagou !== "empresa" && quemPagou !== "dividir" && !existe(quemPagou)) {
+  // "alguns:id1,id2": só os sócios marcados pagaram, em partes iguais (a
+  // prensa que só dois dos três estão pagando, meio a meio).
+  const alguns = quemPagou.startsWith("alguns:")
+    ? [...new Set(quemPagou.slice(7).split(",").filter(Boolean))]
+    : null;
+  if (alguns) {
+    if (alguns.length < 2) return { error: "Marque pelo menos dois sócios, ou escolha um sócio só." };
+    if (!alguns.every(existe)) return { error: "Algum sócio marcado não está ativo." };
+  }
+  if (tipo === "despesa" && !alguns && quemPagou !== "empresa" && quemPagou !== "dividir" && !existe(quemPagou)) {
     return { error: "Diga quem pagou." };
   }
   if (tipo !== "despesa" && parcelas > 1) {
@@ -74,6 +83,12 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
     if (quemPagou === "dividir") {
       const partes = dividirPorPeso(valor, ativos.map((s) => s.cotas));
       return ativos.map((s, i) => ({ socioId: s.id, valorCents: partes[i] }));
+    }
+    if (alguns) {
+      // Partes iguais entre os marcados; o centavo que sobra vai para o
+      // primeiro, e a soma é sempre exatamente o valor da parcela.
+      const partes = dividirIgual(valor, alguns.length);
+      return alguns.map((id, i) => ({ socioId: id, valorCents: partes[i] }));
     }
     return [{ socioId: quemPagou, valorCents: valor }];
   }

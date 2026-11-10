@@ -5,6 +5,9 @@ import { ChangePasswordForm } from "@/components/admin/ChangePasswordForm";
 import { AdminNav } from "./AdminNav";
 import { NovaVersaoAviso } from "./NovaVersaoAviso";
 import { TourPainel } from "./TourPainel";
+import { AvisosPainel } from "./AvisosPainel";
+import { pendentesDe, socioPorEmail } from "@/lib/aprovacao";
+import { pushDisponivel } from "@/lib/push";
 
 export const dynamic = "force-dynamic";
 
@@ -21,17 +24,24 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Contagem de venda parada, para o aviso no menu aparecer em qualquer
   // página do admin e não só quando alguém lembra de abrir a fila.
-  const [recuperacao, emailsNaoLidos] = await Promise.all([
+  // E quantos lançamentos esperam o voto DESTE sócio: vira faixa no topo de
+  // todas as telas, número no menu e número no ícone do aplicativo.
+  const [recuperacao, emailsNaoLidos, aprovar] = await Promise.all([
     countRecoveryQueue().catch(() => ({ total: 0, valorCents: 0 })),
     contarNaoLidos().catch(() => 0),
+    socioPorEmail(user.email)
+      .then((s) => (s ? pendentesDe(s.id) : []))
+      .then((l) => l.length)
+      .catch(() => 0),
   ]);
 
   return (
     <div className="min-h-screen bg-surface text-content md:flex">
-      <AdminNav email={user.email} alertas={recuperacao.total} emails={emailsNaoLidos} />
+      <AdminNav email={user.email} alertas={recuperacao.total} emails={emailsNaoLidos} aprovar={aprovar} />
       <NovaVersaoAviso />
       <TourPainel />
       <div className="flex min-h-screen flex-1 flex-col">
+        <AvisosPainel pendentes={aprovar} pushPronto={pushDisponivel()} />
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">{children}</main>
         <footer className="border-t border-content/10 px-6 py-6">
           <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-1 text-[11px] text-content/40 sm:flex-row">

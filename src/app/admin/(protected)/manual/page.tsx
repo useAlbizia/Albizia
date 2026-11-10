@@ -143,12 +143,32 @@ export default function ManualPage() {
         <Tarefa titulo="Compra parcelada no cartão">
           <Passos
             itens={[
-              "Lance como Comprei ou paguei algo, com o valor TOTAL da compra.",
+              "Lance UMA vez só, como Comprei ou paguei algo, com o valor TOTAL da compra.",
               "Escolha Cartão de crédito e ajuste as parcelas. A data é a da primeira parcela.",
-              "O painel cria uma parcela por mês. As que já venceram entram como pagas, as futuras como previstas.",
-              "Quando a fatura do mês for paga, clique em marcar pago na parcela.",
+              "O painel cria uma parcela por mês. As que já venceram entram como pagas; cada parcela futura passa a contar sozinha no dia do vencimento. Ninguém precisa lançar nem marcar nada todo mês.",
             ]}
           />
+        </Tarefa>
+
+        <Tarefa titulo="Só alguns sócios pagaram (exemplo: a prensa)">
+          <p>
+            Quando a compra foi dividida só entre alguns sócios, em &quot;Quem pagou?&quot; escolha{" "}
+            <strong>Só alguns sócios</strong> e marque quem pagou. Cada parcela é dividida em partes iguais só entre os
+            marcados, e o painel mostra quanto cada um paga.
+          </p>
+          <p>
+            Quem não pagou não lança nada. A conta se equilibra sozinha: a parte justa de todos sobe, mas o capital só
+            sobe para quem pagou. Se um sócio tinha colocado mais dinheiro antes, a vantagem dele diminui
+            automaticamente. É assim que o que ele já investiu &quot;abate&quot; a parte dele.
+          </p>
+        </Tarefa>
+
+        <Tarefa titulo="Notificações no celular">
+          <p>
+            Com o aplicativo instalado, aparece no topo o convite <strong>Ligar notificações</strong>. Ligado, o celular
+            avisa na hora quando um sócio lança algo para você aprovar, e o ícone do app mostra quantos faltam. No
+            iPhone, ligue abrindo pelo ícone instalado, não pelo Safari.
+          </p>
         </Tarefa>
 
         <Tarefa titulo="Sócio colocou dinheiro, devolver, dividir lucro">
