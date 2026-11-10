@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth/dal";
 import { countRecoveryQueue } from "@/lib/recovery";
+import { contarNaoLidos } from "@/lib/emails";
 import { ChangePasswordForm } from "@/components/admin/ChangePasswordForm";
 import { AdminNav } from "./AdminNav";
 import { NovaVersaoAviso } from "./NovaVersaoAviso";
@@ -20,11 +21,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   // Contagem de venda parada, para o aviso no menu aparecer em qualquer
   // página do admin e não só quando alguém lembra de abrir a fila.
-  const recuperacao = await countRecoveryQueue().catch(() => ({ total: 0, valorCents: 0 }));
+  const [recuperacao, emailsNaoLidos] = await Promise.all([
+    countRecoveryQueue().catch(() => ({ total: 0, valorCents: 0 })),
+    contarNaoLidos().catch(() => 0),
+  ]);
 
   return (
     <div className="min-h-screen bg-surface text-content md:flex">
-      <AdminNav email={user.email} alertas={recuperacao.total} />
+      <AdminNav email={user.email} alertas={recuperacao.total} emails={emailsNaoLidos} />
       <NovaVersaoAviso />
       <TourPainel />
       <div className="flex min-h-screen flex-1 flex-col">

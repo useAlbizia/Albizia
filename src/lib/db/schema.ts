@@ -618,3 +618,35 @@ export const fichaTecnicaRelations = relations(fichaTecnica, ({ one }) => ({
   insumo: one(insumos, { fields: [fichaTecnica.insumoId], references: [insumos.id] }),
   product: one(products, { fields: [fichaTecnica.productId], references: [products.id] }),
 }));
+
+// ── Caixa de e-mail do painel (contato@usealbizia.com.br) ───────────────
+//
+// O Resend recebe o e-mail e avisa o site (webhook); o conteúdo é buscado no
+// próprio Resend com a nossa chave e guardado aqui. Respostas e e-mails
+// escritos no painel também ficam aqui, para a conversa aparecer inteira.
+export const emailMensagens = pgTable("email_mensagens", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  // "in" = recebido; "out" = enviado pelo painel.
+  direcao: text("direcao").notNull(),
+  // Id do Resend: impede gravar o mesmo e-mail duas vezes quando o aviso
+  // chega repetido (o Resend reenvia de propósito se não confirmamos).
+  resendId: text("resend_id").unique(),
+  // Para a resposta cair na mesma conversa no Gmail/Outlook de quem escreveu.
+  messageId: text("message_id"),
+  inReplyTo: text("in_reply_to"),
+  deEmail: text("de_email").notNull(),
+  deNome: text("de_nome"),
+  paraEmail: text("para_email").notNull(),
+  assunto: text("assunto").notNull().default(""),
+  texto: text("texto"),
+  html: text("html"),
+  anexos: jsonb("anexos").notNull().default([]),
+  lido: boolean("lido").notNull().default(false),
+  importante: boolean("importante").notNull().default(false),
+  arquivado: boolean("arquivado").notNull().default(false),
+  spam: boolean("spam").notNull().default(false),
+  // Lixeira: some das pastas, mas dá para restaurar até ser esvaziada.
+  excluidoEm: timestamp("excluido_em", { withTimezone: true }),
+  enviadoPor: text("enviado_por"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});

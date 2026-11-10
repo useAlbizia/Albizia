@@ -37,6 +37,7 @@ const GROUPS: Group[] = [
       { href: "/admin/pedidos", label: "Pedidos" },
       { href: "/admin/carrinhos", label: "Recuperação" },
       { href: "/admin/clientes", label: "Clientes" },
+      { href: "/admin/emails", label: "E-mails" },
     ],
   },
   {
@@ -72,10 +73,12 @@ function GroupList({
   pathname,
   onNavigate,
   alertas = 0,
+  emails = 0,
 }: {
   pathname: string;
   onNavigate?: () => void;
   alertas?: number;
+  emails?: number;
 }) {
   return (
     <div className="flex flex-col gap-6">
@@ -89,7 +92,8 @@ function GroupList({
               const active = isActive(pathname, item.href);
               // Venda parada é dinheiro esperando: o número aparece no menu
               // inteiro do admin, não só para quem lembra de abrir a fila.
-              const badge = item.href === "/admin/carrinhos" ? (alertas ?? 0) : 0;
+              const badge =
+                item.href === "/admin/carrinhos" ? (alertas ?? 0) : item.href === "/admin/emails" ? emails : 0;
               return (
                 <Link
                   key={item.href}
@@ -105,7 +109,7 @@ function GroupList({
                   <span>{item.label}</span>
                   {badge > 0 && (
                     <span
-                      aria-label={`${badge} venda(s) parada(s)`}
+                      aria-label={item.href === "/admin/emails" ? `${badge} e-mail(s) não lido(s)` : `${badge} venda(s) parada(s)`}
                       className="flex h-4 min-w-4 items-center justify-center rounded-full bg-content px-1 text-[10px] font-medium leading-none text-surface"
                     >
                       {badge > 99 ? "99+" : badge}
@@ -124,9 +128,12 @@ function GroupList({
 export function AdminNav({
   email,
   alertas = 0,
+  emails = 0,
 }: {
   email: string | undefined;
   alertas?: number;
+  /** E-mails não lidos na caixa de entrada. */
+  emails?: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -154,7 +161,7 @@ export function AdminNav({
 
       {open && (
         <div className="border-b border-content/10 px-6 py-6 md:hidden">
-          <GroupList pathname={pathname} alertas={alertas} onNavigate={() => setOpen(false)} />
+          <GroupList pathname={pathname} alertas={alertas} emails={emails} onNavigate={() => setOpen(false)} />
           <div className="mt-6 border-t border-content/10 pt-4">
             <ThemeToggle />
           </div>
@@ -178,7 +185,7 @@ export function AdminNav({
           ALBIZIA <span className="text-content/40">admin</span>
         </span>
         <div className="flex-1">
-          <GroupList pathname={pathname} alertas={alertas} />
+          <GroupList pathname={pathname} alertas={alertas} emails={emails} />
         </div>
         <div className="mt-6 border-t border-content/10 pt-4">
           <ThemeToggle />

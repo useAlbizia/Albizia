@@ -9,9 +9,14 @@ type SendArgs = {
   subject: string;
   html: string;
   replyTo?: string;
+  /** Remetente diferente do padrão (ex.: contato@ para respostas da caixa). */
+  from?: string;
+  /** Cabeçalhos extras, como In-Reply-To, para a resposta entrar na conversa. */
+  headers?: Record<string, string>;
+  text?: string;
 };
 
-export type SendResult = { ok: true } | { ok: false; reason: string };
+export type SendResult = { ok: true; id?: string } | { ok: false; reason: string };
 
 // Versão que explica a falha. Telas de admin usam esta: "não foi possível
 // enviar" não diz a quem está olhando se falta configurar a chave na Vercel,
@@ -23,9 +28,12 @@ export async function sendEmailDetailed({
   subject,
   html,
   replyTo,
+  from: fromArg,
+  headers,
+  text,
 }: SendArgs): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
-  const from = process.env.EMAIL_FROM ?? "ALBIZIA <onboarding@resend.dev>";
+  const from = fromArg ?? process.env.EMAIL_FROM ?? "ALBIZIA <onboarding@resend.dev>";
 
   if (!key) {
     console.warn("RESEND_API_KEY not set — skipping email:", subject);
@@ -44,7 +52,15 @@ export async function sendEmailDetailed({
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to, subject, html, ...(replyTo ? { reply_to: replyTo } : {}) }),
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html,
+        ...(text ? { text } : {}),
+        ...(replyTo ? { reply_to: replyTo } : {}),
+        ...(headers ? { headers } : {}),
+      }),
     });
 
     if (!res.ok) {
@@ -63,7 +79,8 @@ export async function sendEmailDetailed({
       return { ok: false, reason: `O Resend respondeu com erro ${res.status}.` };
     }
 
-    return { ok: true };
+    const corpoOk = (await res.json().catch(() => ({}))) as { id?: string };
+    return { ok: true, id: corpoOk.id };
   } catch (err) {
     console.error("Resend request error", err);
     return { ok: false, reason: "Não foi possível falar com o Resend." };
