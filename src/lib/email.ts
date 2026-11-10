@@ -147,7 +147,7 @@ export function emailShell(title: string, bodyHtml: string): string {
         </p>
         <img src="${MARCA}/symbol-black.png" width="22" height="23" alt="" style="display:block;margin:22px auto 0;border:0;width:22px;height:23px;opacity:0.55;">
         <p style="margin:14px 0 0;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:${FAINT};">Silence becomes style.</p>
-        <p style="margin:6px 0 0;font-size:11px;color:${FAINT};">© ${new Date().getFullYear()} ALBIZIA</p>
+        <p style="margin:6px 0 0;font-size:11px;color:${FAINT};">© ${new Date().getFullYear()} · usealbizia.com.br</p>
       </div>
     </div>
   </body></html>`;
