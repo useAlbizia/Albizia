@@ -51,7 +51,7 @@ const PASSOS: Passo[] = [
     alvos: ["socios-tabela"],
     titulo: "Sócios e caixa",
     texto:
-      "Quanto cada um colocou, a parte justa de cada um (o total dividido por três) e quem tem a receber. Logo abaixo o painel diz o acerto exato para equilibrar os três. Nada aqui é digitado: tudo vem dos lançamentos.",
+      "Quanto cada um colocou, a parte justa de cada um (o total dividido pela participação de cada sócio) e quem tem a receber. Logo abaixo o painel diz o acerto exato para equilibrar os três. Nada aqui é digitado: tudo vem dos lançamentos.",
   },
   {
     rota: "/admin/fechamento",

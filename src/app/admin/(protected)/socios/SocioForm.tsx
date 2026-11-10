@@ -16,16 +16,28 @@ export type SocioEdit = {
   ativo: boolean;
 };
 
-export function SocioForm({ socio }: { socio: SocioEdit }) {
+export function SocioForm({ socio, participacao }: { socio: SocioEdit; participacao: string }) {
   const [state, action, pending] = useActionState(salvarSocio.bind(null, socio.id), vazio);
 
   return (
     <form action={action} className="flex flex-col gap-2 border border-content/10 px-4 py-4">
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.4fr_1.4fr_1fr_70px]">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1.4fr_1.4fr_1fr_150px]">
         <input name="nome" defaultValue={socio.nome} placeholder="Nome" className={input} />
         <input name="email" type="email" defaultValue={socio.email} placeholder="E-mail" autoComplete="off" className={input} />
         <input name="telefone" defaultValue={socio.telefone} placeholder="WhatsApp" inputMode="tel" className={input} />
-        <input name="cotas" type="number" min={1} max={100} defaultValue={socio.cotas} title="Cotas" className={input} />
+        <label className="flex items-center gap-2">
+          <span className="text-[12px] text-content/55">Cotas</span>
+          <input
+            name="cotas"
+            type="number"
+            min={1}
+            max={100}
+            defaultValue={socio.cotas}
+            aria-label={`Cotas de ${socio.nome}`}
+            className={`${input} w-16`}
+          />
+          <span className="text-[12px] text-content/55">{participacao}</span>
+        </label>
       </div>
       <div className="flex flex-wrap items-center gap-4">
         <label className="flex items-center gap-2 text-[12px] text-content/60">

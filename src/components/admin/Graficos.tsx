@@ -91,8 +91,11 @@ export function BarrasMensais({ titulo, pontos, id }: { titulo: string; pontos: 
 }
 
 /** Capital de cada sócio em barras, com a linha da parte justa. */
-export function CapitalSocios({ linhas, parteJusta }: { linhas: { nome: string; capital: number }[]; parteJusta: number }) {
-  const max = Math.max(parteJusta, ...linhas.map((l) => l.capital), 1);
+// Cada linha traz a própria parte justa: com participações diferentes (50%,
+// 25%, 25%), o traço de cada sócio fica num lugar diferente.
+export function CapitalSocios({ linhas }: { linhas: { nome: string; capital: number; parteJusta: number }[] }) {
+  const max = Math.max(...linhas.map((l) => Math.max(l.parteJusta, l.capital)), 1);
+  const iguais = linhas.every((l) => l.parteJusta === linhas[0]?.parteJusta);
   const pct = (v: number) => `${Math.max(0, (v / max) * 100)}%`;
   return (
     <figure className="border border-content/15 px-4 py-4">
@@ -106,14 +109,17 @@ export function CapitalSocios({ linhas, parteJusta }: { linhas: { nome: string; 
             </div>
             <div className="relative h-2.5 w-full rounded-full bg-content/10">
               <div className="h-2.5 rounded-full bg-content/80" style={{ width: pct(l.capital) }} />
-              {/* Onde cada um deveria estar para os três ficarem iguais. */}
-              <div className="absolute -top-1 w-0.5 bg-content" style={{ left: pct(parteJusta), height: "18px" }} aria-hidden="true" />
+              {/* Onde este sócio deveria estar, pela participação dele. */}
+              <div className="absolute -top-1 w-0.5 bg-content" style={{ left: pct(l.parteJusta), height: "18px" }} aria-hidden="true" />
             </div>
           </div>
         ))}
       </div>
       <p className="mt-3 text-[11px] text-content/50">
-        O traço vertical é a parte justa ({curto(parteJusta)} para cada um). Quem passa dele colocou a mais.
+        {iguais
+          ? `O traço vertical é a parte justa (${curto(linhas[0]?.parteJusta ?? 0)} para cada um).`
+          : "O traço vertical é a parte justa de cada um, pela participação na sociedade."}{" "}
+        Quem passa dele colocou a mais.
       </p>
     </figure>
   );

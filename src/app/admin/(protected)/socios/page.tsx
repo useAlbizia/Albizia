@@ -22,7 +22,17 @@ export default async function SociosPage() {
   const { caixa } = resumo;
   const usoMei = mei.limiteCents > 0 ? Math.min(100, (mei.faturadoCents / mei.limiteCents) * 100) : 0;
   const ativos = resumo.socios.filter((l) => lista.find((s) => s.id === l.id)?.ativo);
-  const fracao = ativos.length ? `1/${ativos.length}` : "";
+
+  // Participação de cada sócio ativo, em porcentagem, a partir das cotas.
+  // Uma casa decimal: 1 cota de 3 vira 33,3%, sem fingir uma precisão que
+  // as contas (feitas por cotas, em centavos exatos) não precisam.
+  const totalCotas = lista.filter((s) => s.ativo).reduce((a, s) => a + s.cotas, 0);
+  const participacao = (cotas: number) =>
+    totalCotas > 0 ? `${((cotas / totalCotas) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%` : "0%";
+  const iguais = ativos.length > 0 && ativos.every((l) => l.cotas === ativos[0].cotas);
+  const nAtivos = ativos.length;
+  const porExtenso = ["", "um", "dois", "três", "quatro", "cinco", "seis"][nAtivos] ?? String(nAtivos);
+  const fracaoIgual = { 2: "metade", 3: "um terço", 4: "um quarto" }[nAtivos] ?? `1/${nAtivos}`;
 
   return (
     <div className="flex max-w-5xl flex-col gap-12">
@@ -58,8 +68,7 @@ export default async function SociosPage() {
 
       {ativos.length > 0 && resumo.capitalTotalCents > 0 && (
         <CapitalSocios
-          linhas={ativos.map((l) => ({ nome: l.nome.split(" ")[0], capital: l.capitalCents }))}
-          parteJusta={ativos[0].parteJustaCents}
+          linhas={ativos.map((l) => ({ nome: l.nome.split(" ")[0], capital: l.capitalCents, parteJusta: l.parteJustaCents }))}
         />
       )}
 
@@ -73,7 +82,7 @@ export default async function SociosPage() {
                 <th className="py-2.5 pr-4 font-normal">Colocou</th>
                 <th className="py-2.5 pr-4 font-normal">Já recebeu de volta</th>
                 <th className="py-2.5 pr-4 font-normal">Capital hoje</th>
-                <th className="py-2.5 pr-4 font-normal">Parte justa ({fracao})</th>
+                <th className="py-2.5 pr-4 font-normal">Parte justa</th>
                 <th className="py-2.5 pr-4 font-normal">Situação</th>
                 <th className="py-2.5 pr-4 font-normal">Ainda vai pagar</th>
               </tr>
@@ -92,7 +101,10 @@ export default async function SociosPage() {
                     <td className="py-3 pr-4 text-content/70">{brl(l.investidoCents)}</td>
                     <td className="py-3 pr-4 text-content/70">{brl(l.devolvidoCents)}</td>
                     <td className="py-3 pr-4">{brl(l.capitalCents)}</td>
-                    <td className="py-3 pr-4 text-content/70">{brl(l.parteJustaCents)}</td>
+                    <td className="py-3 pr-4 text-content/70">
+                      {brl(l.parteJustaCents)}
+                      {ativo && <span className="ml-1 text-[11px] text-content/45">({participacao(l.cotas)})</span>}
+                    </td>
                     <td className="py-3 pr-4">
                       {l.diferencaCents === 0 ? (
                         <span className="text-content/50">equilibrado</span>
@@ -114,7 +126,9 @@ export default async function SociosPage() {
 
         {acertos.length > 0 && (
           <div className="mt-6 border border-content/15 px-5 py-4">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-content/60">Para equilibrar os três</p>
+            <p className="text-[11px] uppercase tracking-[0.2em] text-content/60">
+              {iguais ? `Para equilibrar os ${porExtenso}` : "Para cada um chegar à sua parte"}
+            </p>
             <ul className="mt-3 flex flex-col gap-1.5 text-sm">
               {acertos.map((a, i) => (
                 <li key={i}>
@@ -226,8 +240,10 @@ export default async function SociosPage() {
           <div>
             <dt className="font-medium">Parte justa</dt>
             <dd className="text-content/60">
-              Como os três são sócios iguais, cada um deveria ter colocado um terço do total. A
-              diferença mostra quem colocou a mais e quem está abaixo.
+              {iguais
+                ? `Como os ${porExtenso} são sócios iguais, cada um deveria ter colocado ${fracaoIgual} do total.`
+                : "Cada um deveria ter colocado a sua porcentagem do total, pela participação na sociedade."}{" "}
+              A diferença mostra quem colocou a mais e quem está abaixo.
             </dd>
           </div>
           <div>
@@ -250,23 +266,56 @@ export default async function SociosPage() {
               Distribuição é dividir o lucro entre os sócios, depois de guardar uma reserva no caixa.
               Pró-labore é um valor fixo por mês para quem trabalha na empresa, como um salário, e ele
               entra como despesa. A ordem combinada por vocês: primeiro volta o que alguém colocou a
-              mais, depois o lucro é dividido em partes iguais.
+              mais, depois o lucro é dividido pela participação de cada um
+              {iguais ? " (hoje, partes iguais)" : ""}.
             </dd>
           </div>
         </dl>
       </section>
 
       <section>
+        <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/60">Participação na sociedade</p>
+        <div className="mb-6 border border-content/15 px-5 py-4">
+          <ul className="flex flex-col gap-1.5 text-sm">
+            {lista
+              .filter((s) => s.ativo)
+              .map((s) => (
+                <li key={s.id} className="flex items-baseline justify-between gap-4">
+                  <span>{s.nome}</span>
+                  <span className="text-lg font-light">{participacao(s.cotas)}</span>
+                </li>
+              ))}
+          </ul>
+          <div className="mt-4 flex flex-col gap-2 text-[12px] leading-relaxed text-content/55">
+            <p>
+              A participação diz de quem é cada pedaço da empresa. O painel usa ela para calcular a
+              parte justa de cada um no dinheiro colocado e para repartir um gasto marcado como
+              &quot;Dividido entre os sócios&quot;. Na hora de dividir o lucro, é ela que diz quanto
+              cabe a cada um.
+            </p>
+            <p>
+              Ela é definida por <strong>cotas</strong>, no cadastro abaixo. A porcentagem é a cota de
+              cada um dividida pela soma de todas. Todos com 1 cota é partes iguais. Exemplos: 1, 1 e 1
+              dá um terço para cada; 2, 1 e 1 dá 50%, 25% e 25%; 1 e 1 dá metade para cada.
+            </p>
+            <p>
+              Mudar as cotas refaz na hora a parte justa e o acerto entre vocês. Gastos já lançados como
+              &quot;Dividido entre os sócios&quot; continuam com a divisão do dia em que foram lançados.
+              Por ser uma decisão da sociedade, mudem só depois de combinar entre todos.
+            </p>
+          </div>
+        </div>
+
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/60">Cadastro dos sócios</p>
         <p className="mb-3 max-w-2xl text-[11px] leading-relaxed text-content/40">
-          O WhatsApp de cada um é o que vai permitir lançar pelo celular depois. Cotas definem a
-          divisão: todos com 1 é partes iguais.
+          O WhatsApp de cada um é o que vai permitir lançar pelo celular depois.
         </p>
         <div className="flex flex-col gap-2">
           {lista.map((s) => (
             <SocioForm
               key={s.id}
               socio={{ id: s.id, nome: s.nome, email: s.email, telefone: s.telefone, cotas: s.cotas, ativo: s.ativo }}
+              participacao={s.ativo ? participacao(s.cotas) : "inativo"}
             />
           ))}
         </div>
