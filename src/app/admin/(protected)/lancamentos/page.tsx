@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/dal";
 import { brl, isoDay } from "@/lib/format";
 import {
   CATEGORIAS,
+  contasAPagar,
   FORMAS_PAGAMENTO,
   listarAutomaticos,
   listarLancamentos,
@@ -15,6 +16,8 @@ import {
 import { pendentesDe, socioPorEmail } from "@/lib/aprovacao";
 import { LancamentoAcoes } from "./LancamentoAcoes";
 import { CartaoAprovar, NovoLancamento } from "./Interativos";
+import { ContasAPagar } from "./ContasAPagar";
+import { PagarParte } from "./PagarParte";
 
 export const dynamic = "force-dynamic";
 
@@ -52,11 +55,12 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
   const filtro = { mes: um(sp.mes), tipo: um(sp.tipo), socioId: um(sp.socio) };
   const mostrar = um(sp.mostrar); // "" | lancados | automaticos
 
-  const [socios, rows, autos, eu] = await Promise.all([
+  const [socios, rows, autos, eu, contas] = await Promise.all([
     listarSocios(),
     mostrar === "automaticos" ? Promise.resolve([]) : listarLancamentos(filtro),
     mostrar === "lancados" || filtro.socioId ? Promise.resolve([] as LinhaAutomatica[]) : listarAutomaticos(filtro),
     socioPorEmail(user.email),
+    contasAPagar(),
   ]);
   const ativos = socios.filter((s) => s.ativo).map((s) => ({ id: s.id, nome: s.nome }));
   const nome = (id: string | null | undefined) => socios.find((s) => s.id === id)?.nome.split(" ")[0] ?? "";
@@ -141,6 +145,11 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
           ))}
         </section>
       )}
+
+      <ContasAPagar
+        contas={contas.map((c) => ({ ...c, nome: c.socioId ? nome(c.socioId) : "Empresa", minha: !!eu && c.socioId === eu.id }))}
+        hoje={hoje}
+      />
 
       <section>
         <details className="mb-4" open={filtrando}>
@@ -247,7 +256,7 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                       <p className="mt-0.5 text-[12px] text-content/50">
                         {n}x de {brl(l.valorCents)} no {(l.formaPagamento || "cartão").toLowerCase()} ·{" "}
                         <strong className="font-medium text-content/75">
-                          {pagas.length} de {n} pagas
+                          {pagas.length} de {n} quitadas
                         </strong>
                         {proxima ? ` · próxima em ${dataBr(proxima.data)}` : " · quitado"}
                       </p>
@@ -278,15 +287,28 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                 {parcelado && completo && (
                   <details className="mt-2">
                     <summary className="cursor-pointer text-[11px] uppercase tracking-[0.1em] text-content/50">
-                      Ver parcelas
+                      Ver parcelas e pagar
                     </summary>
-                    <ul className="mt-2 flex flex-col gap-1 border-l border-content/15 pl-3 text-[12px]">
+                    <ul className="mt-2 flex flex-col gap-3 border-l border-content/15 pl-3 text-[12px]">
                       {linhas.map((p) => (
-                        <li key={p.id} className={`flex justify-between gap-3 ${p.status === "pago" ? "" : "text-content/45"}`}>
-                          <span>
-                            {p.parcelaNum ?? 1}/{n} · {dataBr(p.data)} · {p.status === "pago" ? "paga" : "vence nesse dia"}
-                          </span>
-                          <span>{brl(p.valorCents)}</span>
+                        <li key={p.id}>
+                          <p className="flex justify-between gap-3 font-medium">
+                            <span>
+                              {p.parcelaNum ?? 1}/{n} · vence {dataBr(p.data)}
+                              {p.status === "pago" ? " · quitada" : ""}
+                            </span>
+                            <span>{brl(p.valorCents)}</span>
+                          </p>
+                          <ul className="mt-1 flex flex-col gap-1.5">
+                            {p.pagadores.map((pg) => (
+                              <li key={pg.id} className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-content/65">
+                                  {pg.socioId ? nome(pg.socioId) : "Empresa"}: {brl(pg.valorCents)}
+                                </span>
+                                <PagarParte pagadorId={pg.id} pagoEm={pg.pagoEm} hoje={hoje} rotulo="Pagar" />
+                              </li>
+                            ))}
+                          </ul>
                         </li>
                       ))}
                     </ul>

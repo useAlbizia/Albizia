@@ -8,8 +8,9 @@ import { db } from "@/lib/db/client";
 import { lancamentoAprovacoes, lancamentoPagadores, lancamentos, metasMensais, socios } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
 import { isoDay } from "@/lib/format";
-import { dividirIgual, dividirPorPeso, gerarParcelas, parseReais } from "@/lib/financeiro-calc";
+import { dividirIgual, dividirPorPeso, gerarParcelas, parseReais, somarMeses } from "@/lib/financeiro-calc";
 import { sincronizarPendentes } from "@/lib/mp-sync";
+import { atualizarStatusPeloPagamento } from "@/lib/financeiro";
 import { avisarAprovadores, avisarContestacao, recalcularAprovacao, socioPorEmail } from "@/lib/aprovacao";
 
 export type FinState = { ok?: boolean; error?: string; mensagem?: string };
@@ -49,6 +50,10 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { error: "Data inválida." };
 
   const parcelas = Math.min(48, Math.max(1, Number(fd.get("parcelas") ?? 1) || 1));
+  // Conta fixa: o mesmo valor todo mês (DAS, domínio, internet), criada já
+  // nos próximos meses para aparecer no calendário e gerar lembrete.
+  const fixa = fd.get("fixa") === "on";
+  const meses = Math.min(24, Math.max(2, Number(fd.get("meses") ?? 12) || 12));
   const quemPagou = String(fd.get("quemPagou") ?? "");
   const socioId = String(fd.get("socioId") ?? "") || null;
 
@@ -72,9 +77,10 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   if (tipo === "despesa" && !alguns && quemPagou !== "empresa" && quemPagou !== "dividir" && !existe(quemPagou)) {
     return { error: "Diga quem pagou." };
   }
-  if (tipo !== "despesa" && parcelas > 1) {
-    return { error: "Só despesa pode ser parcelada." };
+  if (tipo !== "despesa" && (parcelas > 1 || fixa)) {
+    return { error: "Só despesa pode ser parcelada ou conta fixa." };
   }
+  if (fixa && parcelas > 1) return { error: "Conta fixa não é parcelada: escolha uma das duas." };
 
   // Divide o valor de UMA parcela entre quem pagou.
   function pagadoresDe(valor: number): { socioId: string | null; valorCents: number }[] {
@@ -94,11 +100,15 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   }
 
   const hoje = isoDay(new Date());
-  const linhas =
-    parcelas > 1
+  const linhas = fixa
+    ? Array.from({ length: meses }, (_, i) => {
+        const d = somarMeses(data, i);
+        return { num: i + 1, total: meses, data: d, valorCents, status: (d <= hoje ? "pago" : "previsto") as "pago" | "previsto" };
+      })
+    : parcelas > 1
       ? gerarParcelas(valorCents, parcelas, data, hoje)
       : [{ num: 1, total: 1, data, valorCents, status: "pago" as const }];
-  const grupoId = parcelas > 1 ? randomUUID() : null;
+  const grupoId = linhas.length > 1 ? randomUUID() : null;
 
   const base = {
     tipo,
@@ -113,7 +123,8 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
     // Nasce aguardando os outros sócios; o recálculo logo abaixo aprova na
     // hora se não houver ninguém para aprovar.
     aprovacao: "pendente",
-    origem: "painel",
+    // "fixa" separa conta do mês de compra parcelada, na lista e no calendário.
+    origem: fixa ? "fixa" : "painel",
   };
 
   let primeiroId = "";
@@ -134,7 +145,16 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
       if (!primeiroId) primeiroId = l.id;
       const pag = pagadoresDe(p.valorCents).filter((x) => x.valorCents > 0);
       if (pag.length) {
-        await tx.insert(lancamentoPagadores).values(pag.map((x) => ({ lancamentoId: l.id, ...x })));
+        // Parcela que já venceu na data do lançamento nasce paga (quem lança
+        // compra antiga já pagou); a futura espera cada um tocar em Pagar.
+        await tx.insert(lancamentoPagadores).values(
+          pag.map((x) => ({
+            lancamentoId: l.id,
+            ...x,
+            pagoEm: p.status === "pago" ? p.data : null,
+            pagoMarcadoPor: p.status === "pago" ? (user.email ?? "") : "",
+          })),
+        );
       }
     }
   });
@@ -151,9 +171,10 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   refresh();
 
   const previstas = linhas.filter((l) => l.status === "previsto").length;
-  const parcelado =
-    parcelas > 1
-      ? `Lançado em ${parcelas} parcelas (${parcelas - previstas} pagas, ${previstas} previstas). `
+  const parcelado = fixa
+    ? `Conta fixa lançada para ${meses} meses. Cada mês aparece em Contas a pagar e gera lembrete no dia. `
+    : parcelas > 1
+      ? `Lançado em ${parcelas} parcelas (${parcelas - previstas} já pagas, ${previstas} a pagar). Cada uma aparece em Contas a pagar. `
       : "Lançado. ";
   return {
     ok: true,
@@ -164,16 +185,53 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   };
 }
 
-/** Marca parcela como paga, ou desfaz. Só "pago" mexe nos saldos. */
-export async function alternarStatus(id: string): Promise<void> {
+/**
+ * Botão Pagar: marca UMA parte de uma parcela como paga, na data informada.
+ * Só a parte paga entra no capital de quem pagou. Fica registrado quem marcou
+ * e quando, e o lançamento passa a "pago" quando todas as partes estiverem
+ * pagas.
+ */
+export async function registrarPagamento(pagadorId: string, data: string): Promise<{ erro?: string }> {
+  const user = await requireAdmin();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) return { erro: "Data inválida." };
+  if (data > isoDay(new Date())) return { erro: "A data do pagamento não pode ser no futuro." };
+  const [parte] = await db.select().from(lancamentoPagadores).where(eq(lancamentoPagadores.id, pagadorId));
+  if (!parte) return { erro: "Parcela não encontrada." };
+  if (parte.pagoEm) return { erro: "Esta parte já estava paga." };
+  await db
+    .update(lancamentoPagadores)
+    .set({ pagoEm: data, pagoMarcadoPor: user.email ?? "" })
+    .where(eq(lancamentoPagadores.id, pagadorId));
+  await atualizarStatusPeloPagamento(parte.lancamentoId);
+  await logAudit({
+    action: "financeiro.pagamento",
+    entity: "lancamento",
+    entityId: parte.lancamentoId,
+    detail: { pagadorId, socioId: parte.socioId, valorCents: parte.valorCents, data },
+  });
+  refresh();
+  return {};
+}
+
+/** Desfaz um Pagar marcado por engano. Também fica na auditoria. */
+export async function desfazerPagamento(pagadorId: string): Promise<void> {
   await requireAdmin();
-  const atual = await db.query.lancamentos.findFirst({ where: eq(lancamentos.id, id) });
-  if (!atual) return;
-  const novo = atual.status === "pago" ? "previsto" : "pago";
-  await db.update(lancamentos).set({ status: novo, updatedAt: new Date() }).where(eq(lancamentos.id, id));
-  await logAudit({ action: "financeiro.status", entity: "lancamento", entityId: id, detail: { de: atual.status, para: novo, descricao: atual.descricao } });
+  const [parte] = await db.select().from(lancamentoPagadores).where(eq(lancamentoPagadores.id, pagadorId));
+  if (!parte?.pagoEm) return;
+  await db
+    .update(lancamentoPagadores)
+    .set({ pagoEm: null, pagoMarcadoPor: "" })
+    .where(eq(lancamentoPagadores.id, pagadorId));
+  await atualizarStatusPeloPagamento(parte.lancamentoId);
+  await logAudit({
+    action: "financeiro.pagamento_desfeito",
+    entity: "lancamento",
+    entityId: parte.lancamentoId,
+    detail: { pagadorId, socioId: parte.socioId, valorCents: parte.valorCents, eraDe: parte.pagoEm },
+  });
   refresh();
 }
+
 
 /**
  * Exclui um lançamento, ou a compra parcelada inteira.

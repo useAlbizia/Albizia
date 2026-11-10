@@ -3,9 +3,8 @@
 import { useTransition } from "react";
 import { excluirLancamento } from "../socios/_actions";
 
-// O "marcar pago" saiu: parcela de cartão passa a contar sozinha no dia do
-// vencimento (lib/financeiro.ts, liquidarParcelasVencidas), e lançamento
-// avulso já nasce pago. Sobrou só excluir.
+// Pagamento é marcado parte por parte, com o botão Pagar de cada parcela
+// (ParcelaPagadores). Aqui sobrou só excluir.
 export function LancamentoAcoes({
   id,
   parcelado,

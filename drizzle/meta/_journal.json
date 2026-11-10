@@ -218,6 +218,13 @@
       "when": 1794351515393,
       "tag": "0030_odd_lethal_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1794353181087,
+      "tag": "0031_bright_thunderbird",
+      "breakpoints": true
     }
   ]
 }

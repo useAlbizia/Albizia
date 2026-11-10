@@ -145,9 +145,22 @@ export default function ManualPage() {
             itens={[
               "Lance UMA vez só, como Comprei ou paguei algo, com o valor TOTAL da compra.",
               "Escolha Cartão de crédito e ajuste as parcelas. A data é a da primeira parcela.",
-              "O painel cria uma parcela por mês. As que já venceram entram como pagas; cada parcela futura passa a contar sozinha no dia do vencimento. Ninguém precisa lançar nem marcar nada todo mês.",
+              "O painel cria uma parcela por mês. As que já venceram entram como pagas; as futuras vão para Contas a pagar.",
+              "No dia do vencimento, quem divide a parcela recebe lembrete. Depois de pagar, toque em Pagar na SUA parte e confirme a data. Só a parte paga entra na sua conta de sócio.",
             ]}
           />
+        </Tarefa>
+
+        <Tarefa titulo="Contas a pagar e contas fixas">
+          <p>
+            No topo de Lançamentos fica o calendário: atrasadas primeiro, depois mês a mês, cada linha com o dia grande à
+            esquerda e o botão <strong>Pagar</strong>. Quem tem conta sua vencendo hoje ou atrasada vê uma faixa no topo de
+            todas as telas.
+          </p>
+          <p>
+            Conta que se repete (DAS, domínio, internet): ao lançar, em <strong>Conta fixa?</strong> escolha{" "}
+            <strong>Sim, repete todo mês</strong> e quantos meses. Cada mês entra no calendário e gera lembrete.
+          </p>
         </Tarefa>
 
         <Tarefa titulo="Só alguns sócios pagaram (exemplo: a prensa)">
@@ -157,8 +170,8 @@ export default function ManualPage() {
             marcados, e o painel mostra quanto cada um paga.
           </p>
           <p>
-            Quem não pagou não lança nada. A conta se equilibra sozinha: a parte justa de todos sobe, mas o capital só
-            sobe para quem pagou. Se um sócio tinha colocado mais dinheiro antes, a vantagem dele diminui
+            Quem não paga aquela compra não lança nem marca nada. A conta se equilibra sozinha: a parte justa de todos
+            sobe, mas o capital só sobe para quem pagou (e marcou Pagar). Se um sócio tinha colocado mais dinheiro antes, a vantagem dele diminui
             automaticamente. É assim que o que ele já investiu &quot;abate&quot; a parte dele.
           </p>
         </Tarefa>

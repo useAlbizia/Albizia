@@ -8,6 +8,10 @@ import { TourPainel } from "./TourPainel";
 import { AvisosPainel } from "./AvisosPainel";
 import { pendentesDe, socioPorEmail } from "@/lib/aprovacao";
 import { pushDisponivel } from "@/lib/push";
+import { contasAPagar } from "@/lib/financeiro";
+import { isoDay } from "@/lib/format";
+import { demoAtivo } from "@/lib/demo";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -26,13 +30,19 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // página do admin e não só quando alguém lembra de abrir a fila.
   // E quantos lançamentos esperam o voto DESTE sócio: vira faixa no topo de
   // todas as telas, número no menu e número no ícone do aplicativo.
-  const [recuperacao, emailsNaoLidos, aprovar] = await Promise.all([
+  const eu = await socioPorEmail(user.email).catch(() => null);
+  const hoje = isoDay(new Date());
+  const [recuperacao, emailsNaoLidos, aprovar, minhasContas, demo] = await Promise.all([
     countRecoveryQueue().catch(() => ({ total: 0, valorCents: 0 })),
     contarNaoLidos().catch(() => 0),
-    socioPorEmail(user.email)
-      .then((s) => (s ? pendentesDe(s.id) : []))
-      .then((l) => l.length)
-      .catch(() => 0),
+    eu ? pendentesDe(eu.id).then((l) => l.length).catch(() => 0) : 0,
+    // Partes DESTE sócio que vencem hoje ou já venceram e não foram pagas.
+    eu
+      ? contasAPagar()
+          .then((cs) => cs.filter((c) => c.socioId === eu.id && c.vencimento <= hoje))
+          .catch(() => [])
+      : [],
+    demoAtivo(),
   ]);
 
   return (
@@ -41,7 +51,20 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <NovaVersaoAviso />
       <TourPainel />
       <div className="flex min-h-screen flex-1 flex-col">
-        <AvisosPainel pendentes={aprovar} pushPronto={pushDisponivel()} />
+        {demo && (
+          // Impossível não ver: dado de exemplo nunca pode ser confundido com venda real.
+          <Link
+            href="/admin/demonstracao"
+            className="block bg-content px-4 py-2.5 text-center text-[12px] font-semibold uppercase tracking-[0.14em] text-surface"
+          >
+            Dados de exemplo no painel: nada disso é real · Apagar exemplo
+          </Link>
+        )}
+        <AvisosPainel
+          pendentes={aprovar}
+          pushPronto={pushDisponivel()}
+          contas={{ n: minhasContas.length, totalCents: minhasContas.reduce((n, c) => n + c.valorCents, 0) }}
+        />
         <main className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">{children}</main>
         <footer className="border-t border-content/10 px-6 py-6">
           <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-1 text-[11px] text-content/40 sm:flex-row">

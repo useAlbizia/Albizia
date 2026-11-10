@@ -1,7 +1,7 @@
 import "server-only";
-import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { db } from "./db/client";
-import { lancamentos, metasMensais, orderItems, orders, products, socios } from "./db/schema";
+import { lancamentoPagadores, lancamentos, metasMensais, orderItems, orders, products, socios } from "./db/schema";
 import { isoDay } from "./format";
 import { sincronizarPendentes } from "./mp-sync";
 import { reavaliarPendentes } from "./aprovacao";
@@ -222,12 +222,77 @@ async function movimentos(antesDe?: string): Promise<Movimento[]> {
     where: antesDe ? and(aprovado, lt(lancamentos.data, antesDe)) : aprovado,
     with: { pagadores: true },
   });
-  return rows.map((l) => ({
-    tipo: l.tipo as TipoLancamento,
-    status: l.status as StatusLancamento,
-    valorCents: l.valorCents,
-    socioId: l.socioId,
-    pagadores: l.pagadores.map((p) => ({ socioId: p.socioId, valorCents: p.valorCents })),
+  return rows.flatMap((l): Movimento[] => {
+    // Despesa conta parte por parte: o que cada um já pagou (botão Pagar)
+    // entra como pago; o que falta pagar fica como previsto. Uma parcela
+    // dividida em que só um pagou vira duas metades, uma de cada lado.
+    if (l.tipo === "despesa" && l.pagadores.length > 0) {
+      const pagas = l.pagadores.filter((p) => p.pagoEm);
+      const faltam = l.pagadores.filter((p) => !p.pagoEm);
+      const mov = (ps: typeof l.pagadores, status: StatusLancamento): Movimento => ({
+        tipo: "despesa",
+        status,
+        valorCents: ps.reduce((n, p) => n + p.valorCents, 0),
+        socioId: null,
+        pagadores: ps.map((p) => ({ socioId: p.socioId, valorCents: p.valorCents })),
+      });
+      return [...(pagas.length ? [mov(pagas, "pago")] : []), ...(faltam.length ? [mov(faltam, "previsto")] : [])];
+    }
+    return [
+      {
+        tipo: l.tipo as TipoLancamento,
+        status: l.status as StatusLancamento,
+        valorCents: l.valorCents,
+        socioId: l.socioId,
+        pagadores: l.pagadores.map((p) => ({ socioId: p.socioId, valorCents: p.valorCents })),
+      },
+    ];
+  });
+}
+
+/**
+ * O status do lançamento acompanha as partes: "pago" quando todas as partes
+ * foram pagas, "previsto" enquanto falta alguma. Chamado a cada Pagar.
+ */
+export async function atualizarStatusPeloPagamento(lancamentoId: string): Promise<void> {
+  const partes = await db.select().from(lancamentoPagadores).where(eq(lancamentoPagadores.lancamentoId, lancamentoId));
+  if (partes.length === 0) return;
+  const status = partes.every((p) => p.pagoEm) ? "pago" : "previsto";
+  await db.update(lancamentos).set({ status, updatedAt: new Date() }).where(eq(lancamentos.id, lancamentoId));
+}
+
+export type ParteAPagar = {
+  pagadorId: string;
+  lancamentoId: string;
+  descricao: string;
+  parcela: string;
+  vencimento: string;
+  valorCents: number;
+  socioId: string | null;
+  aprovacao: string;
+};
+
+/** As partes ainda não pagas, da mais antiga para a mais nova: o calendário de contas. */
+export async function contasAPagar(): Promise<ParteAPagar[]> {
+  const rows = await db
+    .select({
+      pagadorId: lancamentoPagadores.id,
+      lancamentoId: lancamentos.id,
+      descricao: lancamentos.descricao,
+      parcelaNum: lancamentos.parcelaNum,
+      parcelaTotal: lancamentos.parcelaTotal,
+      vencimento: lancamentos.data,
+      valorCents: lancamentoPagadores.valorCents,
+      socioId: lancamentoPagadores.socioId,
+      aprovacao: lancamentos.aprovacao,
+    })
+    .from(lancamentoPagadores)
+    .innerJoin(lancamentos, eq(lancamentos.id, lancamentoPagadores.lancamentoId))
+    .where(and(isNull(lancamentoPagadores.pagoEm), sql`${lancamentos.aprovacao} <> 'contestado'`))
+    .orderBy(asc(lancamentos.data));
+  return rows.map((r) => ({
+    ...r,
+    parcela: r.parcelaTotal ? `${r.parcelaNum}/${r.parcelaTotal}` : "",
   }));
 }
 
@@ -238,34 +303,6 @@ export type PainelFinanceiro = {
   /** Situação da leitura do Mercado Pago, para a tela avisar quando falta dado. */
   sync: { semToken: boolean; erros: number; pendentes: number };
 };
-
-/**
- * Parcela de cartão que já venceu passa a contar como paga, sozinha.
- *
- * A fatura do cartão é cobrada todo mês de qualquer jeito; esperar alguém
- * lembrar de marcar "pago" deixava a conta de quem paga atrasada (e foi
- * exatamente o que os sócios pediram para não precisar lembrar). Roda ao
- * abrir as telas de dinheiro e no agendamento diário. Nunca derruba a tela.
- */
-export async function liquidarParcelasVencidas(): Promise<number> {
-  try {
-    const r = await db
-      .update(lancamentos)
-      .set({ status: "pago", updatedAt: new Date() })
-      .where(
-        and(
-          eq(lancamentos.status, "previsto"),
-          isNotNull(lancamentos.grupoId),
-          lte(lancamentos.data, isoDay(new Date())),
-        ),
-      )
-      .returning({ id: lancamentos.id });
-    return r.length;
-  } catch (err) {
-    console.error("liquidarParcelasVencidas falhou", err);
-    return 0;
-  }
-}
 
 /**
  * Quanto de cada sócio está lançado mas ainda espera aprovação (só o que já
@@ -293,7 +330,7 @@ export async function pendentePorSocio(): Promise<Map<string, number>> {
 }
 
 export async function painelFinanceiro(): Promise<PainelFinanceiro> {
-  await Promise.all([liquidarParcelasVencidas(), reavaliarPendentes()]);
+  await reavaliarPendentes();
   // Antes de somar, traz do Mercado Pago o que ainda falta (pedido pago que o
   // webhook perdeu, estorno recente). Poucos por vez, para a tela não
   // demorar; falha aqui nunca impede a tela de abrir.
@@ -347,7 +384,7 @@ export async function painelFinanceiro(): Promise<PainelFinanceiro> {
 }
 
 export async function listarLancamentos(filtro: { mes?: string; tipo?: string; socioId?: string }) {
-  await Promise.all([liquidarParcelasVencidas(), reavaliarPendentes()]);
+  await reavaliarPendentes();
   const conds = [];
   if (filtro.mes && /^\d{4}-\d{2}$/.test(filtro.mes)) {
     const [a, m] = filtro.mes.split("-").map(Number);
@@ -396,7 +433,6 @@ function limitesDoMes(mes: string) {
 }
 
 export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
-  await liquidarParcelasVencidas();
   const { inicioData, fimData, inicio, fim } = limitesDoMes(mes);
 
   const [auto, receitasMes, despesasMes, itens, meta, base, movsAntes, movsAte, autoAntes, autoAte, embalagens] =

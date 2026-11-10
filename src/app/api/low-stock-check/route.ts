@@ -3,7 +3,7 @@ import { getLowStockVariants } from "@/lib/metrics";
 import { getSiteSettings } from "@/lib/settings";
 import { sendEmail, emailShell } from "@/lib/email";
 import { enviarMotivacao } from "@/lib/motivacao";
-import { liquidarParcelasVencidas } from "@/lib/financeiro";
+import { lembrarVencimentos } from "@/lib/lembretes";
 
 export const dynamic = "force-dynamic";
 
@@ -17,12 +17,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Carona no agendamento diário: a mensagem de motivação dos sócios. Fica
-  // separada num try para um problema nela nunca impedir o aviso de estoque.
-  // Ela mesma garante no máximo uma por dia (lib/motivacao.ts).
-  // Parcelas de cartão que venceram hoje passam a contar, mesmo que ninguém
-  // abra o painel.
-  await liquidarParcelasVencidas();
+  // Carona no agendamento diário, cada uma isolada para nunca impedir o
+  // aviso de estoque: o lembrete de quem tem parte de parcela vencendo hoje
+  // ou atrasada, e a mensagem de motivação (no máximo uma por dia).
+  await lembrarVencimentos().catch((err) => console.error("lembretes falharam", err));
 
   let motivacao: unknown = null;
   try {

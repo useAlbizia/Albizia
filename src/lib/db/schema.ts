@@ -600,6 +600,12 @@ export const lancamentoPagadores = pgTable("lancamento_pagadores", {
     .references(() => lancamentos.id, { onDelete: "cascade" }),
   socioId: uuid("socio_id").references(() => socios.id),
   valorCents: integer("valor_cents").notNull(),
+  // Quando ESTA parte foi paga. Nulo = ainda não pagou. Cada sócio marca a
+  // sua parte de cada parcela (botão Pagar); só a parte paga entra no capital
+  // dele. Assim, se dois dividem a parcela e um pagou e o outro não, o painel
+  // mostra exatamente isso.
+  pagoEm: date("pago_em", { mode: "string" }),
+  pagoMarcadoPor: text("pago_marcado_por").notNull().default(""),
 });
 
 export const lancamentosRelations = relations(lancamentos, ({ many, one }) => ({

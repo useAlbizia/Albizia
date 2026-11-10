@@ -21,7 +21,16 @@ function chaveDoServidor(base64: string): Uint8Array<ArrayBuffer> {
 
 type Estado = "carregando" | "sem-suporte" | "instalar-iphone" | "pedir" | "negado" | "ligado";
 
-export function AvisosPainel({ pendentes, pushPronto }: { pendentes: number; pushPronto: boolean }) {
+export function AvisosPainel({
+  pendentes,
+  pushPronto,
+  contas = { n: 0, totalCents: 0 },
+}: {
+  pendentes: number;
+  pushPronto: boolean;
+  /** Partes de parcela DESTE sócio vencendo hoje ou atrasadas. */
+  contas?: { n: number; totalCents: number };
+}) {
   const [estado, setEstado] = useState<Estado>("carregando");
   const [adiado, setAdiado] = useState(true);
   const [msg, setMsg] = useState("");
@@ -31,9 +40,10 @@ export function AvisosPainel({ pendentes, pushPronto }: { pendentes: number; pus
   // Número no ícone do app, sempre igual ao que falta aprovar.
   useEffect(() => {
     const nav = navigator as Navigator & { setAppBadge?: (n: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
-    if (pendentes > 0) nav.setAppBadge?.(pendentes).catch(() => {});
+    const total = pendentes + contas.n;
+    if (total > 0) nav.setAppBadge?.(total).catch(() => {});
     else nav.clearAppBadge?.().catch(() => {});
-  }, [pendentes]);
+  }, [pendentes, contas.n]);
 
   // Lê o navegador só depois de montar: no servidor não existe localStorage
   // nem permissão de notificação, e ler antes daria tela diferente na hidratação.
@@ -109,10 +119,26 @@ export function AvisosPainel({ pendentes, pushPronto }: { pendentes: number; pus
   const mostrarConvite =
     pushPronto && !!chave && !adiado && (estado === "pedir" || estado === "instalar-iphone");
 
-  if (pendentes === 0 && !mostrarConvite && !msg) return null;
+  if (pendentes === 0 && contas.n === 0 && !mostrarConvite && !msg) return null;
+  const brl = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
   return (
     <div className="flex flex-col gap-3 px-4 pt-4 md:px-6">
+      {contas.n > 0 && (
+        <Link
+          href="/admin/lancamentos#contas"
+          className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 border-2 border-content px-5 py-4"
+        >
+          <span className="text-[14px] leading-snug">
+            <strong>
+              {contas.n === 1 ? "Você tem 1 conta" : `Você tem ${contas.n} contas`} para pagar: {brl(contas.totalCents)}.
+            </strong>{" "}
+            <span className="text-content/65">Vence hoje ou já venceu.</span>
+          </span>
+          <span className="shrink-0 bg-content px-3 py-1.5 text-[11px] uppercase tracking-[0.15em] text-surface">Ver</span>
+        </Link>
+      )}
+
       {pendentes > 0 && (
         <Link
           href="/admin/lancamentos?aprovar=1"

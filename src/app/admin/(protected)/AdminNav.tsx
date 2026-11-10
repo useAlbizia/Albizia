@@ -63,7 +63,10 @@ const GROUPS: Group[] = [
   },
   {
     title: "Ajuda",
-    items: [{ href: "/admin/manual", label: "Manual e tour" }],
+    items: [
+      { href: "/admin/manual", label: "Manual e tour" },
+      { href: "/admin/demonstracao", label: "Demonstração" },
+    ],
   },
 ];
 

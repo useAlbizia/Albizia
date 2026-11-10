@@ -71,6 +71,8 @@ export function LancamentoForm({
   const [categoria, setCategoria] = useState("");
   const [forma, setForma] = useState("Pix");
   const [parcelas, setParcelas] = useState(1);
+  const [fixa, setFixa] = useState(false); // conta fixa: repete todo mês
+  const [meses, setMeses] = useState(12);
   const [fornecedor, setFornecedor] = useState("");
   const [mostrarOutros, setMostrarOutros] = useState(false);
 
@@ -104,7 +106,11 @@ export function LancamentoForm({
     if (!tipo || centavos === null) return "";
     const v = brl(centavos);
     const quando = data.split("-").reverse().join("/");
-    const parc = despesa && parcelas > 1 ? ` em ${parcelas}x de ${brl(Math.round(centavos / parcelas))}` : "";
+    const parc = despesa && fixa
+      ? ` todo mês, por ${meses} meses`
+      : despesa && parcelas > 1
+        ? ` em ${parcelas}x de ${brl(Math.round(centavos / parcelas))}`
+        : "";
     if (despesa) {
       const pagou =
         quem === "empresa"
@@ -120,7 +126,7 @@ export function LancamentoForm({
     if (tipo === "receita") return `Entraram ${v} na empresa: ${descricao.trim()}, no ${forma.toLowerCase()}, em ${quando}.`;
     if (tipo === "devolucao_aporte") return `A empresa devolveu ${v} a ${nomeSocio(socioId)} (${descricao.trim()}), em ${quando}.`;
     return `${nomeSocio(socioId)} recebeu ${v} de lucro (${descricao.trim()}), em ${quando}.`;
-  }, [tipo, centavos, data, despesa, parcelas, quem, marcados, descricao, categoria, forma, socioId]);
+  }, [tipo, centavos, data, despesa, parcelas, fixa, meses, quem, marcados, descricao, categoria, forma, socioId]);
 
   return (
     <div className="flex flex-col gap-5">
@@ -204,7 +210,9 @@ export function LancamentoForm({
           <input type="hidden" name="socioId" value={socioId} />
           <input type="hidden" name="categoria" value={categoria} />
           <input type="hidden" name="formaPagamento" value={forma} />
-          <input type="hidden" name="parcelas" value={parcelas} />
+          <input type="hidden" name="parcelas" value={fixa ? 1 : parcelas} />
+          {fixa && <input type="hidden" name="fixa" value="on" />}
+          <input type="hidden" name="meses" value={meses} />
           <input type="hidden" name="fornecedor" value={fornecedor} />
 
           {despesa && (
@@ -289,7 +297,38 @@ export function LancamentoForm({
             </div>
           </div>
 
-          {despesa && forma === "Cartão de crédito" && (
+          {despesa && (
+            <div className="flex flex-col gap-2">
+              <p className="text-base">Conta fixa?</p>
+              <div className="flex flex-wrap gap-2">
+                <Chip ativo={!fixa} onClick={() => setFixa(false)}>Não, só esta vez</Chip>
+                <Chip
+                  ativo={fixa}
+                  onClick={() => {
+                    setFixa(true);
+                    setParcelas(1);
+                  }}
+                >
+                  Sim, repete todo mês
+                </Chip>
+              </div>
+              {fixa && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={() => setMeses((m) => Math.max(2, m - 1))} className="h-11 w-11 border border-content/30 text-lg" aria-label="Menos meses">−</button>
+                    <span className="min-w-[110px] text-center text-base">{meses} meses</span>
+                    <button type="button" onClick={() => setMeses((m) => Math.min(24, m + 1))} className="h-11 w-11 border border-content/30 text-lg" aria-label="Mais meses">+</button>
+                  </div>
+                  <p className="text-[12px] leading-relaxed text-content/50">
+                    O mesmo valor todo mês, no mesmo dia da data escolhida (DAS, domínio, internet). Cada mês aparece em
+                    Contas a pagar e gera lembrete no dia.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {despesa && !fixa && forma === "Cartão de crédito" && (
             <div className="flex flex-col gap-2">
               <p className="text-base">Parcelado?</p>
               <div className="flex items-center gap-3">
@@ -299,7 +338,8 @@ export function LancamentoForm({
               </div>
               {parcelas > 1 && (
                 <p className="text-[12px] leading-relaxed text-content/50">
-                  Vira uma parcela por mês a partir da data escolhida. As já vencidas entram como pagas.
+                  Vira uma parcela por mês a partir da data escolhida. As já vencidas entram como pagas; as futuras aparecem
+                  em Contas a pagar, e cada um toca em Pagar quando pagar a sua parte.
                 </p>
               )}
             </div>
