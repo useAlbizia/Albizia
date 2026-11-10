@@ -3,7 +3,7 @@ import { getDashboardMetrics } from "@/lib/metrics";
 import { getSiteSettings } from "@/lib/settings";
 import { listRecoveryQueue } from "@/lib/recovery";
 import { brl, shortDate } from "@/lib/format";
-import { ORDER_STATUS_LABEL } from "@/lib/orders";
+import { ORDER_STATUS_LABEL, expirarPedidosAbandonados } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,8 @@ function Kpi({ label, value, sub }: { label: string; value: string; sub?: string
 
 export default async function AdminDashboardPage() {
   const settings = await getSiteSettings();
+  // Antes de contar, tira da lista quem está sem pagar há mais de 7 dias.
+  await expirarPedidosAbandonados().catch(() => 0);
   const m = await getDashboardMetrics(settings.lowStockThreshold);
   // Venda parada é a primeira coisa que alguém tem que ver ao abrir o painel:
   // é dinheiro que já estava na mesa e ainda dá para recuperar.
@@ -87,6 +89,7 @@ export default async function AdminDashboardPage() {
           >
             ver carrinhos
           </Link>
+          <p className="mt-1 text-[10px] leading-snug text-content/35">Sem pagamento há 7 dias, cancela sozinho.</p>
         </div>
         <div className="bg-surface p-6">
           <p className={`text-2xl ${m.lowStockCount > 0 ? "text-red-600 dark:text-red-400" : ""}`}>

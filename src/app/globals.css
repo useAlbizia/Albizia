@@ -167,3 +167,14 @@ html[data-intro="visto"] .intro-albizia {
     display: none;
   }
 }
+
+/* iPhone: o Safari dá zoom sozinho ao tocar em campo com letra menor que
+   16px, e o zoom fica preso depois (a tela inteira parece "estourada").
+   No celular todo campo usa 16px; no computador o tamanho do desenho volta. */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}

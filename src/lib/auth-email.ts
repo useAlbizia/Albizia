@@ -14,6 +14,13 @@ import { getSiteOrigin } from "./site-url";
 
 type Destino = "admin" | "cliente";
 
+// Senha e cadastro saem de um remetente próprio de acesso, e não do
+// pedidos@ das confirmações de compra: quem recebe reconhece na hora do que se
+// trata, e filtro de spam trata e-mail de segurança separado do de vendas.
+// Resposta vai para a caixa de contato, que é lida pelo painel.
+const REMETENTE_ACESSO = process.env.EMAIL_ACESSO ?? "ALBIZIA <acesso@usealbizia.com.br>";
+const RESPONDER_PARA = process.env.EMAIL_CONTATO ?? "contato@usealbizia.com.br";
+
 const TEXTOS: Record<Destino, { rota: string; assunto: string; titulo: string; intro: string }> = {
   admin: {
     rota: "/admin/redefinir",
@@ -51,6 +58,8 @@ export async function sendBrandedRecoveryEmail(
   }
 
   const enviado = await sendEmailDetailed({
+    from: REMETENTE_ACESSO,
+    replyTo: RESPONDER_PARA,
     to: email,
     subject: t.assunto,
     html: emailShell(
@@ -92,6 +101,8 @@ export async function sendBrandedSignupEmail(
   const primeiro = (nome || "").trim().split(/\s+/)[0] ?? "";
 
   const enviado = await sendEmailDetailed({
+    from: REMETENTE_ACESSO,
+    replyTo: RESPONDER_PARA,
     to: email,
     subject: "Confirme seu cadastro · ALBIZIA",
     html: emailShell(

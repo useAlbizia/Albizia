@@ -1,7 +1,7 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "./db/client";
-import { orders } from "./db/schema";
+import { auditLog, orders } from "./db/schema";
 
 export const ORDER_STATUS_LABEL: Record<string, string> = {
   pending: "Aguardando pagamento",
@@ -122,4 +122,28 @@ export async function getOrderReceipt(orderId: string): Promise<OrderReceipt | n
     customerEmail: order.customerEmail,
     trackUrl: `/acompanhar?${params.toString()}`,
   };
+}
+
+/**
+ * Cancela pedidos que ficaram sem pagamento por mais de 7 dias.
+ *
+ * Por que 7: o Pix vence em minutos, mas boleto pode levar até 3 dias úteis
+ * para compensar, e um feriado alonga isso. Cancelar, nunca apagar: se um
+ * pagamento atrasado chegar, o webhook do Mercado Pago marca o pedido como
+ * pago do mesmo jeito, e nenhum dinheiro de cliente fica sem pedido.
+ * Devolve quantos foram cancelados.
+ */
+export async function expirarPedidosAbandonados(): Promise<number> {
+  const r = await db
+    .update(orders)
+    .set({ status: "cancelled", updatedAt: new Date() })
+    .where(and(eq(orders.status, "pending"), sql`${orders.createdAt} < now() - interval '7 days'`))
+    .returning({ id: orders.id, n: orders.orderNumber });
+  if (r.length) {
+    await db
+      .insert(auditLog)
+      .values(r.map((o) => ({ actorEmail: "sistema", action: "order.expirado", entity: "order", entityId: o.id, detail: { orderNumber: o.n, motivo: "sem pagamento por 7 dias" } })))
+      .catch(() => {});
+  }
+  return r.length;
 }

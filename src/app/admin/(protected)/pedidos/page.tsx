@@ -3,6 +3,7 @@ import { desc, ilike, or, sql, eq, type SQL } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { orders } from "@/lib/db/schema";
 import { brl, shortDate } from "@/lib/format";
+import { expirarPedidosAbandonados } from "@/lib/orders";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,7 @@ function filtro(q: string): SQL | undefined {
 }
 
 export default async function AdminPedidosPage(props: PageProps<"/admin/pedidos">) {
+  await expirarPedidosAbandonados().catch(() => 0);
   const sp = await props.searchParams;
   const q = (Array.isArray(sp.q) ? sp.q[0] : sp.q) ?? "";
 

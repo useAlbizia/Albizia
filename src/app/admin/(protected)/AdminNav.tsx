@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { logout } from "./actions";
 import { ThemeToggle } from "./ThemeToggle";
+import { InstalarApp } from "./InstalarApp";
 
 type Item = { href: string; label: string };
 type Group = { title: string; items: Item[] };
@@ -141,10 +142,11 @@ export function AdminNav({
   return (
     <>
       {/* Mobile top bar */}
-      <div className="flex items-center justify-between border-b border-content/10 px-6 py-4 md:hidden">
-        <span className="text-sm uppercase tracking-[0.3em]">
-          ALBIZIA <span className="text-content/40">admin</span>
-        </span>
+      <div className="flex items-center justify-between gap-2 border-b border-content/10 px-4 py-3 md:hidden">
+        <span className="text-sm uppercase tracking-[0.3em]">ALBIZIA</span>
+        <div className="flex items-center gap-1">
+          <InstalarApp />
+          <ThemeToggle />
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -157,15 +159,13 @@ export function AdminNav({
           <span className="h-px w-5 bg-content" />
           <span className="h-px w-5 bg-content" />
         </button>
+        </div>
       </div>
 
       {open && (
         <div className="border-b border-content/10 px-6 py-6 md:hidden">
           <GroupList pathname={pathname} alertas={alertas} emails={emails} onNavigate={() => setOpen(false)} />
-          <div className="mt-6 border-t border-content/10 pt-4">
-            <ThemeToggle />
-          </div>
-          <div className="mt-4 flex items-center justify-between border-t border-content/10 pt-4">
+          <div className="mt-6 flex items-center justify-between border-t border-content/10 pt-4">
             <span className="truncate text-[12px] text-content/50">{email}</span>
             <form action={logout}>
               <button
@@ -181,16 +181,19 @@ export function AdminNav({
 
       {/* Desktop sidebar */}
       <aside data-tour="menu" className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col overflow-y-auto border-r border-content/10 px-5 py-6 md:flex">
-        <span className="mb-8 text-sm uppercase tracking-[0.3em]">
-          ALBIZIA <span className="text-content/40">admin</span>
-        </span>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm uppercase tracking-[0.3em]">
+            ALBIZIA <span className="text-content/40">admin</span>
+          </span>
+          <ThemeToggle />
+        </div>
+        <div className="mb-8">
+          <InstalarApp />
+        </div>
         <div className="flex-1">
           <GroupList pathname={pathname} alertas={alertas} emails={emails} />
         </div>
         <div className="mt-6 border-t border-content/10 pt-4">
-          <ThemeToggle />
-        </div>
-        <div className="mt-4 border-t border-content/10 pt-4">
           <p className="truncate text-[12px] text-content/50">{email}</p>
           <form action={logout}>
             <button
