@@ -44,7 +44,7 @@ const PASSOS: Passo[] = [
     alvos: ["lancar"],
     titulo: "Lançar um gasto ou uma entrada",
     texto:
-      "Escolha o tipo, escreva o que foi, o valor e a data. Em \"Quem pagou\" diga se saiu do caixa da empresa, do bolso de um sócio ou dividido entre os três: é isso que mantém a conta de cada um certa. Compra parcelada vira uma parcela por mês sozinha. Venda do site, taxa do Mercado Pago e etiqueta entram sozinhas, não precisa lançar.",
+      "Toque em Novo lançamento e responda três perguntas: o que aconteceu, quanto e quem pagou. No fim aparece uma frase com tudo para conferir. O lançamento de um sócio só entra nas contas depois que os outros aprovam, e eles recebem um e-mail para isso. Vendas do site, taxas e etiquetas entram sozinhas.",
   },
   {
     rota: "/admin/socios",

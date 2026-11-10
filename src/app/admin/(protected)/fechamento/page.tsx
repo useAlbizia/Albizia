@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { brl, isoDay } from "@/lib/format";
-import { fechamentoDoMes } from "@/lib/financeiro";
+import { fechamentoDoMes, serieMensal } from "@/lib/financeiro";
+import { BarrasMensais } from "@/components/admin/Graficos";
 import { MetaForm } from "./MetaForm";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,8 @@ export default async function FechamentoPage(props: PageProps<"/admin/fechamento
   const pedido = Array.isArray(sp.mes) ? sp.mes[0] : sp.mes;
   const atual = isoDay(new Date()).slice(0, 7);
   const mes = pedido && /^\d{4}-\d{2}$/.test(pedido) ? pedido : atual;
-  const f = await fechamentoDoMes(mes);
+  const [f, serie] = await Promise.all([fechamentoDoMes(mes), serieMensal(6)]);
+  const abrev = (m: string) => MESES[Number(m.slice(5)) - 1].slice(0, 3);
   const d = f.dre;
   const lucro = d.resultadoCents >= 0;
 
@@ -89,6 +91,16 @@ export default async function FechamentoPage(props: PageProps<"/admin/fechamento
           <p className="text-[10px] uppercase tracking-[0.2em] text-content/45">Caixa no fim do mês</p>
           <p className="mt-1 text-2xl font-light">{brl(f.caixa.finalCents)}</p>
         </div>
+      </section>
+
+      {/* Os últimos seis meses: dois gráficos de uma medida cada, nunca dois eixos no mesmo. */}
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <BarrasMensais id="vendas" titulo="Vendas por mês" pontos={serie.map((p) => ({ rotulo: abrev(p.mes), valor: p.vendasCents }))} />
+        <BarrasMensais
+          id="resultado"
+          titulo="Lucro ou prejuízo por mês"
+          pontos={serie.map((p) => ({ rotulo: abrev(p.mes), valor: p.resultadoCents, dica: p.resultadoCents < 0 ? "prejuízo" : "lucro" }))}
+        />
       </section>
 
       {d.avisos.length > 0 && (

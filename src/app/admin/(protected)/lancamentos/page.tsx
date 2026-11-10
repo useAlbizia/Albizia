@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { brl, isoDay, shortDate } from "@/lib/format";
+import { inArray } from "drizzle-orm";
+import { db } from "@/lib/db/client";
+import { lancamentoAprovacoes, lancamentos as tabLancamentos } from "@/lib/db/schema";
+import { requireAdmin } from "@/lib/auth/dal";
+import { brl, isoDay } from "@/lib/format";
 import {
   CATEGORIAS,
   FORMAS_PAGAMENTO,
@@ -8,8 +12,9 @@ import {
   listarSocios,
   type LinhaAutomatica,
 } from "@/lib/financeiro";
-import { LancamentoForm } from "./LancamentoForm";
+import { pendentesDe, socioPorEmail } from "@/lib/aprovacao";
 import { LancamentoAcoes } from "./LancamentoAcoes";
+import { CartaoAprovar, NovoLancamento } from "./Interativos";
 
 export const dynamic = "force-dynamic";
 
@@ -20,20 +25,68 @@ const NOME_TIPO: Record<string, string> = {
   devolucao_aporte: "Devolução",
   distribuicao_lucro: "Lucro",
 };
+// Entrada no caixa da empresa soma; saída subtrai. Aporte entra; devolução e
+// lucro saem. Gasto pago por sócio não sai do caixa, mas é gasto da empresa.
+const ENTRA = new Set(["receita", "aporte"]);
+
+const dataBr = (iso: string) => iso.split("-").reverse().join("/");
+
+function Selo({ aprovacao }: { aprovacao: string }) {
+  if (aprovacao === "aprovado") return null;
+  const contestado = aprovacao === "contestado";
+  return (
+    <span
+      className={`ml-2 inline-block rounded-full px-2 py-0.5 align-middle text-[10px] uppercase tracking-[0.1em] ${
+        contestado ? "border border-content text-content" : "border border-content/30 text-content/60"
+      }`}
+    >
+      {contestado ? "contestado" : "aguardando aprovação"}
+    </span>
+  );
+}
 
 export default async function LancamentosPage(props: PageProps<"/admin/lancamentos">) {
+  const user = await requireAdmin();
   const sp = await props.searchParams;
   const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
   const filtro = { mes: um(sp.mes), tipo: um(sp.tipo), socioId: um(sp.socio) };
-  const mostrar = um(sp.mostrar); // "" = tudo | "lancados" | "automaticos"
+  const mostrar = um(sp.mostrar); // "" | lancados | automaticos
 
-  const [socios, rows, autos] = await Promise.all([
+  const [socios, rows, autos, eu] = await Promise.all([
     listarSocios(),
     mostrar === "automaticos" ? Promise.resolve([]) : listarLancamentos(filtro),
-    // Venda, taxa e etiqueta são da empresa, não de um sócio: no extrato de
-    // um sócio elas não aparecem.
-    mostrar === "lancados" || filtro.socioId ? Promise.resolve([]) : listarAutomaticos(filtro),
+    mostrar === "lancados" || filtro.socioId ? Promise.resolve([] as LinhaAutomatica[]) : listarAutomaticos(filtro),
+    socioPorEmail(user.email),
   ]);
+  const ativos = socios.filter((s) => s.ativo).map((s) => ({ id: s.id, nome: s.nome }));
+  const nome = (id: string | null | undefined) => socios.find((s) => s.id === id)?.nome.split(" ")[0] ?? "";
+  const hoje = isoDay(new Date());
+
+  // Votos de cada lançamento listado, para mostrar quem já aprovou.
+  const chaves = [...new Set(rows.map((l) => l.grupoId ?? l.id))];
+  const votos = chaves.length
+    ? await db.select().from(lancamentoAprovacoes).where(inArray(lancamentoAprovacoes.chave, chaves))
+    : [];
+
+  // Os que esperam o MEU voto, com a compra parcelada agrupada.
+  const minhasChaves = eu ? await pendentesDe(eu.id) : [];
+  const paraAprovar = minhasChaves.length
+    ? await db.select().from(tabLancamentos).where(inArray(tabLancamentos.id, minhasChaves)).then(async (avulsos) => {
+        const grupos = await db.select().from(tabLancamentos).where(inArray(tabLancamentos.grupoId, minhasChaves));
+        return minhasChaves.map((c) => {
+          const linhas = [...avulsos, ...grupos].filter((l) => (l.grupoId ?? l.id) === c);
+          const l = linhas[0];
+          const total = linhas.reduce((n, x) => n + x.valorCents, 0);
+          return {
+            chave: c,
+            titulo: l ? `${NOME_TIPO[l.tipo] ?? l.tipo}: ${l.descricao}` : "",
+            detalhe: l ? `${dataBr(l.data)}${linhas.length > 1 ? ` · ${linhas.length} parcelas` : ""}${l.formaPagamento ? ` · ${l.formaPagamento}` : ""}` : "",
+            valor: brl(total),
+            autor: nome(l?.criadoPorSocioId) || l?.criadoPor || "",
+          };
+        });
+      })
+    : [];
 
   type Item =
     | { k: "manual"; data: string; ordem: number; l: (typeof rows)[number] }
@@ -42,19 +95,17 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
     ...rows.map((l) => ({ k: "manual" as const, data: l.data, ordem: l.createdAt.getTime(), l })),
     ...autos.map((a) => ({ k: "auto" as const, data: a.data, ordem: 0, a })),
   ].sort((x, y) => y.data.localeCompare(x.data) || y.ordem - x.ordem);
-  const ativos = socios.filter((s) => s.ativo).map((s) => ({ id: s.id, nome: s.nome }));
-  const nomeSocio = (id: string | null) => socios.find((s) => s.id === id)?.nome ?? "";
-  const hoje = isoDay(new Date());
+
   const filtrando = !!(filtro.mes || filtro.tipo || filtro.socioId || mostrar);
-  const sel = "border border-content/30 bg-transparent px-3 py-2 text-sm outline-none focus:border-content";
+  const sel = "border border-content/30 bg-transparent px-3 py-2.5 text-sm outline-none focus:border-content";
 
   return (
-    <div className="flex max-w-5xl flex-col gap-10">
+    <div className="flex max-w-3xl flex-col gap-8">
       <div>
         <h1 className="mb-2 text-sm uppercase tracking-[0.3em] text-content/60">Lançamentos</h1>
-        <p className="max-w-2xl text-[12px] leading-relaxed text-content/45">
-          Tudo que entra e sai, e de quem saiu. Vale lançar desde o começo, com a data verdadeira de
-          cada gasto: é o que deixa o saldo de cada sócio certo em{" "}
+        <p className="text-[13px] leading-relaxed text-content/55">
+          Todo dinheiro que entra e sai da empresa. Vendas do site, taxas e etiquetas entram sozinhas.
+          O que um sócio lança só vale depois que os outros aprovam. Saldos em{" "}
           <Link href="/admin/socios" className="underline underline-offset-4">
             Sócios e caixa
           </Link>
@@ -62,135 +113,134 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
         </p>
       </div>
 
-      <LancamentoForm socios={ativos} categorias={CATEGORIAS} formas={FORMAS_PAGAMENTO} hoje={hoje} />
+      <NovoLancamento socios={ativos} categorias={CATEGORIAS} formas={FORMAS_PAGAMENTO} hoje={hoje} />
+
+      {paraAprovar.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <p className="text-[11px] uppercase tracking-[0.2em] text-content/70">
+            Esperando a sua aprovação ({paraAprovar.length})
+          </p>
+          {paraAprovar.map((p) => (
+            <CartaoAprovar key={p.chave} {...p} />
+          ))}
+        </section>
+      )}
 
       <section>
-        <form className="mb-4 flex flex-wrap items-end gap-2">
-          <input type="month" name="mes" defaultValue={filtro.mes} className={sel} aria-label="Mês" />
-          <select name="tipo" defaultValue={filtro.tipo} className={sel} aria-label="Tipo">
-            <option value="">Todos os tipos</option>
-            {Object.entries(NOME_TIPO).map(([v, n]) => (
-              <option key={v} value={v}>
-                {n}
-              </option>
-            ))}
-          </select>
-          <select name="socio" defaultValue={filtro.socioId} className={sel} aria-label="Sócio">
-            <option value="">Todos os sócios</option>
-            {socios.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.nome}
-              </option>
-            ))}
-          </select>
-          <select name="mostrar" defaultValue={mostrar} className={sel} aria-label="Mostrar">
-            <option value="">Lançados e automáticos</option>
-            <option value="lancados">Só lançados à mão</option>
-            <option value="automaticos">Só automáticos (vendas, taxas, etiquetas)</option>
-          </select>
-          <button
-            type="submit"
-            className="border border-content px-4 py-2 text-[11px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface"
-          >
-            Filtrar
-          </button>
-          {filtrando && (
-            <Link href="/admin/lancamentos" className="px-2 py-2 text-[11px] uppercase tracking-[0.1em] text-content/45 hover:text-content">
-              Limpar
-            </Link>
-          )}
-        </form>
+        <details className="mb-4" open={filtrando}>
+          <summary className="cursor-pointer text-[12px] uppercase tracking-[0.15em] text-content/55">Filtrar</summary>
+          <form className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input type="month" name="mes" defaultValue={filtro.mes} className={sel} aria-label="Mês" />
+            <select name="tipo" defaultValue={filtro.tipo} className={sel} aria-label="Tipo">
+              <option value="">Todos os tipos</option>
+              {Object.entries(NOME_TIPO).map(([v, n]) => (
+                <option key={v} value={v}>
+                  {n}
+                </option>
+              ))}
+            </select>
+            <select name="socio" defaultValue={filtro.socioId} className={sel} aria-label="Sócio">
+              <option value="">Todos os sócios</option>
+              {socios.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.nome}
+                </option>
+              ))}
+            </select>
+            <select name="mostrar" defaultValue={mostrar} className={sel} aria-label="Mostrar">
+              <option value="">Lançados e automáticos</option>
+              <option value="lancados">Só lançados à mão</option>
+              <option value="automaticos">Só automáticos</option>
+            </select>
+            <div className="flex gap-2 sm:col-span-2">
+              <button type="submit" className="flex-1 border border-content py-2.5 text-[12px] uppercase tracking-[0.15em]">
+                Filtrar
+              </button>
+              {filtrando && (
+                <Link href="/admin/lancamentos" className="flex-1 border border-content/25 py-2.5 text-center text-[12px] uppercase tracking-[0.15em] text-content/60">
+                  Limpar
+                </Link>
+              )}
+            </div>
+          </form>
+        </details>
 
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-content/10 text-[10px] uppercase tracking-[0.1em] text-content/50">
-                <th className="py-2.5 pr-3 font-normal">Data</th>
-                <th className="py-2.5 pr-3 font-normal">Tipo</th>
-                <th className="py-2.5 pr-3 font-normal">O que foi</th>
-                <th className="py-2.5 pr-3 font-normal">Quem</th>
-                <th className="py-2.5 pr-3 font-normal">Valor</th>
-                <th className="py-2.5 pr-3 font-normal">Situação</th>
-                <th className="py-2.5 font-normal" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-content/10">
-              {itens.map((it) => {
-                if (it.k === "auto") {
-                  const a = it.a;
-                  // Linha automática: só leitura. A verdade dela está no
-                  // Mercado Pago ou no Melhor Envio; corrige-se lá.
-                  return (
-                    <tr key={a.id} className="bg-content/[0.02]">
-                      <td className="py-3 pr-3 whitespace-nowrap">{shortDate(`${a.data}T12:00:00`)}</td>
-                      <td className="py-3 pr-3 text-content/60">{a.tipo === "receita" ? "Venda" : "Gasto"}</td>
-                      <td className="py-3 pr-3">
-                        <span className="block">{a.descricao}</span>
-                        <span className="block text-[11px] text-content/40">
-                          {["automático", a.fonte, a.detalhe].filter(Boolean).join(" · ")}
-                        </span>
-                      </td>
-                      <td className="py-3 pr-3 text-content/70">Empresa</td>
-                      <td className="py-3 pr-3 whitespace-nowrap">{brl(a.valorCents)}</td>
-                      <td className="py-3 pr-3 text-[12px]">pago</td>
-                      <td className="py-3 text-right">
-                        <Link
-                          href={`/admin/pedidos/${a.pedidoId}`}
-                          className="text-[11px] uppercase tracking-[0.1em] text-content/45 underline-offset-4 hover:text-content hover:underline"
-                        >
-                          ver pedido
-                        </Link>
-                      </td>
-                    </tr>
-                  );
-                }
-                const l = it.l;
-                const quem =
-                  l.tipo === "despesa"
-                    ? l.pagadores.length > 1
-                      ? `Dividido (${l.pagadores.map((p) => nomeSocio(p.socioId).split(" ")[0]).join(", ")})`
-                      : l.pagadores[0]?.socioId
-                        ? nomeSocio(l.pagadores[0].socioId)
-                        : "Empresa"
-                    : l.tipo === "receita"
-                      ? "Empresa"
-                      : nomeSocio(l.socioId);
-                return (
-                  <tr key={l.id} className={l.status === "previsto" ? "text-content/45" : ""}>
-                    <td className="py-3 pr-3 whitespace-nowrap">{shortDate(`${l.data}T12:00:00`)}</td>
-                    <td className="py-3 pr-3 text-content/60">{NOME_TIPO[l.tipo] ?? l.tipo}</td>
-                    <td className="py-3 pr-3">
-                      <span className="block">
-                        {l.descricao}
-                        {l.parcelaTotal ? (
-                          <span className="ml-1 text-[11px] text-content/45">
-                            {l.parcelaNum}/{l.parcelaTotal}
-                          </span>
-                        ) : null}
-                      </span>
-                      <span className="block text-[11px] text-content/40">
-                        {[l.categoria, l.fornecedor, l.formaPagamento, l.origem !== "painel" ? `via ${l.origem}` : ""]
-                          .filter(Boolean)
-                          .join(" · ")}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-3 text-content/70">{quem}</td>
-                    <td className="py-3 pr-3 whitespace-nowrap">{brl(l.valorCents)}</td>
-                    <td className="py-3 pr-3 text-[12px]">{l.status === "pago" ? "pago" : "previsto"}</td>
-                    <td className="py-3">
-                      <LancamentoAcoes id={l.id} status={l.status} parcelado={!!l.grupoId} descricao={l.descricao} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          {itens.length === 0 && (
-            <p className="py-10 text-center text-sm text-content/50">
-              {filtrando ? "Nada com esses filtros." : "Nenhum lançamento ainda. Comece pelo primeiro gasto da marca."}
-            </p>
-          )}
-        </div>
+        <ul className="divide-y divide-content/10 border-y border-content/10">
+          {itens.map((it) => {
+            if (it.k === "auto") {
+              const a = it.a;
+              return (
+                <li key={a.id} className="flex items-start justify-between gap-3 py-3.5">
+                  <div className="min-w-0">
+                    <p className="truncate text-[15px]">{a.descricao}</p>
+                    <p className="mt-0.5 text-[12px] text-content/45">
+                      {dataBr(a.data)} · automático · {a.fonte}
+                      {a.detalhe ? ` · ${a.detalhe}` : ""}
+                    </p>
+                    <Link href={`/admin/pedidos/${a.pedidoId}`} className="mt-1 inline-block text-[11px] uppercase tracking-[0.1em] text-content/45 underline-offset-4 hover:underline">
+                      ver pedido
+                    </Link>
+                  </div>
+                  <p className="shrink-0 text-[15px]">
+                    {a.tipo === "receita" ? "+" : "−"} {brl(a.valorCents)}
+                  </p>
+                </li>
+              );
+            }
+            const l = it.l;
+            const chave = l.grupoId ?? l.id;
+            const quem =
+              l.tipo === "despesa"
+                ? l.pagadores.length > 1
+                  ? "dividido entre os sócios"
+                  : l.pagadores[0]?.socioId
+                    ? `pago por ${nome(l.pagadores[0].socioId)}`
+                    : "pago pela empresa"
+                : l.tipo === "receita"
+                  ? "para a empresa"
+                  : nome(l.socioId);
+            const aprovaram = votos.filter((v) => v.chave === chave && v.decisao === "aprovado").map((v) => nome(v.socioId));
+            const contestacao = votos.find((v) => v.chave === chave && v.decisao === "contestado");
+            return (
+              <li key={l.id} className={`py-3.5 ${l.status === "previsto" ? "opacity-60" : ""}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[15px]">
+                      {l.descricao}
+                      {l.parcelaTotal ? <span className="ml-1 text-[12px] text-content/45">{l.parcelaNum}/{l.parcelaTotal}</span> : null}
+                      <Selo aprovacao={l.aprovacao} />
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-content/50">
+                      {dataBr(l.data)} · {NOME_TIPO[l.tipo] ?? l.tipo} · {quem}
+                      {l.categoria ? ` · ${l.categoria}` : ""}
+                      {l.status === "previsto" ? " · previsto" : ""}
+                    </p>
+                    <p className="mt-0.5 text-[12px] text-content/45">
+                      Lançado por {nome(l.criadoPorSocioId) || l.criadoPor || "?"}
+                      {aprovaram.length > 0 && ` · aprovado por ${aprovaram.join(" e ")}`}
+                    </p>
+                    {contestacao && (
+                      <p className="mt-1 text-[12px] text-content/80">
+                        {nome(contestacao.socioId)} contestou: “{contestacao.comentario}”
+                      </p>
+                    )}
+                  </div>
+                  <p className="shrink-0 text-[15px]">
+                    {ENTRA.has(l.tipo) ? "+" : "−"} {brl(l.valorCents)}
+                  </p>
+                </div>
+                <div className="mt-2">
+                  <LancamentoAcoes id={l.id} status={l.status} parcelado={!!l.grupoId} descricao={l.descricao} />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        {itens.length === 0 && (
+          <p className="py-10 text-center text-sm text-content/50">
+            {filtrando ? "Nada com esses filtros." : "Nenhum lançamento ainda. Toque em Novo lançamento para começar."}
+          </p>
+        )}
       </section>
     </div>
   );

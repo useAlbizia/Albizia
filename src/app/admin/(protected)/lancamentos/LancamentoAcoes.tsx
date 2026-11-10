@@ -30,7 +30,7 @@ export function LancamentoAcoes({
   }
 
   return (
-    <div className="flex flex-wrap justify-end gap-3">
+    <div className="flex flex-wrap gap-4">
       <button type="button" disabled={pending} onClick={() => start(() => alternarStatus(id))} className={botao}>
         {status === "pago" ? "marcar previsto" : "marcar pago"}
       </button>

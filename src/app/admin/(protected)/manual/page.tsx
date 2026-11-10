@@ -110,7 +110,7 @@ export default function ManualPage() {
       <section className="flex flex-col gap-2">
         <p className="mb-1 text-[11px] uppercase tracking-[0.2em] text-content/60">Dinheiro da empresa</p>
 
-        <Tarefa titulo="Lançar um gasto">
+        <Tarefa titulo="Lançar um gasto ou uma entrada">
           <Passos
             itens={[
               <>
@@ -118,28 +118,33 @@ export default function ManualPage() {
                 <Link href="/admin/lancamentos" className={link}>
                   Lançamentos
                 </Link>{" "}
-                e deixe marcado <strong>Gasto da empresa</strong>.
+                e toque em <strong>Novo lançamento</strong>.
               </>,
-              "Escreva o que foi, o valor (do jeito normal: 1.234,56) e a data em que aconteceu.",
-              <>
-                Em <strong>Quem pagou</strong>: a empresa, se saiu do caixa; o nome do sócio, se saiu do bolso
-                dele; ou dividido entre os sócios. É isso que deixa a conta de cada um certa.
-              </>,
-              "Escolha a categoria e a forma de pagamento e clique em Lançar.",
+              "Escolha o que aconteceu: comprei ou paguei algo, coloquei dinheiro na empresa, ou entrou dinheiro fora do site.",
+              "Digite o valor, o que foi e quando.",
+              "Escolha quem pagou, em quê e como. No fim aparece uma frase com tudo: confira e toque em Lançar.",
             ]}
           />
           <p>
-            Compra de peça lisa, DTF, etiqueta, tag ou embalagem em lote vai como{" "}
-            <strong>Estoque e insumos</strong>. Ela tira dinheiro do caixa, mas só vira custo quando a peça é
-            vendida.
+            Compra de peça lisa, DTF, etiqueta, tag ou embalagem em lote vai em <strong>Estoque e insumos</strong>. Ela
+            tira dinheiro do caixa, mas só vira custo quando a peça é vendida.
           </p>
+        </Tarefa>
+
+        <Tarefa titulo="Aprovar o lançamento de outro sócio">
+          <p>
+            Todo lançamento feito por um sócio chega por e-mail para os outros e só entra nas contas depois que todos
+            aprovam. Em Lançamentos, os que esperam o seu voto aparecem no topo, com <strong>Aprovar</strong> e{" "}
+            <strong>Contestar</strong>. Ao contestar, escreva o motivo: quem lançou recebe o aviso por e-mail.
+          </p>
+          <p>Cada lançamento mostra quem lançou e quem já aprovou.</p>
         </Tarefa>
 
         <Tarefa titulo="Compra parcelada no cartão">
           <Passos
             itens={[
-              "Lance como gasto, com o valor TOTAL da compra.",
-              "Em Parcelas, coloque o número de parcelas. A data é a da primeira parcela.",
+              "Lance como Comprei ou paguei algo, com o valor TOTAL da compra.",
+              "Escolha Cartão de crédito e ajuste as parcelas. A data é a da primeira parcela.",
               "O painel cria uma parcela por mês. As que já venceram entram como pagas, as futuras como previstas.",
               "Quando a fatura do mês for paga, clique em marcar pago na parcela.",
             ]}

@@ -531,10 +531,36 @@ export const lancamentos = pgTable("lancamentos", {
   // painel | telegram | whatsapp
   origem: text("origem").notNull().default("painel"),
   criadoPor: text("criado_por").notNull().default(""),
+  // O sócio que lançou (pelo e-mail de quem estava logado).
+  criadoPorSocioId: uuid("criado_por_socio_id").references(() => socios.id),
+  // pendente | aprovado | contestado. Lançamento de um sócio só entra nas
+  // contas depois que os OUTROS sócios aprovam: é dinheiro de todos, então
+  // ninguém mexe no saldo sozinho. O padrão "aprovado" vale para o que já
+  // existia antes desta regra.
+  aprovacao: text("aprovacao").notNull().default("aprovado"),
   observacao: text("observacao").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// O voto de cada sócio sobre um lançamento. A chave é o grupo da compra
+// parcelada (ou o próprio lançamento): aprovar a prensa aprova as 12
+// parcelas de uma vez, em vez de 12 cliques.
+export const lancamentoAprovacoes = pgTable(
+  "lancamento_aprovacoes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    chave: uuid("chave").notNull(),
+    socioId: uuid("socio_id")
+      .notNull()
+      .references(() => socios.id),
+    // aprovado | contestado
+    decisao: text("decisao").notNull(),
+    comentario: text("comentario").notNull().default(""),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("aprovacao_chave_socio").on(t.chave, t.socioId)],
+);
 
 // Quem pagou cada despesa, e quanto. Uma linha com socioId nulo é a empresa
 // pagando com o caixa. Uma despesa pode ter vários pagadores: a parcela da

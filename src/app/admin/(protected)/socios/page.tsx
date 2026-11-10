@@ -3,6 +3,7 @@ import { brl } from "@/lib/format";
 import { listarSocios, painelFinanceiro } from "@/lib/financeiro";
 import { SocioForm } from "./SocioForm";
 import { SincronizarMp } from "./SincronizarMp";
+import { CapitalSocios } from "@/components/admin/Graficos";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +55,13 @@ export default async function SociosPage() {
           dica="Todas as despesas pagas, por quem quer que tenha pago."
         />
       </section>
+
+      {ativos.length > 0 && resumo.capitalTotalCents > 0 && (
+        <CapitalSocios
+          linhas={ativos.map((l) => ({ nome: l.nome.split(" ")[0], capital: l.capitalCents }))}
+          parteJusta={ativos[0].parteJustaCents}
+        />
+      )}
 
       <section data-tour="socios-tabela">
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/60">Cada sócio</p>

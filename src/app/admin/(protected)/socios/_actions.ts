@@ -2,14 +2,15 @@
 
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
-import { lancamentoPagadores, lancamentos, metasMensais, socios } from "@/lib/db/schema";
+import { lancamentoAprovacoes, lancamentoPagadores, lancamentos, metasMensais, socios } from "@/lib/db/schema";
 import { logAudit } from "@/lib/audit";
 import { isoDay } from "@/lib/format";
 import { dividirPorPeso, gerarParcelas, parseReais } from "@/lib/financeiro-calc";
 import { sincronizarPendentes } from "@/lib/mp-sync";
+import { avisarAprovadores, avisarContestacao, recalcularAprovacao, socioPorEmail } from "@/lib/aprovacao";
 
 export type FinState = { ok?: boolean; error?: string; mensagem?: string };
 
@@ -52,6 +53,7 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   const socioId = String(fd.get("socioId") ?? "") || null;
 
   const ativos = await db.select().from(socios).where(eq(socios.ativo, true));
+  const autor = await socioPorEmail(user.email);
   const existe = (id: string | null) => !!id && ativos.some((s) => s.id === id);
 
   // Aporte, devolução e distribuição são sempre de UM sócio.
@@ -92,9 +94,14 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
     observacao: String(fd.get("observacao") ?? "").trim(),
     socioId: tipo === "despesa" || tipo === "receita" ? null : socioId,
     criadoPor: user.email ?? "",
+    criadoPorSocioId: autor?.id ?? null,
+    // Nasce aguardando os outros sócios; o recálculo logo abaixo aprova na
+    // hora se não houver ninguém para aprovar.
+    aprovacao: "pendente",
     origem: "painel",
   };
 
+  let primeiroId = "";
   await db.transaction(async (tx) => {
     for (const p of linhas) {
       const [l] = await tx
@@ -109,6 +116,7 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
           parcelaTotal: grupoId ? p.total : null,
         })
         .returning({ id: lancamentos.id });
+      if (!primeiroId) primeiroId = l.id;
       const pag = pagadoresDe(p.valorCents).filter((x) => x.valorCents > 0);
       if (pag.length) {
         await tx.insert(lancamentoPagadores).values(pag.map((x) => ({ lancamentoId: l.id, ...x })));
@@ -122,15 +130,22 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
     entityId: grupoId ?? "",
     detail: { tipo, descricao, valorCents, parcelas, quemPagou: quemPagou || socioId },
   });
+  const chave = grupoId ?? primeiroId;
+  const sit = await recalcularAprovacao(chave);
+  if (sit === "pendente") await avisarAprovadores(chave, autor?.nome ?? user.email ?? "Alguém").catch(() => {});
   refresh();
 
   const previstas = linhas.filter((l) => l.status === "previsto").length;
+  const parcelado =
+    parcelas > 1
+      ? `Lançado em ${parcelas} parcelas (${parcelas - previstas} pagas, ${previstas} previstas). `
+      : "Lançado. ";
   return {
     ok: true,
     mensagem:
-      parcelas > 1
-        ? `Lançado em ${parcelas} parcelas. ${parcelas - previstas} já vencidas ficaram como pagas e ${previstas} como previstas.`
-        : "Lançado.",
+      sit === "pendente"
+        ? parcelado + "Os outros sócios receberam um e-mail para aprovar; até lá ele não entra nas contas."
+        : parcelado,
   };
 }
 
@@ -228,4 +243,34 @@ export async function salvarMeta(mes: string, _prev: FinState, fd: FormData): Pr
   await logAudit({ action: "financeiro.meta", entity: "meta", entityId: mes, detail: { vendasCents: valor } });
   revalidatePath("/admin/fechamento");
   return { ok: true };
+}
+
+/**
+ * Voto de um sócio sobre um lançamento (ou a compra parcelada inteira).
+ * Só sócio vota, e nunca no que ele mesmo lançou.
+ */
+export async function votar(chave: string, decisao: "aprovado" | "contestado", comentario: string): Promise<FinState> {
+  const user = await requireAdmin();
+  if (decisao !== "aprovado" && decisao !== "contestado") return { error: "Decisão inválida." };
+  const eu = await socioPorEmail(user.email);
+  if (!eu) return { error: "Só sócios aprovam lançamentos. Seu e-mail não está no cadastro de sócios." };
+
+  const [l] = await db.select().from(lancamentos).where(or(eq(lancamentos.grupoId, chave), eq(lancamentos.id, chave))).limit(1);
+  if (!l) return { error: "Lançamento não encontrado." };
+  if (l.criadoPorSocioId === eu.id) return { error: "Quem lançou não aprova o próprio lançamento." };
+  const motivo = comentario.trim().slice(0, 500);
+  if (decisao === "contestado" && !motivo) return { error: "Diga o motivo da contestação." };
+
+  await db
+    .insert(lancamentoAprovacoes)
+    .values({ chave, socioId: eu.id, decisao, comentario: motivo })
+    .onConflictDoUpdate({
+      target: [lancamentoAprovacoes.chave, lancamentoAprovacoes.socioId],
+      set: { decisao, comentario: motivo, createdAt: new Date() },
+    });
+  const sit = await recalcularAprovacao(chave);
+  await logAudit({ action: `financeiro.${decisao}`, entity: "lancamento", entityId: chave, detail: { descricao: l.descricao, motivo, situacao: sit } });
+  if (decisao === "contestado") await avisarContestacao(chave, eu.nome, motivo).catch(() => {});
+  refresh();
+  return { ok: true, mensagem: sit === "aprovado" ? "Aprovado. Já entrou nas contas." : decisao === "contestado" ? "Contestação registrada." : "Aprovação registrada. Falta outro sócio." };
 }

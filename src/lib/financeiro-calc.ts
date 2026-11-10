@@ -498,3 +498,28 @@ export function calcularDre(d: DadosMes): Dre {
     avisos,
   };
 }
+
+// ── Aprovação entre sócios ────────────────────────────────────────────────
+
+export type Voto = { socioId: string; decisao: "aprovado" | "contestado" };
+
+/**
+ * Situação de um lançamento a partir dos votos.
+ *
+ * Quem lançou não vota: o lançamento dele precisa do sim de TODOS os outros
+ * sócios ativos. Uma contestação basta para travar, porque dinheiro de sócio
+ * só entra na conta com a concordância de todos. Se não houver outro sócio
+ * para aprovar (empresa com um sócio só), entra aprovado.
+ */
+export function situacaoAprovacao(
+  autorId: string | null,
+  sociosAtivos: string[],
+  votos: Voto[],
+): "pendente" | "aprovado" | "contestado" {
+  const aprovadores = sociosAtivos.filter((s) => s !== autorId);
+  if (aprovadores.length === 0) return "aprovado";
+  const validos = votos.filter((v) => aprovadores.includes(v.socioId));
+  if (validos.some((v) => v.decisao === "contestado")) return "contestado";
+  const sim = new Set(validos.filter((v) => v.decisao === "aprovado").map((v) => v.socioId));
+  return aprovadores.every((s) => sim.has(s)) ? "aprovado" : "pendente";
+}

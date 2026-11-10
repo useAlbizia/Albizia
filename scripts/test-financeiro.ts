@@ -20,7 +20,7 @@ import {
   SEM_AUTOMATICOS,
 } from "../src/lib/financeiro-calc";
 import { extrairValoresMp, vendaDesfeita } from "../src/lib/mp-valores";
-import { calcularDre, naturezaDe } from "../src/lib/financeiro-calc";
+import { calcularDre, naturezaDe, situacaoAprovacao } from "../src/lib/financeiro-calc";
 import { custoDaFicha, custoLinhaExato, formatarCustoExato, parseQuantidade } from "../src/lib/ficha-calc";
 
 let falhas = 0;
@@ -333,6 +333,17 @@ ok("3,5 centavos", formatarCustoExato(3.5), "3,5 centavos");
 ok("15 centavos", formatarCustoExato(15), "15 centavos");
 ok("R$ 30,00", formatarCustoExato(3000), "R$ 30,00");
 ok("R$ 1,005", formatarCustoExato(100.5), "R$ 1,005");
+
+console.log("\nAprovação entre sócios:");
+const tres = ["n", "j", "d"];
+ok("recém-lançado pelo Nilson fica aguardando", situacaoAprovacao("n", tres, []), "pendente");
+ok("um dos dois aprovou: ainda aguardando", situacaoAprovacao("n", tres, [{ socioId: "j", decisao: "aprovado" }]), "pendente");
+ok("os dois outros aprovaram: aprovado", situacaoAprovacao("n", tres, [{ socioId: "j", decisao: "aprovado" }, { socioId: "d", decisao: "aprovado" }]), "aprovado");
+ok("uma contestação trava", situacaoAprovacao("n", tres, [{ socioId: "j", decisao: "aprovado" }, { socioId: "d", decisao: "contestado" }]), "contestado");
+ok("o próprio autor não aprova o que lançou", situacaoAprovacao("n", tres, [{ socioId: "n", decisao: "aprovado" }, { socioId: "j", decisao: "aprovado" }]), "pendente");
+ok("voto de quem não é sócio ativo não conta", situacaoAprovacao("n", tres, [{ socioId: "x", decisao: "aprovado" }, { socioId: "j", decisao: "aprovado" }, { socioId: "d", decisao: "aprovado" }]), "aprovado");
+ok("lançado por quem não é sócio: os três aprovam", situacaoAprovacao(null, tres, [{ socioId: "j", decisao: "aprovado" }, { socioId: "d", decisao: "aprovado" }]), "pendente");
+ok("empresa com um sócio só: aprovado direto", situacaoAprovacao("n", ["n"], []), "aprovado");
 
 console.log(falhas === 0 ? "\nTODOS PASSARAM\n" : `\n${falhas} FALHA(S)\n`);
 process.exit(falhas === 0 ? 0 : 1);

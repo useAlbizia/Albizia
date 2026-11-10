@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, sql } from "drizzle-orm";
 import { db } from "./db/client";
 import { lancamentos, metasMensais, orderItems, orders, products, socios } from "./db/schema";
 import { isoDay } from "./format";
@@ -214,8 +214,11 @@ export async function listarAutomaticos(filtro: { mes?: string; tipo?: string })
 
 /** Lançamentos como movimentos; com `antesDe`, só os anteriores a essa data. */
 async function movimentos(antesDe?: string): Promise<Movimento[]> {
+  // Só o que os sócios aprovaram entra nas contas: lançamento aguardando
+  // aprovação ou contestado não mexe em caixa nem no capital de ninguém.
+  const aprovado = eq(lancamentos.aprovacao, "aprovado");
   const rows = await db.query.lancamentos.findMany({
-    where: antesDe ? lt(lancamentos.data, antesDe) : undefined,
+    where: antesDe ? and(aprovado, lt(lancamentos.data, antesDe)) : aprovado,
     with: { pagadores: true },
   });
   return rows.map((l) => ({
@@ -264,6 +267,7 @@ export async function painelFinanceiro(): Promise<PainelFinanceiro> {
         and(
           sql`${lancamentos.tipo} = 'receita'`,
           sql`${lancamentos.status} = 'pago'`,
+          eq(lancamentos.aprovacao, "aprovado"),
           gte(lancamentos.data, `${ano}-01-01`),
           lt(lancamentos.data, `${ano + 1}-01-01`),
         ),
@@ -348,6 +352,7 @@ export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
           and(
             sql`${lancamentos.tipo} = 'receita'`,
             sql`${lancamentos.status} = 'pago'`,
+          eq(lancamentos.aprovacao, "aprovado"),
             gte(lancamentos.data, inicioData),
             lt(lancamentos.data, fimData),
           ),
@@ -364,6 +369,7 @@ export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
           and(
             sql`${lancamentos.tipo} = 'despesa'`,
             sql`${lancamentos.status} = 'pago'`,
+          eq(lancamentos.aprovacao, "aprovado"),
             gte(lancamentos.data, inicioData),
             lt(lancamentos.data, fimData),
           ),
@@ -467,4 +473,16 @@ export async function fechamentoDoMes(mes: string): Promise<Fechamento> {
     porModelo,
     produtosSemCusto: [...produtosSemCusto].map(([id, nome]) => ({ id, nome })),
   };
+}
+
+/** Vendas e resultado dos últimos meses, do mais antigo ao atual, para os gráficos. */
+export async function serieMensal(meses = 6): Promise<{ mes: string; vendasCents: number; resultadoCents: number }[]> {
+  const atual = isoDay(new Date()).slice(0, 7);
+  const [a, m] = atual.split("-").map(Number);
+  const lista = Array.from({ length: meses }, (_, i) => {
+    const t = a * 12 + (m - 1) - (meses - 1 - i);
+    return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
+  });
+  const fechamentos = await Promise.all(lista.map((mes) => fechamentoDoMes(mes)));
+  return fechamentos.map((f) => ({ mes: f.mes, vendasCents: f.dre.receitaBrutaCents, resultadoCents: f.dre.resultadoCents }));
 }
