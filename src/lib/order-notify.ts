@@ -2,7 +2,7 @@ import "server-only";
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { orders } from "./db/schema";
-import { sendEmail, emailShell, money, SITE } from "./email";
+import { sendEmail, emailShell, money, SITE, esc } from "./email";
 
 type OrderWithItems = NonNullable<Awaited<ReturnType<typeof loadOrder>>>;
 
@@ -17,7 +17,7 @@ function summaryHtml(order: OrderWithItems): string {
   const itemsRows = order.items
     .map(
       (i) =>
-        `<tr><td style="padding:6px 0;color:#55534e;">${i.productName} (${i.size}) × ${i.quantity}</td>
+        `<tr><td style="padding:6px 0;color:#55534e;">${esc(i.productName)} (${esc(i.size)}) × ${i.quantity}</td>
          <td style="padding:6px 0;text-align:right;">${money(i.unitPriceCents * i.quantity)}</td></tr>`
     )
     .join("");
@@ -25,7 +25,7 @@ function summaryHtml(order: OrderWithItems): string {
   const shippingLabel = order.shippingCents === 0 ? "Grátis" : money(order.shippingCents);
   const discountRow =
     order.discountCents > 0
-      ? `<tr><td style="padding:4px 0;color:#8a857c;">Desconto${order.couponCode ? ` (${order.couponCode})` : ""}</td>
+      ? `<tr><td style="padding:4px 0;color:#8a857c;">Desconto${order.couponCode ? ` (${esc(order.couponCode)})` : ""}</td>
          <td style="padding:4px 0;text-align:right;color:#8a857c;">−${money(order.discountCents)}</td></tr>`
       : "";
   return `
@@ -53,7 +53,7 @@ async function customerReceipt(order: OrderWithItems): Promise<boolean> {
     subject: `Pedido #${order.orderNumber} confirmado · ALBIZIA`,
     html: emailShell(
       "Pagamento confirmado",
-      `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${order.customerName}. Recebemos a confirmação do seu pagamento e seu pedido já está sendo preparado.</p>
+      `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${esc(order.customerName)}. Recebemos a confirmação do seu pagamento e seu pedido já está sendo preparado.</p>
        ${summaryHtml(order)}
        <div style="text-align:center;margin:28px 0 8px;">
          <a href="${trackLink(order.orderNumber, order.customerEmail)}" style="display:inline-block;background:#121212;color:#f2ede5;text-decoration:none;padding:14px 32px;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Acompanhar pedido</a>
@@ -99,8 +99,8 @@ export async function sendOrderPaidEmails(orderId: string): Promise<void> {
       subject: `Novo pedido pago #${order.orderNumber} · ${money(order.totalCents)}`,
       html: emailShell(
         `Novo pedido #${order.orderNumber}`,
-        `<p style="font-size:14px;color:#55534e;">${order.customerName} · ${order.customerEmail} · ${order.customerPhone}</p>
-         <p style="font-size:13px;color:#8a857c;">${addr.street}, ${addr.number}${addr.complement ? ", " + addr.complement : ""} · ${addr.neighborhood} · ${addr.city}/${addr.state} · ${addr.zip}</p>
+        `<p style="font-size:14px;color:#55534e;">${esc(order.customerName)} · ${esc(order.customerEmail)} · ${esc(order.customerPhone)}</p>
+         <p style="font-size:13px;color:#8a857c;">${esc(addr.street)}, ${esc(addr.number)}${addr.complement ? ", " + esc(addr.complement) : ""} · ${esc(addr.neighborhood)} · ${esc(addr.city)}/${esc(addr.state)} · ${esc(addr.zip)}</p>
          ${summaryHtml(order)}`
       ),
     });

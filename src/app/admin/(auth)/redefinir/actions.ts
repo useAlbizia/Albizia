@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { traduzirErroNovaSenha } from "@/lib/auth-erros";
 
 export type NewPasswordState = { error?: string };
 
@@ -20,13 +21,14 @@ export async function setNewPassword(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Link expirado. Solicite um novo." };
+  if (!user) return { error: "O link de recuperação expirou ou já foi usado. Peça um novo em \"Esqueci a senha\"." };
 
   const { error } = await supabase.auth.updateUser({
     password,
     data: { must_change_password: false },
   });
-  if (error) return { error: error.message };
+  // Antes devolvia a mensagem crua do Supabase, em inglês.
+  if (error) return { error: traduzirErroNovaSenha(error) };
 
   redirect("/admin");
 }

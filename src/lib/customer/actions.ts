@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { sendBrandedRecoveryEmail } from "@/lib/auth-email";
+import { sendBrandedRecoveryEmail, sendBrandedSignupEmail } from "@/lib/auth-email";
+import { adminGenerateSignupToken } from "@/lib/supabase/admin";
+import { traduzirErroLogin, traduzirErroNovaSenha } from "@/lib/auth-erros";
 
 export type AuthState = { error?: string; info?: string };
 
@@ -25,27 +27,34 @@ export async function customerSignUp(_prev: AuthState, formData: FormData): Prom
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   const { name, email, password } = parsed.data;
 
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: name } },
-  });
+  // A conta é criada pela API de administrador, que NÃO manda e-mail, e a
+  // confirmação sai pelo e-mail da ALBIZIA. Com o signUp do cliente JS, o
+  // Supabase mandava "Confirm your signup", em inglês, como primeiro contato
+  // do cliente com a marca.
+  const gerado = await adminGenerateSignupToken({ email, password, nome: name });
 
-  if (error) {
-    if (/registered|already/i.test(error.message)) {
-      return { error: "Este e-mail já possui conta. Faça login." };
-    }
-    return { error: error.message };
+  if (gerado.jaExiste) {
+    // A resposta na tela é IGUAL à de um cadastro novo: dizer "este e-mail
+    // já tem conta" deixaria qualquer um descobrir quem é cliente da loja.
+    // Quem é dono do e-mail recebe, na caixa dele, o caminho para entrar.
+    await sendBrandedRecoveryEmail(email, "cliente").catch(() => {});
+    return { info: MSG_CONFIRMACAO };
+  }
+  if (gerado.error || !gerado.tokenHash) {
+    console.error("Cadastro de cliente falhou", gerado.error);
+    return { error: "Não foi possível criar a conta agora. Tente de novo em instantes." };
   }
 
-  // If email confirmation is ON in Supabase, there's no session yet.
-  if (!data.session) {
-    return { info: "Enviamos um e-mail de confirmação. Confirme para acessar sua conta." };
+  const enviado = await sendBrandedSignupEmail(email, name, gerado.tokenHash, gerado.tipo ?? "signup");
+  if (!enviado.ok) {
+    console.error("E-mail de confirmação falhou", enviado.error);
+    return { error: "Criamos sua conta, mas o e-mail de confirmação não saiu. Use \"Esqueci minha senha\" para receber um link." };
   }
-
-  redirect("/conta");
+  return { info: MSG_CONFIRMACAO };
 }
+
+const MSG_CONFIRMACAO =
+  "Enviamos um e-mail para confirmar seu cadastro. Abra o link para ativar sua conta. Se não chegar em alguns minutos, olhe a caixa de spam.";
 
 export async function customerSignIn(_prev: AuthState, formData: FormData): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
@@ -54,7 +63,7 @@ export async function customerSignIn(_prev: AuthState, formData: FormData): Prom
 
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return { error: "E-mail ou senha incorretos." };
+  if (error) return { error: traduzirErroLogin(error).error };
 
   redirect("/conta");
 }
@@ -96,10 +105,10 @@ export async function customerSetNewPassword(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Link expirado. Solicite um novo." };
+  if (!user) return { error: "O link de recuperação expirou ou já foi usado. Peça um novo em \"Esqueci minha senha\"." };
 
   const { error } = await supabase.auth.updateUser({ password });
-  if (error) return { error: "Não foi possível salvar. Tente novamente." };
+  if (error) return { error: traduzirErroNovaSenha(error) };
 
   redirect("/conta");
 }

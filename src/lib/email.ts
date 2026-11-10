@@ -124,3 +124,18 @@ export function emailShell(title: string, bodyHtml: string): string {
 export function money(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+
+/**
+ * Trata texto digitado por cliente antes de entrar no HTML de um e-mail.
+ *
+ * Nome, endereço, telefone e cupom vêm do formulário do checkout. Sem isto,
+ * alguém podia fazer um pedido com um "nome" que é código HTML e colocar um
+ * link falso dentro do e-mail de alerta que chega aos sócios, com a cara de
+ * um e-mail legítimo da loja.
+ */
+export function esc(texto: string | number | null | undefined): string {
+  return String(texto ?? "").replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
+}

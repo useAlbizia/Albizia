@@ -110,6 +110,41 @@ export async function adminGenerateRecoveryLink(params: {
   return { link };
 }
 
+/**
+ * Cria a conta de cliente SEM o Supabase mandar e-mail, e devolve o código
+ * de confirmação para a ALBIZIA mandar o seu próprio e-mail.
+ *
+ * `generate_link` cria o usuário ainda não confirmado e só devolve o token;
+ * quem dispara a mensagem somos nós (lib/auth-email.ts). Com `signUp` do
+ * cliente JS, o Supabase mandava "Confirm your signup" em inglês, de um
+ * remetente que ninguém reconhece.
+ */
+export async function adminGenerateSignupToken(params: {
+  email: string;
+  password: string;
+  nome: string;
+}): Promise<{ tokenHash?: string; tipo?: string; jaExiste?: boolean; error?: string }> {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: adminHeaders(),
+    body: JSON.stringify({
+      type: "signup",
+      email: params.email,
+      password: params.password,
+      data: { full_name: params.nome },
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = String(body.msg ?? body.message ?? "");
+    if (body.error_code === "email_exists" || /already|registered|exists/i.test(msg)) return { jaExiste: true };
+    return { error: msg || `Erro ${res.status}` };
+  }
+  const props = body.properties ?? body;
+  if (!props.hashed_token) return { error: "O Supabase não devolveu o código de confirmação." };
+  return { tokenHash: props.hashed_token, tipo: props.verification_type ?? "signup" };
+}
+
 export type AdminUser = {
   id: string;
   email: string;

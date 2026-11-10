@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { CampoSenha } from "@/components/auth/CampoSenha";
 import { customerSetNewPassword, type NewPasswordState } from "@/lib/customer/actions";
 
 const initial: NewPasswordState = {};
@@ -12,24 +13,8 @@ export function SetPasswordForm() {
 
   return (
     <form action={action} className="flex flex-col gap-3">
-      <input
-        name="password"
-        type="password"
-        placeholder="Nova senha"
-        required
-        minLength={8}
-        autoComplete="new-password"
-        className={input}
-      />
-      <input
-        name="confirm"
-        type="password"
-        placeholder="Confirmar nova senha"
-        required
-        minLength={8}
-        autoComplete="new-password"
-        className={input}
-      />
+      <CampoSenha name="password" placeholder="Nova senha" autoComplete="new-password" minLength={8} className={input} />
+      <CampoSenha name="confirm" placeholder="Confirmar nova senha" autoComplete="new-password" minLength={8} className={input} />
       {state.error && (
         <p className="text-[13px] text-content/70" role="alert">
           {state.error}

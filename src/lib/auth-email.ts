@@ -72,3 +72,46 @@ export async function sendBrandedRecoveryEmail(
   if (!enviado.ok) return { ok: false, error: enviado.reason };
   return { ok: true };
 }
+
+/**
+ * E-mail de confirmação de cadastro com a cara da ALBIZIA.
+ *
+ * O link aponta para uma rota NOSSA (/auth/confirmar), que confere o código
+ * no servidor e já deixa a pessoa logada. Não passa pelo endereço do
+ * Supabase, então o cliente nunca vê "supabase.co" em lugar nenhum.
+ */
+export async function sendBrandedSignupEmail(
+  email: string,
+  nome: string,
+  tokenHash: string,
+  tipo: string,
+): Promise<{ ok: boolean; error?: string }> {
+  const origin = await getSiteOrigin();
+  const p = new URLSearchParams({ token_hash: tokenHash, type: tipo, next: "/conta" });
+  const link = `${origin}/auth/confirmar?${p.toString()}`;
+  const primeiro = (nome || "").trim().split(/\s+/)[0] ?? "";
+
+  const enviado = await sendEmailDetailed({
+    to: email,
+    subject: "Confirme seu cadastro · ALBIZIA",
+    html: emailShell(
+      "Confirme seu e-mail",
+      `<p style="font-size:14px;line-height:1.7;color:#55534e;margin:0 0 4px;">${primeiro ? `Olá, ${escaparHtml(primeiro)}. ` : ""}Falta só confirmar que este e-mail é seu para ativar sua conta na ALBIZIA.</p>
+       ${emailButton("Confirmar meu e-mail", link)}
+       <p style="font-size:12px;line-height:1.7;color:#8a857c;margin:26px 0 0;">
+         O link vale por um dia e só pode ser usado uma vez.
+       </p>
+       <p style="font-size:12px;line-height:1.7;color:#8a857c;margin:10px 0 0;">
+         Se não foi você que criou esta conta, ignore esta mensagem. Sem a confirmação, ela não é ativada.
+       </p>`,
+    ),
+  });
+  if (!enviado.ok) return { ok: false, error: enviado.reason };
+  return { ok: true };
+}
+
+// O nome vem do formulário de cadastro: sem escapar, alguém poderia se
+// cadastrar com um "nome" que é HTML e injetar conteúdo no e-mail.
+function escaparHtml(t: string): string {
+  return t.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}

@@ -20,7 +20,7 @@ const load = (Module as unknown as { _load: (...a: unknown[]) => unknown })._loa
 let falhas = 0;
 
 async function main() {
-  const { hostPermitido } = await import("../src/lib/site-url");
+  const { hostPermitido, destinoSeguro } = await import("../src/lib/site-url");
 
   const ok = (host: string, esperado: boolean) => {
     const passou = hostPermitido(host) === esperado;
@@ -48,6 +48,21 @@ async function main() {
   ok("localhost.evil.com", false);
   ok("vercel.app.evil.com", false);
   ok("", false);
+
+  console.log("\nDestino depois do login (?next=), sem sair do site:");
+  const d = (entrada: string | null, esperado: string) => {
+    const real = destinoSeguro(entrada, "/conta");
+    if (real !== esperado) falhas++;
+    console.log(`${real === esperado ? "  ok  " : "FALHOU"}  ${JSON.stringify(entrada)} -> ${real}`);
+  };
+  d("/conta/pedidos", "/conta/pedidos");
+  d(null, "/conta");
+  d("@site-falso.com", "/conta");
+  d("//site-falso.com", "/conta");
+  d("/\\site-falso.com", "/conta");
+  d("https://site-falso.com", "/conta");
+  d("/x@site-falso.com", "/conta");
+  d("javascript:alert(1)", "/conta");
 
   console.log(falhas === 0 ? "\nTODOS PASSARAM\n" : `\n${falhas} FALHA(S)\n`);
   process.exit(falhas === 0 ? 0 : 1);

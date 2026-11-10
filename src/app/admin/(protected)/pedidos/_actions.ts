@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { orders } from "@/lib/db/schema";
-import { sendEmail, emailShell } from "@/lib/email";
+import { sendEmail, emailShell, esc } from "@/lib/email";
 import { logAudit } from "@/lib/audit";
 import { resendCustomerReceipt } from "@/lib/order-notify";
 
@@ -49,9 +49,9 @@ export async function saveTracking(
     subject: `Seu pedido #${order.orderNumber} foi enviado · ALBIZIA`,
     html: emailShell(
       "Pedido enviado",
-      `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${order.customerName}. Seu pedido está a caminho.</p>
+      `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${esc(order.customerName)}. Seu pedido está a caminho.</p>
        <p style="font-size:14px;line-height:1.6;color:#55534e;">Código de rastreio:</p>
-       <p style="font-size:20px;letter-spacing:2px;text-align:center;margin:16px 0;padding:14px;border:1px solid #d9d2c6;">${code}</p>
+       <p style="font-size:20px;letter-spacing:2px;text-align:center;margin:16px 0;padding:14px;border:1px solid #d9d2c6;">${esc(code)}</p>
        <p style="font-size:13px;color:#8a857c;">Acompanhe a entrega pelos Correios ou pela transportadora com o código acima.</p>`
     ),
   });

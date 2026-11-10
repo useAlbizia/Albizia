@@ -1,10 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useActionState } from "react";
 import { Symbol } from "@/components/logo/Symbol";
+import { CampoSenha } from "@/components/auth/CampoSenha";
 import { login, type LoginState } from "../actions";
 
 const initialState: LoginState = {};
+const input = "border border-content/30 bg-transparent px-4 py-3 text-sm outline-none focus:border-content";
 
 export default function AdminLoginPage() {
   const [state, formAction, pending] = useActionState(login, initialState);
@@ -21,21 +24,26 @@ export default function AdminLoginPage() {
           placeholder="E-mail"
           required
           autoComplete="username"
-          className="border border-content/30 bg-transparent px-4 py-3 text-sm outline-none focus:border-content"
+          autoCapitalize="none"
+          defaultValue={state.email}
+          // A chave muda a cada resposta, para o campo receber o e-mail devolvido.
+          key={state.email ?? "vazio"}
+          className={input}
         />
-        <input
-          name="password"
-          type="password"
-          placeholder="Senha"
-          required
-          autoComplete="current-password"
-          className="border border-content/30 bg-transparent px-4 py-3 text-sm outline-none focus:border-content"
-        />
+        <CampoSenha name="password" placeholder="Senha" autoComplete="current-password" className={input} />
 
         {state.error && (
-          <p className="text-[13px] text-content/70" role="alert">
-            {state.error}
-          </p>
+          <div className="border border-content/25 px-4 py-3 text-[13px] leading-relaxed text-content/80" role="alert">
+            <p>{state.error}</p>
+            {state.sugerirRecuperar && (
+              // O atalho fica dentro do próprio aviso: é ali que o olho está
+              // quando a senha não entra, e no celular o link de baixo pode
+              // ficar escondido atrás do teclado.
+              <Link href="/admin/esqueci" className="mt-2 inline-block underline underline-offset-4">
+                Criar uma nova senha
+              </Link>
+            )}
+          </div>
         )}
 
         <button
@@ -46,12 +54,12 @@ export default function AdminLoginPage() {
           {pending ? "Entrando..." : "Entrar"}
         </button>
 
-        <a
+        <Link
           href="/admin/esqueci"
-          className="text-center text-[12px] uppercase tracking-[0.15em] text-content/50 hover:text-content"
+          className="block py-3 text-center text-[12px] uppercase tracking-[0.15em] text-content/50 hover:text-content"
         >
           Esqueci a senha
-        </a>
+        </Link>
       </form>
     </div>
   );

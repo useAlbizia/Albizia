@@ -2,7 +2,7 @@ import "server-only";
 import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { db } from "./db/client";
 import { orders, siteSettings } from "./db/schema";
-import { sendEmail, emailShell, money } from "./email";
+import { sendEmail, emailShell, money, esc } from "./email";
 import { adminEmails } from "./auth/admins";
 
 // ── Recuperação de venda ──────────────────────────────────────────────────
@@ -216,8 +216,8 @@ export async function sendHighValueAlerts(): Promise<{
     .map(
       (o) => `
       <tr><td style="padding:12px 0;border-bottom:1px solid #e8e2d8;">
-        <div style="font-size:14px;color:#121212;">#${o.orderNumber} · ${o.customerName} · <strong>${money(o.totalCents)}</strong></div>
-        <div style="font-size:12px;color:#8a857c;margin-top:2px;">Parado há ${o.minutesOld} min · ${o.customerPhone || "sem telefone"}</div>
+        <div style="font-size:14px;color:#121212;">#${o.orderNumber} · ${esc(o.customerName)} · <strong>${money(o.totalCents)}</strong></div>
+        <div style="font-size:12px;color:#8a857c;margin-top:2px;">Parado há ${o.minutesOld} min · ${esc(o.customerPhone || "sem telefone")}</div>
         <div style="font-size:12px;color:#55534e;margin-top:4px;">${o.situation}</div>
         ${o.whatsappUrl ? `<a href="${o.whatsappUrl}" style="font-size:12px;color:#121212;">Falar no WhatsApp</a>` : ""}
       </td></tr>`,

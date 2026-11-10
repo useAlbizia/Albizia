@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { destinoSeguro } from "@/lib/site-url";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/conta";
+  // Sem conferir, ?next=@site-falso.com mandaria a pessoa para fora do site.
+  const next = destinoSeguro(searchParams.get("next"), "/conta");
 
   if (code) {
     const supabase = await createClient();

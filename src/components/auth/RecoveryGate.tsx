@@ -40,15 +40,24 @@ export function RecoveryGate({
     const params = new URLSearchParams(hash);
     const accessToken = params.get("access_token");
     const refreshToken = params.get("refresh_token");
+    // `?code=` também é trocado AQUI, no navegador, e não no servidor. Trocar
+    // durante a montagem da página no servidor dava "link expirado" ao
+    // salvar: nesse momento o Next não deixa gravar cookie, então a sessão
+    // era criada e jogada fora, e a tela liberava um formulário que já não
+    // tinha ninguém logado por trás.
+    const code = new URLSearchParams(window.location.search).get("code");
 
-    if (!accessToken || !refreshToken) {
+    if (!code && (!accessToken || !refreshToken)) {
       setEstado("invalido");
       return;
     }
 
     let ativo = true;
-    createBrowserSupabase()
-      .auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
+    const auth = createBrowserSupabase().auth;
+    const troca = code
+      ? auth.exchangeCodeForSession(code)
+      : auth.setSession({ access_token: accessToken!, refresh_token: refreshToken! });
+    troca
       .then(({ error }) => {
         if (!ativo) return;
         if (error) {

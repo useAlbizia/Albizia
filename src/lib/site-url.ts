@@ -50,3 +50,17 @@ export async function getSiteOrigin(): Promise<string> {
   if (configurado && !/localhost|127\.0\.0\.1/.test(configurado)) return configurado;
   return PADRAO;
 }
+
+/**
+ * Destino de redirecionamento vindo da URL, só se for um caminho deste site.
+ *
+ * `?next=` é controlado por quem monta o link. Sem esta conferência, um link
+ * como /auth/callback?next=@site-falso.com levaria a pessoa, logada, para
+ * fora da ALBIZIA (o "@" vira nome de usuário na URL e o site falso vira o
+ * destino). Aceita só "/algo", nunca "//", "\\" ou endereço completo.
+ */
+export function destinoSeguro(next: string | null | undefined, padrao: string): string {
+  if (!next) return padrao;
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\") || next.includes("@")) return padrao;
+  return next;
+}

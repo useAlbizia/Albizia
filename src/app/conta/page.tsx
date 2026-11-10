@@ -9,7 +9,16 @@ import { CustomerAuth } from "./CustomerAuth";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Minha conta · ALBIZIA" };
 
-export default async function ContaPage() {
+// Avisos de links que voltaram para cá sem dar certo.
+const AVISOS: Record<string, string> = {
+  confirmacao:
+    "Este link de confirmação expirou ou já foi usado. Se você já confirmou, é só entrar. Se não, use Esqueci minha senha para receber um link novo.",
+  auth: "Não foi possível concluir a entrada. Tente de novo.",
+};
+
+export default async function ContaPage(props: PageProps<"/conta">) {
+  const sp = await props.searchParams;
+  const erro = typeof sp.erro === "string" ? AVISOS[sp.erro] : undefined;
   const user = await getSessionUser();
 
   if (!user) {
@@ -18,6 +27,11 @@ export default async function ContaPage() {
         <h1 className="mb-10 text-center text-sm uppercase tracking-[0.3em] text-content/60">
           Minha conta
         </h1>
+        {erro && (
+          <p className="mb-6 border border-content/25 px-4 py-3 text-[13px] leading-relaxed text-content/75" role="alert">
+            {erro}
+          </p>
+        )}
         <CustomerAuth />
       </section>
     );

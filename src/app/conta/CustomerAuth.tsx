@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { CampoSenha } from "@/components/auth/CampoSenha";
 import {
   customerSignIn,
   customerSignUp,
@@ -92,7 +93,7 @@ export function CustomerAuth() {
           {mode === "login" ? (
             <form action={inAction} className="flex flex-col gap-3">
               <input name="email" type="email" placeholder="E-mail" required autoComplete="email" className={input} />
-              <input name="password" type="password" placeholder="Senha" required autoComplete="current-password" className={input} />
+              <CampoSenha name="password" placeholder="Senha" autoComplete="current-password" className={input} />
               {inState.error && <p className="text-[13px] text-content/70">{inState.error}</p>}
               <button
                 type="submit"
@@ -113,7 +114,7 @@ export function CustomerAuth() {
             <form action={upAction} className="flex flex-col gap-3">
               <input name="name" placeholder="Nome completo" required autoComplete="name" className={input} />
               <input name="email" type="email" placeholder="E-mail" required autoComplete="email" className={input} />
-              <input name="password" type="password" placeholder="Senha (mín. 8 caracteres)" required autoComplete="new-password" className={input} />
+              <CampoSenha name="password" placeholder="Senha (mín. 8 caracteres)" autoComplete="new-password" minLength={8} className={input} />
               {upState.error && <p className="text-[13px] text-content/70">{upState.error}</p>}
               {upState.info && <p className="text-[13px] text-content/60">{upState.info}</p>}
               <button

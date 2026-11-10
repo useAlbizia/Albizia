@@ -5,7 +5,7 @@ import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
 import { orders } from "@/lib/db/schema";
-import { sendEmail, emailShell } from "@/lib/email";
+import { sendEmail, emailShell, esc } from "@/lib/email";
 import { logAudit } from "@/lib/audit";
 import { activeMeToken, faltaParaEtiqueta, getShippingSettings } from "@/lib/shipping";
 import {
@@ -285,8 +285,8 @@ export async function avisarRastreio(
     subject: `Seu pedido #${order.orderNumber} foi enviado · ALBIZIA`,
     html: emailShell(
       "Pedido enviado",
-      `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${order.customerName}. Seu pedido está a caminho.</p>
-       <p style="font-size:20px;letter-spacing:2px;text-align:center;margin:16px 0;padding:14px;border:1px solid #d9d2c6;">${codigo}</p>
+      `<p style="font-size:14px;line-height:1.6;color:#55534e;">Olá, ${esc(order.customerName)}. Seu pedido está a caminho.</p>
+       <p style="font-size:20px;letter-spacing:2px;text-align:center;margin:16px 0;padding:14px;border:1px solid #d9d2c6;">${esc(codigo)}</p>
        <div style="text-align:center;margin:24px 0;">
          <a href="${rastreio}" style="display:inline-block;background:#121212;color:#f2ede5;text-decoration:none;padding:14px 32px;font-size:12px;letter-spacing:2px;text-transform:uppercase;">Rastrear entrega</a>
        </div>`,
