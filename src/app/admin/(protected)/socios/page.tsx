@@ -4,6 +4,9 @@ import { listarSocios, painelFinanceiro } from "@/lib/financeiro";
 import { SocioForm } from "./SocioForm";
 import { SincronizarMp } from "./SincronizarMp";
 import { CapitalSocios } from "@/components/admin/Graficos";
+import { FREQUENCIAS, lerMotivacao } from "@/lib/motivacao";
+import { MOTIVACOES } from "@/lib/motivacao-conteudo";
+import { MotivacaoForm } from "./MotivacaoForm";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +21,11 @@ function Cartao({ titulo, valor, dica }: { titulo: string; valor: string; dica?:
 }
 
 export default async function SociosPage() {
-  const [{ resumo, acertos, mei, sync }, lista] = await Promise.all([painelFinanceiro(), listarSocios()]);
+  const [{ resumo, acertos, mei, sync }, lista, motiv] = await Promise.all([
+    painelFinanceiro(),
+    listarSocios(),
+    lerMotivacao(),
+  ]);
   const { caixa } = resumo;
   const usoMei = mei.limiteCents > 0 ? Math.min(100, (mei.faturadoCents / mei.limiteCents) * 100) : 0;
   const ativos = resumo.socios.filter((l) => lista.find((s) => s.id === l.id)?.ativo);
@@ -304,6 +311,25 @@ export default async function SociosPage() {
               Por ser uma decisão da sociedade, mudem só depois de combinar entre todos.
             </p>
           </div>
+        </div>
+
+        <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/60">Motivação dos sócios</p>
+        <div className="mb-8 border border-content/15 px-5 py-4">
+          <p className="mb-4 max-w-2xl text-[12px] leading-relaxed text-content/55">
+            Um e-mail para todos os sócios ativos com uma história real de quem começou do zero e chegou
+            longe, um versículo e uma tarefa do dia. São {MOTIVACOES.length} mensagens em sequência; depois da
+            última, recomeça. Vai para o e-mail de cada sócio no cadastro abaixo.
+          </p>
+          <MotivacaoForm
+            ativa={motiv.ativa}
+            frequencia={motiv.frequencia}
+            frequencias={FREQUENCIAS}
+            proximaTitulo={MOTIVACOES[motiv.proxima].titulo}
+            proximaNumero={motiv.proxima + 1}
+            total={MOTIVACOES.length}
+            ultimoEnvio={motiv.ultimoEnvio}
+            pronta={motiv.pronta}
+          />
         </div>
 
         <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/60">Cadastro dos sócios</p>

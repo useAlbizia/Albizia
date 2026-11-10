@@ -508,6 +508,20 @@ export const socios = pgTable("socios", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// E-mails de motivação dos sócios: uma linha só ("config"). Guarda se está
+// ligado, a frequência, qual mensagem é a próxima e o último dia enviado
+// (o último dia impede mandar duas no mesmo dia, mesmo se o agendamento
+// rodar de novo).
+export const motivacao = pgTable("motivacao", {
+  id: text("id").primaryKey().default("config"),
+  ativa: boolean("ativa").notNull().default(true),
+  // diaria | seg_qua_sex | semanal
+  frequencia: text("frequencia").notNull().default("diaria"),
+  proxima: integer("proxima").notNull().default(0),
+  ultimoEnvio: date("ultimo_envio", { mode: "string" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const lancamentos = pgTable("lancamentos", {
   id: uuid("id").primaryKey().defaultRandom(),
   data: date("data", { mode: "string" }).notNull(),

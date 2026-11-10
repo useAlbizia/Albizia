@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { getLowStockVariants } from "@/lib/metrics";
 import { getSiteSettings } from "@/lib/settings";
 import { sendEmail, emailShell } from "@/lib/email";
+import { enviarMotivacao } from "@/lib/motivacao";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  // Carona no agendamento diário: a mensagem de motivação dos sócios. Fica
+  // separada num try para um problema nela nunca impedir o aviso de estoque.
+  // Ela mesma garante no máximo uma por dia (lib/motivacao.ts).
+  let motivacao: unknown = null;
+  try {
+    motivacao = await enviarMotivacao();
+  } catch (err) {
+    console.error("motivacao falhou", err);
+  }
+
   const settings = await getSiteSettings();
   const low = await getLowStockVariants(settings.lowStockThreshold);
 
   if (low.length === 0) {
-    return NextResponse.json({ ok: true, low: 0 });
+    return NextResponse.json({ ok: true, low: 0, motivacao });
   }
 
   const notify = (process.env.ORDER_NOTIFICATION_EMAIL ?? "")
