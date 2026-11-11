@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect, useRef } from "react";
 import { registrarErroAparelho } from "./erros/_actions";
 
 // Escuta erros de JavaScript no aparelho de quem usa o painel (celular ou
@@ -10,6 +11,51 @@ import { registrarErroAparelho } from "./erros/_actions";
 const RUIDO = /ResizeObserver|Script error\.?$|Load failed|NEXT_REDIRECT|NEXT_NOT_FOUND/i;
 
 export function ErrosNavegador() {
+  // Lentidão e travamento: mede do toque num link do painel até a tela nova
+  // aparecer. Mais de 5 s vira registro "Lentidão"; 20 s sem abrir vira
+  // "Tela não abriu". Travar não é erro de programa, então sem isto não
+  // ficava nada anotado (foi o que aconteceu em 10/11/2026).
+  const pathname = usePathname();
+  const inicio = useRef<{ destino: string; t: number; timer: ReturnType<typeof setTimeout> | null } | null>(null);
+
+  useEffect(() => {
+    const onClique = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.("a");
+      if (!a || a.target === "_blank") return;
+      const url = new URL(a.href, location.href);
+      if (url.origin !== location.origin || !url.pathname.startsWith("/admin") || url.pathname === location.pathname) return;
+      if (inicio.current?.timer) clearTimeout(inicio.current.timer);
+      const destino = url.pathname;
+      const t = performance.now();
+      const timer = setTimeout(() => {
+        void registrarErroAparelho({
+          tipo: "lentidao",
+          mensagem: `Tela não abriu em 20 s: ${destino}`,
+          caminho: destino,
+          detalhe: `Saindo de ${location.pathname}. Conexão: ${(navigator as Navigator & { connection?: { effectiveType?: string } }).connection?.effectiveType ?? "?"}`,
+        }).catch(() => {});
+      }, 20_000);
+      inicio.current = { destino, t, timer };
+    };
+    document.addEventListener("click", onClique, true);
+    return () => document.removeEventListener("click", onClique, true);
+  }, []);
+
+  useEffect(() => {
+    const atual = inicio.current;
+    if (!atual || atual.destino !== pathname) return;
+    if (atual.timer) clearTimeout(atual.timer);
+    const ms = performance.now() - atual.t;
+    inicio.current = null;
+    if (ms > 5000) {
+      void registrarErroAparelho({
+        tipo: "lentidao",
+        mensagem: `Tela demorou ${(ms / 1000).toFixed(1)} s para abrir: ${pathname}`,
+        caminho: pathname,
+      }).catch(() => {});
+    }
+  }, [pathname]);
+
   useEffect(() => {
     let enviados = 0;
     const vistos = new Set<string>();

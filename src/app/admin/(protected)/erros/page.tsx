@@ -14,6 +14,7 @@ const ROTULO: Record<string, string> = {
   acao: "Botão / ação",
   rota: "Integração",
   navegador: "Aparelho",
+  lentidao: "Lentidão / travou",
 };
 
 const quando = (d: Date) =>

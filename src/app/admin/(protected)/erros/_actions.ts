@@ -7,6 +7,8 @@ import { limparErros, registrarErro } from "@/lib/erros";
 
 /** Erro que aconteceu no aparelho (celular ou computador) de quem usa o painel. */
 export async function registrarErroAparelho(dados: {
+  /** "lentidao" para tela que demorou ou não abriu; padrão: erro do navegador. */
+  tipo?: "lentidao";
   mensagem: string;
   detalhe?: string;
   caminho?: string;
@@ -17,7 +19,7 @@ export async function registrarErroAparelho(dados: {
   const h = await headers();
   await registrarErro({
     origem: "aparelho",
-    tipo: "navegador",
+    tipo: dados.tipo === "lentidao" ? "lentidao" : "navegador",
     caminho: String(dados.caminho ?? "").slice(0, 300),
     mensagem: String(dados.mensagem ?? "").slice(0, 1000),
     detalhe: String(dados.detalhe ?? "").slice(0, 4000),
