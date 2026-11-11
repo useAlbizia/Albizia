@@ -114,31 +114,37 @@ export default async function AdminDashboardPage() {
           <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Últimos pedidos</p>
           <Link
             href="/admin/pedidos"
-            className="text-[11px] uppercase tracking-[0.15em] text-content/50 hover:text-content"
+            className="btn-sec"
           >
-            ver todos
+            Ver todos
           </Link>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <tbody className="divide-y divide-content/10 border-y border-content/10">
-              {m.recent.map((o) => (
-                <tr key={o.id} className="hover:bg-surface-soft">
-                  <td className="py-3 pr-4">
-                    <Link href={`/admin/pedidos/${o.id}`} className="hover:underline">
-                      #{o.orderNumber}
-                    </Link>
-                  </td>
-                  <td className="py-3 pr-4 text-content/60">{o.customerName}</td>
-                  <td className="py-3 pr-4 text-content/60">{brl(o.totalCents)}</td>
-                  <td className="py-3 pr-4 text-content/60">
+        {/* Cada pedido é um bloco inteiro clicável. Antes só o "#número" abria,
+            e no celular o toque no resto da linha não fazia nada. */}
+        <div>
+          <ul className="divide-y divide-content/10 border-y border-content/10">
+            {m.recent.map((o) => (
+              <li key={o.id}>
+                <Link
+                  href={`/admin/pedidos/${o.id}`}
+                  className="flex items-center justify-between gap-3 py-3.5 hover:bg-surface-soft active:bg-surface-soft"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[14px] font-medium">
+                      #{o.orderNumber} · {brl(o.totalCents)}
+                    </span>
+                    <span className="block truncate text-[12px] text-content/60">
+                      {o.customerName} · {shortDate(o.createdAt)}
+                    </span>
+                  </span>
+                  <span className="flex shrink-0 items-center gap-2 text-[12px] text-content/70">
                     {ORDER_STATUS_LABEL[o.status] ?? o.status}
-                  </td>
-                  <td className="py-3 pr-4 text-content/50">{shortDate(o.createdAt)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <span aria-hidden="true" className="text-lg leading-none">›</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
           {m.recent.length === 0 && (
             <p className="py-10 text-center text-sm text-content/50">Nenhum pedido ainda.</p>
           )}

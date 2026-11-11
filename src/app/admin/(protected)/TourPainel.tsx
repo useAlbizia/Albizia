@@ -44,14 +44,28 @@ const PASSOS: Passo[] = [
     alvos: ["lancar"],
     titulo: "Lançar um gasto ou uma entrada",
     texto:
-      "Toque em Novo lançamento e responda três perguntas: o que aconteceu, quanto e quem pagou. No fim aparece uma frase com tudo para conferir. O lançamento de um sócio entra nas contas quando mais um sócio aprova; os outros recebem aviso, e qualquer um pode contestar. Vendas do site, taxas e etiquetas entram sozinhas.",
+      "Toque em Novo lançamento e responda: o que aconteceu, quanto e quem pagou. Vendas do site, taxas e etiquetas entram sozinhas. O lançamento passa a contar quando mais um sócio aprova; qualquer um pode contestar.",
+  },
+  {
+    rota: "/admin/lancamentos",
+    alvos: ["lancar"],
+    titulo: "Quem pagou não é de quem é",
+    texto:
+      "Tudo o que a empresa compra é dos três, um terço de cada. O campo Quem pagou diz só de qual bolso saiu o dinheiro. Exemplo: a prensa é dos três, mas quem paga é Nilson e Jair (Só alguns sócios), porque o Devid já tinha colocado mais. O painel desconta a parte dele do que ele já investiu, sozinho.",
+  },
+  {
+    rota: "/admin/lancamentos",
+    alvos: ["contas"],
+    titulo: "Contas a pagar",
+    texto:
+      "O calendário das parcelas e contas fixas, com a data grande à esquerda. Atrasadas aparecem primeiro. Quando pagar a SUA parte, toque em Pagar e confirme a data: só a parte paga conta para você. No dia do vencimento chega lembrete.",
   },
   {
     rota: "/admin/socios",
     alvos: ["socios-tabela"],
-    titulo: "Sócios e caixa",
+    titulo: "O equilíbrio entre os sócios",
     texto:
-      "Quanto cada um colocou, a parte justa de cada um (o total dividido pela participação de cada sócio) e quem tem a receber. Logo abaixo o painel diz o acerto exato para equilibrar os três. Nada aqui é digitado: tudo vem dos lançamentos.",
+      "Cada barra é o que um sócio colocou; o traço é onde ele deveria estar (o total dividido por três). Passou do traço: tem a receber. Antes do traço: falta colocar. Logo abaixo, o acerto exato. Quem está abaixo vai pagando as próximas despesas até as barras baterem no traço.",
   },
   {
     rota: "/admin/fechamento",
@@ -84,7 +98,9 @@ const PASSOS: Passo[] = [
 ];
 
 const CHAVE_ESTADO = "albizia-tour";
-const CHAVE_VISTO = "albizia-tour-visto";
+// Trocar o sufixo faz o tour começar sozinho de novo em todo aparelho, uma vez:
+// usado quando entra explicação nova (v2: quem pagou, contas a pagar, equilíbrio).
+const CHAVE_VISTO = "albizia-tour-visto-v2";
 const EVENTO = "albizia-tour-iniciar";
 
 type Estado = { ativo: boolean; passo: number };

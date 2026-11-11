@@ -70,7 +70,7 @@ export function ContasAPagar({ contas, hoje }: { contas: Conta[]; hoje: string }
   const total = (cs: Conta[]) => brl(cs.reduce((n, c) => n + c.valorCents, 0));
 
   return (
-    <section id="contas" className="scroll-mt-6">
+    <section id="contas" data-tour="contas" className="scroll-mt-6">
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-content">Contas a pagar</p>
       <div className="flex flex-col gap-4">
         {atrasadas.length > 0 && (

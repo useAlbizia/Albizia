@@ -46,9 +46,10 @@ export default async function ClienteDetailPage(props: PageProps<"/admin/cliente
         <table className="w-full min-w-[480px] text-left text-sm">
           <tbody className="divide-y divide-content/10 border-y border-content/10">
             {customer.orders.map((o) => (
-              <tr key={o.id} className="hover:bg-surface-soft">
+              <tr key={o.id} className="relative cursor-pointer hover:bg-surface-soft">
                 <td className="py-3 pr-4">
-                  <Link href={`/admin/pedidos/${o.id}`} className="hover:underline">
+                  {/* O link cobre a linha inteira: tocar em qualquer parte abre o pedido. */}
+                  <Link href={`/admin/pedidos/${o.id}`} className="after:absolute after:inset-0 hover:underline">
                     #{o.orderNumber}
                   </Link>
                 </td>

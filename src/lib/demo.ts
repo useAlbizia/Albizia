@@ -128,7 +128,7 @@ export async function gerarDemo(dias = 40): Promise<{ pedidos: number; lancament
             mp_release_date, mp_synced_at, embalagem_cents, paid_at, created_at, updated_at
           ) overriding system value values (
             ${numero}, ${status}, ${nome}, ${email}, '(11) 90000-0000', '',
-            ${JSON.stringify({ street: "Rua de Exemplo", number: "100", district: "Centro", city: local.city, state: local.state, cep: "00000-000" })}::jsonb,
+            ${JSON.stringify({ street: "Rua de Exemplo", number: "100", neighborhood: "Centro", city: local.city, state: local.state, zip: "00000-000" })}::jsonb,
             ${subtotal}, ${frete}, ${desconto}, ${total},
             ${etiqueta ? "PAC" : null}, ${etiqueta ? "Correios" : null}, ${etiqueta ? "generated" : null}, ${etiqueta}, ${etiqueta ? `EX${numero}BR` : null},
             ${pago ? `demo-${numero}` : null}, ${status === "refunded" ? "refunded" : pago ? "approved" : "cancelled"},
