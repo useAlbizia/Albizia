@@ -155,7 +155,7 @@ export default function ManualPage() {
           <p>
             No topo de Lançamentos fica o calendário: atrasadas primeiro, depois mês a mês, cada linha com o dia grande à
             esquerda e o botão <strong>Pagar</strong>. Quem tem conta sua vencendo hoje ou atrasada vê uma faixa no topo de
-            todas as telas.
+            todas as telas. Quando alguém toca em Pagar, os outros sócios recebem notificação e e-mail para conferir.
           </p>
           <p>
             Conta que se repete (DAS, domínio, internet): ao lançar, em <strong>Conta fixa?</strong> escolha{" "}

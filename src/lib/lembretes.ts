@@ -1,7 +1,7 @@
 import "server-only";
-import { inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { socios } from "@/lib/db/schema";
+import { lancamentoPagadores, lancamentos, socios } from "@/lib/db/schema";
 import { brl, isoDay } from "@/lib/format";
 import { emailButton, emailShell, esc, sendEmail, SITE } from "@/lib/email";
 import { contasAPagar, type ParteAPagar } from "@/lib/financeiro";
@@ -13,6 +13,72 @@ import { enviarPush } from "@/lib/push";
 // se continuar sem marcar, de novo a cada 7 dias de atraso. Um aviso por
 // sócio por dia, juntando tudo o que vence ou está atrasado, para não virar
 // uma enxurrada.
+
+/**
+ * Aviso de pagamento: quando alguém toca em Pagar (ou em desfazer), os outros
+ * sócios recebem notificação e e-mail para conferir. Se quem marcou não é o
+ * dono da parte ("o Jair marcou que o Nilson pagou"), o dono também é avisado.
+ * Nunca lança erro: aviso é reforço, o pagamento já está gravado.
+ */
+export async function avisarPagamento(pagadorId: string, quemMarcouEmail: string, desfeito = false): Promise<void> {
+  try {
+    const [linha] = await db
+      .select({
+        socioId: lancamentoPagadores.socioId,
+        valorCents: lancamentoPagadores.valorCents,
+        pagoEm: lancamentoPagadores.pagoEm,
+        descricao: lancamentos.descricao,
+        parcelaNum: lancamentos.parcelaNum,
+        parcelaTotal: lancamentos.parcelaTotal,
+      })
+      .from(lancamentoPagadores)
+      .innerJoin(lancamentos, eq(lancamentos.id, lancamentoPagadores.lancamentoId))
+      .where(eq(lancamentoPagadores.id, pagadorId));
+    if (!linha) return;
+    const ativos = await db.select().from(socios).where(eq(socios.ativo, true));
+    const dono = ativos.find((s) => s.id === linha.socioId);
+    const marcou = ativos.find((s) => s.email && s.email.toLowerCase() === quemMarcouEmail.toLowerCase());
+    const nomeDono = dono ? dono.nome.split(" ")[0] : "A empresa";
+    const nomeMarcou = marcou ? marcou.nome.split(" ")[0] : quemMarcouEmail;
+    const oQue = `${linha.descricao}${linha.parcelaTotal ? ` ${linha.parcelaNum}/${linha.parcelaTotal}` : ""}`;
+    const titulo = desfeito
+      ? `${nomeMarcou} desfez o pagamento de ${nomeDono}`
+      : marcou && dono && marcou.id === dono.id
+        ? `${nomeDono} pagou a parte dele`
+        : `${nomeMarcou} marcou: ${nomeDono} pagou`;
+    const corpo = `${oQue}: ${brl(linha.valorCents)}${!desfeito && linha.pagoEm ? ` em ${linha.pagoEm.split("-").reverse().join("/")}` : ""}`;
+
+    // Avisa todos menos quem marcou (ele já sabe).
+    const destinos = ativos.filter((s) => s.email && s.id !== marcou?.id);
+    if (destinos.length === 0) return;
+    await enviarPush(
+      destinos.map((s) => s.email),
+      { titulo, corpo, url: "/admin/lancamentos", tag: `pagamento-${pagadorId}` },
+    );
+    await Promise.all(
+      destinos.map((s) =>
+        sendEmail({
+          from: "ALBIZIA <acesso@usealbizia.com.br>",
+          to: s.email,
+          subject: `${titulo}: ${corpo}`,
+          html: emailShell(
+            desfeito ? "Pagamento desfeito" : "Pagamento registrado",
+            `<p style="font-size:15px;line-height:1.7;color:#121212;margin:0 0 12px;"><strong>${esc(titulo)}.</strong></p>
+             <p style="font-size:15px;line-height:1.7;color:#121212;margin:0 0 14px;">${esc(corpo)}</p>
+             <p style="font-size:13px;line-height:1.7;color:#55534e;margin:0;">${
+               desfeito
+                 ? "A parte voltou para Contas a pagar."
+                 : "Confira. Se não estiver certo, abra o lançamento e toque em desfazer; fica registrado na Auditoria."
+             }</p>
+             ${emailButton("Ver lançamentos", `${SITE.replace(/\/$/, "")}/admin/lancamentos`)}`,
+          ),
+        }).catch(() => false),
+      ),
+    );
+  } catch (err) {
+    console.error("avisarPagamento falhou", err);
+  }
+}
 
 function diasEntre(de: string, ate: string): number {
   return Math.round((Date.parse(`${ate}T12:00:00Z`) - Date.parse(`${de}T12:00:00Z`)) / 86_400_000);

@@ -11,6 +11,7 @@ import { isoDay } from "@/lib/format";
 import { dividirIgual, dividirPorPeso, gerarParcelas, parseReais, somarMeses } from "@/lib/financeiro-calc";
 import { sincronizarPendentes } from "@/lib/mp-sync";
 import { atualizarStatusPeloPagamento } from "@/lib/financeiro";
+import { avisarPagamento } from "@/lib/lembretes";
 import { avisarAprovadores, avisarContestacao, recalcularAprovacao, socioPorEmail } from "@/lib/aprovacao";
 
 export type FinState = { ok?: boolean; error?: string; mensagem?: string };
@@ -209,13 +210,15 @@ export async function registrarPagamento(pagadorId: string, data: string): Promi
     entityId: parte.lancamentoId,
     detail: { pagadorId, socioId: parte.socioId, valorCents: parte.valorCents, data },
   });
+  // Os outros sócios ficam sabendo na hora, para conferir.
+  await avisarPagamento(pagadorId, user.email ?? "");
   refresh();
   return {};
 }
 
 /** Desfaz um Pagar marcado por engano. Também fica na auditoria. */
 export async function desfazerPagamento(pagadorId: string): Promise<void> {
-  await requireAdmin();
+  const user = await requireAdmin();
   const [parte] = await db.select().from(lancamentoPagadores).where(eq(lancamentoPagadores.id, pagadorId));
   if (!parte?.pagoEm) return;
   await db
@@ -229,6 +232,7 @@ export async function desfazerPagamento(pagadorId: string): Promise<void> {
     entityId: parte.lancamentoId,
     detail: { pagadorId, socioId: parte.socioId, valorCents: parte.valorCents, eraDe: parte.pagoEm },
   });
+  await avisarPagamento(pagadorId, user.email ?? "", true);
   refresh();
 }
 
