@@ -219,3 +219,28 @@ html[data-intro="visto"] .intro-albizia {
   &:hover { background-color: var(--color-content); color: var(--color-surface); }
   &:disabled { opacity: 0.45; }
 }
+
+/* Painel: tudo que é tocável mostra que é tocável (pedido do Jair: no
+   celular não dava para saber onde tinha botão).
+   - toque: o elemento escurece e encolhe um pouco na hora;
+   - link dentro de texto: sublinhado;
+   - botão principal (fundo cheio): sombra leve, destaca do fundo. */
+.painel :is(a, button, summary, label:has(input[type="checkbox"])) {
+  -webkit-tap-highlight-color: color-mix(in srgb, var(--color-content) 18%, transparent);
+  transition: opacity 0.12s, transform 0.12s;
+}
+.painel :is(a, button, summary):active:not(:disabled) {
+  opacity: 0.7;
+  transform: scale(0.98);
+}
+.painel main :is(p, li, dd) > a:not([class]) ,
+.painel main p a.underline {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1.5px;
+  font-weight: 500;
+}
+.painel button.bg-content,
+.painel a.bg-content {
+  box-shadow: 0 2px 0 0 color-mix(in srgb, var(--color-content) 35%, transparent);
+}

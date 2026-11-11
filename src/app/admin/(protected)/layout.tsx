@@ -47,7 +47,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   ]);
 
   return (
-    <div className="min-h-screen bg-surface text-content md:flex">
+    <div className="painel min-h-screen bg-surface text-content md:flex">
       <AdminNav email={user.email} alertas={recuperacao.total} emails={emailsNaoLidos} aprovar={aprovar} />
       <NovaVersaoAviso />
       <ErrosNavegador />

@@ -1,6 +1,7 @@
 "use server";
 
 import { eq, inArray } from "drizzle-orm";
+import { opcaoRetirada } from "@/lib/regioes-db";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
 import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
@@ -60,7 +61,10 @@ export async function quoteFreteAction(
 ): Promise<{ options: ShippingOption[]; flatCents: number | null }> {
   const lines = await linesFromItems(items);
   const options = await quoteMelhorEnvio(cep, lines);
-  if (options.length > 0) return { options, flatCents: null };
+  // Retirada no local entra como mais uma opção, só quando ligada no painel
+  // e só junto do frete normal (nunca como única forma de receber).
+  const retirada = options.length > 0 ? await opcaoRetirada() : null;
+  if (options.length > 0) return { options: retirada ? [...options, retirada] : options, flatCents: null };
 
   // Melhor Envio fora do ar, sem token, ou método "frete fixo": o checkout
   // não pode travar, então mostra o valor único e segue.
@@ -190,7 +194,10 @@ export async function createPendingOrder(
   // O serviço escolhido vem do formulário, mas só como preferência: a cotação
   // é refeita aqui e o preço que vale é o do servidor. Se o serviço sumiu
   // entre a tela e o envio, cai no mais barato em vez de derrubar a compra.
-  const escolhaCliente = Number(formData.get("shippingServiceId") ?? "") || null;
+  // Cuidado com o zero: é o id da retirada no local, e "|| null" o
+  // transformava em "nada escolhido" (o cliente pagaria frete).
+  const escolhaBruta = String(formData.get("shippingServiceId") ?? "").trim();
+  const escolhaCliente = /^\d+$/.test(escolhaBruta) ? Number(escolhaBruta) : null;
   const linhasFrete: CartLine[] = lineItems.map((li) => ({
     name: li.productName,
     quantity: li.quantity,

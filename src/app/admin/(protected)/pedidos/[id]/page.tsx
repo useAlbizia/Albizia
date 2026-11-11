@@ -180,6 +180,16 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
         </p>
       </div>
 
+      {order.meServiceId === 0 ? (
+        // Retirada no local: não tem etiqueta nem transportadora.
+        <div className="mt-10 border-2 border-content px-5 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em]">Retirada no local</p>
+          <p className="mt-2 text-[14px] leading-relaxed text-content/75">
+            O cliente escolheu retirar. Não há etiqueta. Quando ele retirar, marque o pedido como Enviado no topo
+            da tela.
+          </p>
+        </div>
+      ) : (
       <EtiquetaPanel
         info={{
           orderId: order.id,
@@ -198,6 +208,7 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
           falta: faltaParaEtiqueta(freteSettings),
         }}
       />
+      )}
 
       <DadosNotaFiscal
         destinatario={destinatario}

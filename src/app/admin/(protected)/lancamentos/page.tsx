@@ -58,6 +58,7 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
   // pedido entram somadas no resumo do mês; uma a uma, só pelo filtro.
   const mostrar = um(sp.mostrar); // "" (lançados) | automaticos | tudo
   const hojeIso = isoDay(new Date());
+  const ontemIso = new Date(Date.parse(`${hojeIso}T12:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
   const mesResumo = /^\d{4}-\d{2}$/.test(filtro.mes) ? filtro.mes : hojeIso.slice(0, 7);
 
   const verAutos = mostrar === "automaticos" || mostrar === "tudo";
@@ -251,7 +252,6 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
             // Cabeçalho do dia quando a data muda: Hoje, Ontem, qua 05/11.
             const dia = it.data;
             const novoDia = idx === 0 || itens[idx - 1].data !== dia;
-            const ontemIso = isoDay(new Date(Date.now() - 86_400_000));
             const rotuloDia =
               dia === hojeIso
                 ? "Hoje"

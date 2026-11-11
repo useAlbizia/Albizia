@@ -283,6 +283,34 @@ export default function ManualPage() {
           />
         </Tarefa>
 
+        <Tarefa titulo="Código de rastreio">
+          <p>
+            Ao comprar a etiqueta pelo painel, o código de rastreio vem sozinho do Melhor Envio. Se ainda não apareceu,
+            toque em <strong>Buscar código</strong> no pedido. Depois, <strong>Marcar enviado e avisar</strong> manda o
+            e-mail com o botão de rastrear para o cliente.
+          </p>
+        </Tarefa>
+
+        <Tarefa titulo="Vendas por região, prazos e retirada">
+          <p>
+            <Link href="/admin/regioes" className={link}>Vendas por região</Link>: mapa de calor do Brasil, ranking de
+            estados e das cidades que mais compram, por período.
+          </p>
+          <p>
+            <Link href="/admin/prazos" className={link}>Prazos e retirada</Link>: some dias ao prazo de entrega de um
+            estado ou faixa de CEP (o cliente já vê no checkout) e deixe pronta a retirada no local, que só aparece no
+            checkout quando ligada.
+          </p>
+        </Tarefa>
+
+        <Tarefa titulo="Algo travou ou deu erro">
+          <p>
+            Abra <Link href="/admin/erros" className={link}>Erros do sistema</Link>. Tudo que dá erro, no servidor ou no
+            celular, fica lá com data e tipo (banco de dados, tela, botão, aparelho). Toque em <strong>Copiar</strong> e
+            mande para o suporte.
+          </p>
+        </Tarefa>
+
         <Tarefa titulo="Cliente digitou o e-mail errado">
           <Passos
             itens={[

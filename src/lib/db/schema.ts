@@ -536,6 +536,31 @@ export const pushInscricoes = pgTable("push_inscricoes", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Prazo extra de entrega por região, somado ao prazo que a transportadora
+// informa no checkout. Por estado (uf) ou por faixa de CEP.
+export const regrasPrazo = pgTable("regras_prazo", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull().default(""),
+  // uf | cep
+  tipo: text("tipo").notNull(),
+  uf: text("uf").notNull().default(""),
+  cepInicio: text("cep_inicio").notNull().default(""),
+  cepFim: text("cep_fim").notNull().default(""),
+  diasExtra: integer("dias_extra").notNull().default(1),
+  ativo: boolean("ativo").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Retirada no local: uma linha só ("config"). Desligada até alguém ligar.
+export const retiradaConfig = pgTable("retirada_config", {
+  id: text("id").primaryKey().default("config"),
+  ativo: boolean("ativo").notNull().default(false),
+  endereco: text("endereco").notNull().default(""),
+  instrucoes: text("instrucoes").notNull().default(""),
+  prazoDias: integer("prazo_dias").notNull().default(1),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Registro de erros do sistema, para a tela "Erros do sistema" do painel.
 // Servidor (tela que falhou, banco fora, ação com erro) e aparelho (erro de
 // JavaScript no celular ou computador de quem usa).

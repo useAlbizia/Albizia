@@ -37,6 +37,7 @@ const GROUPS: Group[] = [
       { href: "/admin/carrinhos", label: "Recuperação" },
       { href: "/admin/emails", label: "E-mails" },
       { href: "/admin/analytics", label: "Analytics" },
+      { href: "/admin/regioes", label: "Vendas por região" },
     ],
   },
   {
@@ -55,6 +56,7 @@ const GROUPS: Group[] = [
     items: [
       { href: "/admin/pagamentos", label: "Meio de pagamento" },
       { href: "/admin/frete", label: "Entrega e frete" },
+      { href: "/admin/prazos", label: "Prazos e retirada" },
       { href: "/admin/conteudo", label: "Conteúdo" },
       { href: "/admin/menu", label: "Menu do site" },
       { href: "/admin/usuarios", label: "Usuários" },

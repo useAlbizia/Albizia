@@ -1,4 +1,5 @@
 import "server-only";
+import { diasExtraPara, ID_RETIRADA, opcaoRetirada } from "@/lib/regioes-db";
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { siteSettings } from "./db/schema";
@@ -298,6 +299,9 @@ export async function quoteMelhorEnvio(
       company?: { name?: string };
       error?: string;
     }>;
+    // Prazo extra por região (painel: Entrega e frete > Prazo por região),
+    // somado ao prazo da transportadora no que o cliente vê.
+    const extra = await diasExtraPara(to);
     return data
       .filter((o) => !o.error && o.price)
       .map((o) => ({
@@ -305,7 +309,7 @@ export async function quoteMelhorEnvio(
         name: o.name,
         company: o.company?.name ?? "",
         priceCents: Math.round(parseFloat(o.price) * 100),
-        deliveryDays: o.delivery_time ?? null,
+        deliveryDays: o.delivery_time != null ? o.delivery_time + extra : null,
       }))
       .sort((a, b) => a.priceCents - b.priceCents);
   } catch (err) {
@@ -337,6 +341,13 @@ export async function quoteShipping(
   chosenServiceId?: number | null
 ): Promise<QuotedShipping> {
   const s = await getShippingSettings();
+
+  // Retirada no local (id 0): só vale se estiver ligada no painel; desligada,
+  // a escolha é ignorada e segue o frete normal.
+  if (chosenServiceId === ID_RETIRADA) {
+    const retirada = await opcaoRetirada();
+    if (retirada) return { cents: 0, option: retirada };
+  }
 
   if (s.freeThresholdCents > 0 && subtotalCents >= s.freeThresholdCents) {
     // Frete grátis é promoção da loja, não ausência de envio: ainda precisa
