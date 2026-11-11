@@ -536,6 +536,24 @@ export const pushInscricoes = pgTable("push_inscricoes", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Registro de erros do sistema, para a tela "Erros do sistema" do painel.
+// Servidor (tela que falhou, banco fora, ação com erro) e aparelho (erro de
+// JavaScript no celular ou computador de quem usa).
+export const errosSistema = pgTable("erros_sistema", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  // servidor | aparelho
+  origem: text("origem").notNull(),
+  // banco | tela | acao | rota | navegador
+  tipo: text("tipo").notNull().default(""),
+  caminho: text("caminho").notNull().default(""),
+  mensagem: text("mensagem").notNull(),
+  detalhe: text("detalhe").notNull().default(""),
+  codigo: text("codigo").notNull().default(""),
+  usuario: text("usuario").notNull().default(""),
+  aparelho: text("aparelho").notNull().default(""),
+});
+
 export const lancamentos = pgTable("lancamentos", {
   id: uuid("id").primaryKey().defaultRandom(),
   data: date("data", { mode: "string" }).notNull(),

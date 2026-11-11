@@ -6,6 +6,7 @@ import { AdminNav } from "./AdminNav";
 import { NovaVersaoAviso } from "./NovaVersaoAviso";
 import { TourPainel } from "./TourPainel";
 import { AvisosPainel } from "./AvisosPainel";
+import { ErrosNavegador } from "./ErrosNavegador";
 import { pendentesDe, socioPorEmail } from "@/lib/aprovacao";
 import { pushDisponivel } from "@/lib/push";
 import { contasAPagar } from "@/lib/financeiro";
@@ -49,6 +50,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-surface text-content md:flex">
       <AdminNav email={user.email} alertas={recuperacao.total} emails={emailsNaoLidos} aprovar={aprovar} />
       <NovaVersaoAviso />
+      <ErrosNavegador />
       <TourPainel />
       <div className="flex min-h-screen flex-1 flex-col">
         {demo && (

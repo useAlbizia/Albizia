@@ -59,6 +59,7 @@ const GROUPS: Group[] = [
       { href: "/admin/menu", label: "Menu do site" },
       { href: "/admin/usuarios", label: "Usuários" },
       { href: "/admin/auditoria", label: "Auditoria" },
+      { href: "/admin/erros", label: "Erros do sistema" },
     ],
   },
   {
