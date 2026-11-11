@@ -4,6 +4,8 @@ import { db } from "./db/client";
 import { lancamentoPagadores, lancamentos, metasMensais, orderItems, orders, products, socios } from "./db/schema";
 import { isoDay } from "./format";
 import { sincronizarPendentes } from "./mp-sync";
+import { after } from "next/server";
+import { getPaymentSettings } from "./payments";
 import { reavaliarPendentes } from "./aprovacao";
 import {
   acertos,
@@ -334,7 +336,16 @@ export async function painelFinanceiro(): Promise<PainelFinanceiro> {
   // Antes de somar, traz do Mercado Pago o que ainda falta (pedido pago que o
   // webhook perdeu, estorno recente). Poucos por vez, para a tela não
   // demorar; falha aqui nunca impede a tela de abrir.
-  const sync = await sincronizarPendentes(15).catch(() => null);
+  // A conferência com o Mercado Pago roda DEPOIS de a tela abrir (after):
+  // ela consulta a API do Mercado Pago pedido por pedido e não pode segurar
+  // a tela. O que ela atualizar aparece na próxima vez que a tela abrir.
+  try {
+    after(() => sincronizarPendentes(15).catch(() => null));
+  } catch {
+    // Fora de uma requisição (scripts, testes): só pula.
+  }
+  const { accessToken } = await getPaymentSettings().catch(() => ({ accessToken: "" }));
+  const sync = { semToken: !accessToken, erros: 0 };
 
   const [lista, movs, auto] = await Promise.all([listarSocios(), movimentos(), automaticos()]);
   const base: SocioBase[] = lista.map((s) => ({ id: s.id, nome: s.nome, cotas: s.cotas, ativo: s.ativo }));
@@ -576,6 +587,9 @@ export async function serieMensal(meses = 6): Promise<{ mes: string; vendasCents
     const t = a * 12 + (m - 1) - (meses - 1 - i);
     return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, "0")}`;
   });
-  const fechamentos = await Promise.all(lista.map((mes) => fechamentoDoMes(mes)));
+  // Um mês de cada vez: os seis ao mesmo tempo disparavam umas 66 consultas
+  // juntas e ajudavam a lotar as conexões do banco.
+  const fechamentos = [];
+  for (const mes of lista) fechamentos.push(await fechamentoDoMes(mes));
   return fechamentos.map((f) => ({ mes: f.mes, vendasCents: f.dre.receitaBrutaCents, resultadoCents: f.dre.resultadoCents }));
 }

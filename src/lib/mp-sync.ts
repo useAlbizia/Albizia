@@ -52,6 +52,9 @@ export async function sincronizarPendentes(limite = 15): Promise<ResultadoSync> 
     .where(
       and(
         isNotNull(orders.mpPaymentId),
+        // Pedido de exemplo (modo demonstração) não existe no Mercado Pago:
+        // consultar cada um falhava devagar e deixava a tela de Sócios com 11 s.
+        sql`${orders.mpPaymentId} not like 'demo-%'`,
         inArray(orders.status, ["paid", "shipped", "refunded"]),
         or(
           isNull(orders.mpSyncedAt),
