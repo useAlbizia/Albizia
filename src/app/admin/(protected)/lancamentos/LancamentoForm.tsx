@@ -73,6 +73,7 @@ export function LancamentoForm({
   const [parcelas, setParcelas] = useState(1);
   const [fixa, setFixa] = useState(false); // conta fixa: repete todo mês
   const [meses, setMeses] = useState(12);
+  const [vencimento, setVencimento] = useState(""); // 1ª parcela; vazio = a data do passo 2
   const [fornecedor, setFornecedor] = useState("");
   const [mostrarOutros, setMostrarOutros] = useState(false);
 
@@ -213,6 +214,7 @@ export function LancamentoForm({
           <input type="hidden" name="parcelas" value={fixa ? 1 : parcelas} />
           {fixa && <input type="hidden" name="fixa" value="on" />}
           <input type="hidden" name="meses" value={meses} />
+          <input type="hidden" name="vencimento" value={vencimento || data} />
           <input type="hidden" name="fornecedor" value={fornecedor} />
 
           {despesa && (
@@ -342,6 +344,22 @@ export function LancamentoForm({
                   em Contas a pagar, e cada um toca em Pagar quando pagar a sua parte.
                 </p>
               )}
+            </div>
+          )}
+
+          {despesa && (fixa || parcelas > 1) && (
+            <div className="flex flex-col gap-2 border-2 border-content px-4 py-3">
+              <p className="text-base font-medium">Vencimento da 1ª parcela</p>
+              <p className="text-[13px] leading-relaxed text-content/65">
+                O dia em que a 1ª {fixa ? "conta" : "parcela"} vence (o vencimento da fatura do cartão ou do boleto), não o dia
+                da compra. As outras seguem mês a mês. Se cair em fim de semana ou feriado, vai para o próximo dia útil.
+              </p>
+              <input
+                type="date"
+                value={vencimento || data}
+                onChange={(e) => setVencimento(e.target.value)}
+                className="w-fit border-[1.5px] border-content bg-transparent px-3 py-2 text-[16px]"
+              />
             </div>
           )}
 

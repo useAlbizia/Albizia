@@ -12,6 +12,7 @@ import { dividirIgual, dividirPorPeso, gerarParcelas, parseReais, somarMeses } f
 import { sincronizarPendentes } from "@/lib/mp-sync";
 import { atualizarStatusPeloPagamento } from "@/lib/financeiro";
 import { avisarPagamento } from "@/lib/lembretes";
+import { proximoDiaUtil } from "@/lib/dias-uteis";
 import { avisarAprovadores, avisarContestacao, recalcularAprovacao, socioPorEmail } from "@/lib/aprovacao";
 
 export type FinState = { ok?: boolean; error?: string; mensagem?: string };
@@ -54,6 +55,10 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   // Conta fixa: o mesmo valor todo mês (DAS, domínio, internet), criada já
   // nos próximos meses para aparecer no calendário e gerar lembrete.
   const fixa = fd.get("fixa") === "on";
+  // Parcelado e conta fixa: a data que importa é o VENCIMENTO da 1ª parcela
+  // (o dia da fatura do cartão, do boleto), não o dia da compra.
+  const vencimentoInformado = String(fd.get("vencimento") ?? "");
+  const primeiroVencimento = /^\d{4}-\d{2}-\d{2}$/.test(vencimentoInformado) ? vencimentoInformado : data;
   const meses = Math.min(24, Math.max(2, Number(fd.get("meses") ?? 12) || 12));
   const quemPagou = String(fd.get("quemPagou") ?? "");
   const socioId = String(fd.get("socioId") ?? "") || null;
@@ -101,14 +106,17 @@ export async function criarLancamento(_prev: FinState, fd: FormData): Promise<Fi
   }
 
   const hoje = isoDay(new Date());
-  const linhas = fixa
-    ? Array.from({ length: meses }, (_, i) => {
-        const d = somarMeses(data, i);
-        return { num: i + 1, total: meses, data: d, valorCents, status: (d <= hoje ? "pago" : "previsto") as "pago" | "previsto" };
-      })
+  const brutas = fixa
+    ? Array.from({ length: meses }, (_, i) => ({ num: i + 1, total: meses, data: somarMeses(primeiroVencimento, i), valorCents }))
     : parcelas > 1
-      ? gerarParcelas(valorCents, parcelas, data, hoje)
-      : [{ num: 1, total: 1, data, valorCents, status: "pago" as const }];
+      ? gerarParcelas(valorCents, parcelas, primeiroVencimento, hoje)
+      : [{ num: 1, total: 1, data, valorCents }];
+  // Vencimento em fim de semana ou feriado passa para o próximo dia útil.
+  // A que já venceu nasce paga; a futura espera o Pagar de cada um.
+  const linhas = brutas.map((b) => {
+    const d = brutas.length > 1 ? proximoDiaUtil(b.data) : b.data;
+    return { ...b, data: d, status: (brutas.length === 1 || d <= hoje ? "pago" : "previsto") as "pago" | "previsto" };
+  });
   const grupoId = linhas.length > 1 ? randomUUID() : null;
 
   const base = {
@@ -350,4 +358,29 @@ export async function votar(chave: string, decisao: "aprovado" | "contestado", c
   if (decisao === "contestado") await avisarContestacao(chave, eu.nome, motivo).catch(() => {});
   refresh();
   return { ok: true, mensagem: sit === "aprovado" ? "Aprovado. Já entrou nas contas." : decisao === "contestado" ? "Contestação registrada." : "Aprovação registrada. Falta outro sócio." };
+}
+
+/**
+ * Ajusta os vencimentos de uma compra parcelada ou conta fixa já lançada:
+ * informa o vencimento da 1ª parcela e as outras seguem mês a mês, sempre em
+ * dia útil. Partes já pagas continuam pagas; só a data de vencimento muda.
+ */
+export async function ajustarVencimento(grupoId: string, primeiro: string): Promise<{ erro?: string }> {
+  await requireAdmin();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(primeiro)) return { erro: "Data inválida." };
+  const parcelas = await db.select().from(lancamentos).where(eq(lancamentos.grupoId, grupoId));
+  if (parcelas.length === 0) return { erro: "Compra não encontrada." };
+  parcelas.sort((a, b) => (a.parcelaNum ?? 0) - (b.parcelaNum ?? 0));
+  for (const [i, l] of parcelas.entries()) {
+    const nova = proximoDiaUtil(somarMeses(primeiro, i));
+    if (nova !== l.data) await db.update(lancamentos).set({ data: nova, updatedAt: new Date() }).where(eq(lancamentos.id, l.id));
+  }
+  await logAudit({
+    action: "financeiro.vencimento",
+    entity: "lancamento",
+    entityId: grupoId,
+    detail: { descricao: parcelas[0].descricao, primeiroVencimento: primeiro, de: parcelas[0].data },
+  });
+  refresh();
+  return {};
 }

@@ -18,6 +18,7 @@ import { LancamentoAcoes } from "./LancamentoAcoes";
 import { CartaoAprovar, NovoLancamento } from "./Interativos";
 import { ContasAPagar } from "./ContasAPagar";
 import { PagarParte } from "./PagarParte";
+import { AjustarVencimento } from "./AjustarVencimento";
 
 export const dynamic = "force-dynamic";
 
@@ -314,7 +315,8 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                     </ul>
                   </details>
                 )}
-                <div className="mt-2">
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {l.grupoId && completo && <AjustarVencimento grupoId={l.grupoId} atual={linhas[0].data} />}
                   <LancamentoAcoes id={l.id} parcelado={!!l.grupoId} descricao={l.descricao} />
                 </div>
               </li>
