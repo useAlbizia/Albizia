@@ -15,6 +15,7 @@ import {
   meGerar,
   meImprimir,
   meInserirNoCarrinho,
+  meRastreio,
   type MeParty,
 } from "@/lib/melhor-envio";
 import { brl } from "@/lib/format";
@@ -194,6 +195,9 @@ export async function comprarEtiqueta(
   }
 
   const pdf = await meImprimir(token, settings.meEnvironment, [order.meOrderId]);
+  // O código de rastreio vem do Melhor Envio: ninguém precisa digitar. Se
+  // ainda não saiu, o botão "Buscar código" no pedido tenta de novo.
+  const rastreio = await meRastreio(token, settings.meEnvironment, order.meOrderId);
 
   await db
     .update(orders)
@@ -202,6 +206,7 @@ export async function comprarEtiqueta(
       meLabelCostCents: compra.data.purchaseCents || order.meLabelCostCents,
       meLabelUrl: pdf.ok ? pdf.data : null,
       meLabeledAt: new Date(),
+      ...(rastreio.ok ? { trackingCode: rastreio.data } : {}),
       updatedAt: new Date(),
     })
     .where(eq(orders.id, orderId));
@@ -308,4 +313,18 @@ export async function linkDeclaracao(orderId: string): Promise<{ url?: string; e
 
   const r = await meDeclaracao(token, settings.meEnvironment, order.meOrderId);
   return r.ok ? { url: r.data } : { error: r.message };
+}
+
+/** Busca no Melhor Envio o código de rastreio de uma etiqueta já gerada. */
+export async function buscarRastreio(orderId: string): Promise<{ codigo?: string; error?: string }> {
+  await requireAdmin();
+  const { order, settings, token } = await carregar(orderId);
+  if (!order) return { error: "Pedido não encontrado." };
+  if (!order.meOrderId) return { error: "Este pedido não tem envio no Melhor Envio." };
+  if (!token) return { error: "Nenhum token do Melhor Envio configurado." };
+  const r = await meRastreio(token, settings.meEnvironment, order.meOrderId);
+  if (!r.ok) return { error: r.message };
+  await db.update(orders).set({ trackingCode: r.data, updatedAt: new Date() }).where(eq(orders.id, orderId));
+  revalidar(orderId);
+  return { codigo: r.data };
 }

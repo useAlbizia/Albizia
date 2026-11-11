@@ -54,15 +54,36 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
   const sp = await props.searchParams;
   const um = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
   const filtro = { mes: um(sp.mes), tipo: um(sp.tipo), socioId: um(sp.socio) };
-  const mostrar = um(sp.mostrar); // "" | lancados | automaticos
+  // Padrão: só o que foi lançado à mão. Vendas, taxas e etiquetas de cada
+  // pedido entram somadas no resumo do mês; uma a uma, só pelo filtro.
+  const mostrar = um(sp.mostrar); // "" (lançados) | automaticos | tudo
+  const hojeIso = isoDay(new Date());
+  const mesResumo = /^\d{4}-\d{2}$/.test(filtro.mes) ? filtro.mes : hojeIso.slice(0, 7);
 
-  const [socios, rows, autos, eu, contas] = await Promise.all([
+  const verAutos = mostrar === "automaticos" || mostrar === "tudo";
+  const [socios, rows, autos, eu, contas, autosMes, rowsMes] = await Promise.all([
     listarSocios(),
     mostrar === "automaticos" ? Promise.resolve([]) : listarLancamentos(filtro),
-    mostrar === "lancados" || filtro.socioId ? Promise.resolve([] as LinhaAutomatica[]) : listarAutomaticos(filtro),
+    !verAutos || filtro.socioId ? Promise.resolve([] as LinhaAutomatica[]) : listarAutomaticos(filtro),
     socioPorEmail(user.email),
     contasAPagar(),
+    listarAutomaticos({ mes: mesResumo }),
+    listarLancamentos({ mes: mesResumo }),
   ]);
+  // Resumo do mês: o "total geral" da empresa no mês, em quatro linhas.
+  const vendasMes = autosMes.filter((a) => a.tipo === "receita");
+  const custosAutoMes = autosMes.filter((a) => a.tipo === "despesa").reduce((n, a) => n + a.valorCents, 0);
+  const validos = rowsMes.filter((l) => l.aprovacao !== "contestado" && l.status === "pago");
+  const gastosMes = validos.filter((l) => l.tipo === "despesa").reduce((n, l) => n + l.valorCents, 0);
+  const entradasMes = validos.filter((l) => l.tipo === "receita").reduce((n, l) => n + l.valorCents, 0);
+  const vendasTotal = vendasMes.reduce((n, a) => n + a.valorCents, 0);
+  const resultadoMes = vendasTotal + entradasMes - custosAutoMes - gastosMes;
+  const mesVizinho = (n: number) => {
+    const [a, m] = mesResumo.split("-").map(Number);
+    const d = new Date(Date.UTC(a, m - 1 + n, 1));
+    return d.toISOString().slice(0, 7);
+  };
+  const nomeMesResumo = new Date(`${mesResumo}-15T12:00:00Z`).toLocaleDateString("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" });
   const ativos = socios.filter((s) => s.ativo).map((s) => ({ id: s.id, nome: s.nome }));
   const nome = (id: string | null | undefined) => socios.find((s) => s.id === id)?.nome.split(" ")[0] ?? "";
   const hoje = isoDay(new Date());
@@ -152,6 +173,40 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
         hoje={hoje}
       />
 
+      <section className="border-[1.5px] border-content px-4 py-4 sm:px-5">
+        <div className="flex items-center justify-between gap-2">
+          <Link href={`/admin/lancamentos?mes=${mesVizinho(-1)}`} className="btn-sec px-3!" aria-label="Mês anterior">‹</Link>
+          <p className="text-center text-[13px] font-semibold uppercase tracking-[0.14em] capitalize">{nomeMesResumo}</p>
+          <Link href={`/admin/lancamentos?mes=${mesVizinho(1)}`} className="btn-sec px-3!" aria-label="Próximo mês">›</Link>
+        </div>
+        <dl className="mt-4 grid grid-cols-[1fr_auto] gap-x-4 gap-y-2 text-[14px]">
+          <dt>Vendas do site ({vendasMes.length})</dt>
+          <dd className="text-right">{brl(vendasTotal)}</dd>
+          {entradasMes > 0 && (
+            <>
+              <dt>Outras entradas</dt>
+              <dd className="text-right">{brl(entradasMes)}</dd>
+            </>
+          )}
+          <dt className="text-content/75">Taxas, frete e estornos</dt>
+          <dd className="text-right text-content/75">− {brl(custosAutoMes)}</dd>
+          <dt className="text-content/75">Gastos lançados</dt>
+          <dd className="text-right text-content/75">− {brl(gastosMes)}</dd>
+          <dt className="border-t-[1.5px] border-content pt-2 font-semibold">Resultado do mês</dt>
+          <dd className="border-t-[1.5px] border-content pt-2 text-right text-[17px] font-semibold">
+            {resultadoMes < 0 ? "− " : ""}
+            {brl(Math.abs(resultadoMes))}
+          </dd>
+        </dl>
+        <p className="mt-3 text-[12px] leading-relaxed text-content/60">
+          Dinheiro que entrou e saiu no mês. Lucro com custo das peças e DAS fica em{" "}
+          <Link href="/admin/fechamento" className="underline underline-offset-4">Fechamento do mês</Link>.{" "}
+          <Link href={`/admin/lancamentos?mes=${mesResumo}&mostrar=automaticos`} className="underline underline-offset-4">
+            Ver vendas uma a uma
+          </Link>
+        </p>
+      </section>
+
       <section>
         <details className="mb-4" open={filtrando}>
           <summary className="btn-sec cursor-pointer list-none">Filtrar</summary>
@@ -174,9 +229,9 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
               ))}
             </select>
             <select name="mostrar" defaultValue={mostrar} className={sel} aria-label="Mostrar">
-              <option value="">Lançados e automáticos</option>
-              <option value="lancados">Só lançados à mão</option>
-              <option value="automaticos">Só automáticos</option>
+              <option value="">Lançados à mão</option>
+              <option value="automaticos">Vendas, taxas e etiquetas (uma a uma)</option>
+              <option value="tudo">Tudo junto</option>
             </select>
             <div className="flex gap-2 sm:col-span-2">
               <button type="submit" className="flex-1 border border-content py-2.5 text-[12px] uppercase tracking-[0.15em]">
@@ -192,10 +247,27 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
         </details>
 
         <ul className="divide-y divide-content/10 border-y border-content/10">
-          {itens.map((it) => {
+          {itens.map((it, idx) => {
+            // Cabeçalho do dia quando a data muda: Hoje, Ontem, qua 05/11.
+            const dia = it.data;
+            const novoDia = idx === 0 || itens[idx - 1].data !== dia;
+            const ontemIso = isoDay(new Date(Date.now() - 86_400_000));
+            const rotuloDia =
+              dia === hojeIso
+                ? "Hoje"
+                : dia === ontemIso
+                  ? "Ontem"
+                  : new Date(`${dia}T12:00:00Z`)
+                      .toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit", timeZone: "UTC" })
+                      .replace(".", "");
+            const cabecalho = novoDia ? (
+              <li key={`dia-${dia}`} className="bg-content/[0.06] px-2 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                {rotuloDia}
+              </li>
+            ) : null;
             if (it.k === "auto") {
               const a = it.a;
-              return (
+              return [cabecalho,
                 <li key={a.id} className="flex items-start justify-between gap-3 py-3.5">
                   <div className="min-w-0">
                     <p className="truncate text-[15px]">{a.descricao}</p>
@@ -210,8 +282,8 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                   <p className="shrink-0 text-[15px]">
                     {a.tipo === "receita" ? "+" : "−"} {brl(a.valorCents)}
                   </p>
-                </li>
-              );
+                </li>,
+              ];
             }
             const linhas = it.linhas;
             const l = linhas[0];
@@ -238,7 +310,7 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
             // Com filtro de mês chega só a parcela daquele mês: aí o cartão
             // fala dela, sem fingir total e contagem da compra inteira.
             const completo = !parcelado || linhas.length >= n;
-            return (
+            return [cabecalho,
               <li key={chave} className="py-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -319,8 +391,8 @@ export default async function LancamentosPage(props: PageProps<"/admin/lancament
                   {l.grupoId && completo && <AjustarVencimento grupoId={l.grupoId} atual={linhas[0].data} />}
                   <LancamentoAcoes id={l.id} parcelado={!!l.grupoId} descricao={l.descricao} />
                 </div>
-              </li>
-            );
+              </li>,
+            ];
           })}
         </ul>
         {itens.length === 0 && (

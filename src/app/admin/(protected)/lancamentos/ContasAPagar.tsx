@@ -136,7 +136,9 @@ export function ContasAPagar({ contas, hoje }: { contas: Conta[]; hoje: string }
         {aba === "atrasadas" && <Lista contas={atrasadas} hoje={hoje} vazio="Nenhuma conta atrasada." />}
         {aba === "hoje" && <Lista contas={deHoje} hoje={hoje} vazio="Nada vence hoje." />}
         {aba === "calendario" && (
-          <div className="pt-3">
+          // Tamanho de calendário de verdade: no computador não estica até a
+          // largura da tela (cada dia virava um quadrado enorme).
+          <div className="mx-auto max-w-sm pt-3">
             <div className="mb-2 flex items-center justify-between">
               <button type="button" onClick={() => mudarMes(-1)} className="btn-sec px-3!" aria-label="Mês anterior">
                 ‹
@@ -169,7 +171,7 @@ export function ContasAPagar({ contas, hoje }: { contas: Conta[]; hoje: string }
                     key={d}
                     type="button"
                     onClick={() => setDia(cs.length ? d : null)}
-                    className={`relative flex aspect-square flex-col items-center justify-center text-[14px] ${
+                    className={`relative flex h-11 flex-col items-center justify-center rounded-sm text-[14px] ${
                       sel ? "bg-content text-surface" : d === hoje ? "border-[1.5px] border-content" : ""
                     } ${cs.length ? "font-semibold" : "text-content/60"}`}
                     aria-label={cs.length ? `Dia ${n}: ${cs.length} conta(s)` : `Dia ${n}`}

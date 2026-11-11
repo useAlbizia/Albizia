@@ -108,7 +108,7 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
       </div>
 
       <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-        <div>
+        <div className="min-w-0">
           <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-content/50">Cliente</p>
           <p className="text-sm">{order.customerName}</p>
           <p className="text-sm text-content/60">{order.customerPhone}</p>
@@ -119,7 +119,7 @@ export default async function PedidoDetailPage(props: PageProps<"/admin/pedidos/
           />
         </div>
 
-        <div>
+        <div className="min-w-0">
           <p className="mb-2 text-[11px] uppercase tracking-[0.2em] text-content/50">Entrega</p>
           <p className="text-sm text-content/60">
             {address.street}, {address.number}

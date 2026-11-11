@@ -12,19 +12,21 @@ export function EmailClienteForm({ orderId, email, pago }: { orderId: string; em
 
   return (
     <form action={action} className="mt-3 flex flex-col gap-2">
-      <div className="flex flex-col gap-2 sm:flex-row">
+      {/* Um embaixo do outro: lado a lado, a caixa não encolhia e empurrava o
+          botão para cima do endereço de entrega, na coluna ao lado. */}
+      <div className="flex min-w-0 flex-col gap-2">
         <input
           name="email"
           type="email"
           defaultValue={email}
           required
           autoComplete="off"
-          className="flex-1 border border-content/30 bg-transparent px-3 py-2 text-sm outline-none focus:border-content"
+          className="w-full min-w-0 border border-content/40 bg-transparent px-3 py-2 text-[16px] outline-none focus:border-content sm:text-sm"
         />
         <button
           type="submit"
           disabled={pending}
-          className="shrink-0 border border-content/40 px-4 py-2 text-[11px] uppercase tracking-[0.15em] transition-colors hover:border-content disabled:opacity-50"
+          className="btn-sec self-start"
         >
           {pending ? "..." : "Corrigir e-mail"}
         </button>

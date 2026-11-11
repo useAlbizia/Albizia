@@ -354,3 +354,26 @@ export async function meRastrear(
   }
   return { ok: true, data: saida };
 }
+
+/**
+ * O código de rastreio de um envio. O Melhor Envio devolve o código dos
+ * Correios ou da transportadora em `tracking` assim que a etiqueta é gerada
+ * (às vezes alguns minutos depois); `self_tracking` é o código do próprio
+ * Melhor Envio, que também rastreia, e serve de reserva.
+ */
+export async function meRastreio(
+  token: string,
+  env: string | null | undefined,
+  meOrderId: string,
+): Promise<MeCall<string>> {
+  const r = await meCall<{ tracking?: string | null; self_tracking?: string | null }>({
+    token,
+    env,
+    method: "GET",
+    path: `/api/v2/me/orders/${encodeURIComponent(meOrderId)}`,
+  });
+  if (!r.ok) return r;
+  const codigo = (r.data?.tracking || r.data?.self_tracking || "").trim();
+  if (!codigo) return { ok: false, message: "O Melhor Envio ainda não liberou o código. Tente de novo em alguns minutos." };
+  return { ok: true, data: codigo };
+}

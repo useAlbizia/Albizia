@@ -113,7 +113,12 @@ export function CapitalSocios({
                 <span className="text-[15px]">{brl(l.capital)}</span>
               </div>
               <div className="relative h-3 w-full rounded-full bg-content/10">
-                <div className="absolute inset-y-0 left-0 rounded-full bg-content" style={{ width: pct(l.capital) }} />
+                {/* Vermelho: falta colocar até a parte justa. É a única cor do
+                    painel, de propósito: chama o olho para quem precisa agir. */}
+                <div
+                  className={`absolute inset-y-0 left-0 rounded-full ${dif < 0 ? "bg-red-600 dark:bg-red-500" : "bg-content"}`}
+                  style={{ width: pct(l.capital) }}
+                />
                 {(l.pendente ?? 0) > 0 && (
                   <div
                     className="absolute inset-y-0 rounded-r-full bg-content/30"
@@ -122,14 +127,14 @@ export function CapitalSocios({
                 )}
                 <div className="absolute -top-1.5 h-6 w-[3px] rounded-full bg-content" style={{ left: `calc(${pct(l.parteJusta)} - 1px)` }} aria-hidden="true" />
               </div>
-              <p className="mt-1.5 text-[12px] text-content/65">
+              <p className={`mt-1.5 text-[12px] ${dif < 0 ? "font-semibold text-red-700 dark:text-red-400" : "text-content/65"}`}>
                 {l.capital === 0 && l.parteJusta === 0
                   ? "Nada aprovado ainda"
                   : dif === 0
                     ? "Equilibrado"
                     : dif > 0
                       ? `Colocou ${brl(dif)} a mais: tem a receber`
-                      : `Está ${brl(-dif)} abaixo da parte dele`}
+                      : `Falta colocar ${brl(-dif)} para chegar à parte dele`}
                 {(l.pendente ?? 0) > 0 && ` · ${brl(l.pendente ?? 0)} esperando aprovação`}
               </p>
             </div>
@@ -137,8 +142,8 @@ export function CapitalSocios({
         })}
       </div>
       <p className="mt-4 text-[11px] leading-relaxed text-content/50">
-        O traço é a parte justa de cada um. Barra passando do traço: colocou a mais. Barra antes do traço: falta
-        colocar.{algumPendente ? " A parte clara é o que foi lançado e ainda espera aprovação." : ""}
+        O traço é a parte justa de cada um. Barra passando do traço: colocou a mais. Barra vermelha, antes do
+        traço: falta colocar.{algumPendente ? " A parte clara é o que foi lançado e ainda espera aprovação." : ""}
       </p>
     </figure>
   );

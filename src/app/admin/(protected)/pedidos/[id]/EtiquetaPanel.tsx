@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import {
   avisarRastreio,
+  buscarRastreio,
   cancelarEtiqueta,
   comprarEtiqueta,
   linkDeclaracao,
@@ -180,15 +181,18 @@ export function EtiquetaPanel({ info }: { info: EtiquetaInfo }) {
                   name="codigo"
                   defaultValue={info.trackingCode ?? ""}
                   placeholder="Código de rastreio da etiqueta"
-                  className="flex-1 border border-content/30 bg-transparent px-4 py-2.5 text-sm outline-none focus:border-content"
+                  className="w-full min-w-0 flex-1 border border-content/40 bg-transparent px-4 py-2.5 text-[16px] outline-none focus:border-content sm:text-sm"
                 />
                 <button type="submit" disabled={avisando} className={botao}>
                   {avisando ? "..." : "Marcar enviado e avisar"}
                 </button>
               </div>
-              <p className="mt-2 text-[11px] text-content/40">
-                O cliente recebe um e-mail com botão de rastrear, não só o código solto.
+              <p className="mt-2 text-[11px] text-content/55">
+                {info.trackingCode
+                  ? "Código preenchido sozinho pelo Melhor Envio. O cliente recebe um e-mail com botão de rastrear."
+                  : "O código vem sozinho do Melhor Envio. Se ainda não apareceu, toque em Buscar código."}
               </p>
+              {!info.trackingCode && <BuscarRastreio orderId={info.orderId} />}
             </form>
           )}
 
@@ -200,6 +204,30 @@ export function EtiquetaPanel({ info }: { info: EtiquetaInfo }) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/** Busca o código de rastreio no Melhor Envio quando ele ainda não veio. */
+function BuscarRastreio({ orderId }: { orderId: string }) {
+  const [msg, setMsg] = useState("");
+  const [pending, start] = useTransition();
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() =>
+          start(async () => {
+            const r = await buscarRastreio(orderId);
+            setMsg(r.codigo ? `Código encontrado: ${r.codigo}` : (r.error ?? ""));
+          })
+        }
+        className="btn-sec"
+      >
+        {pending ? "Buscando..." : "Buscar código"}
+      </button>
+      {msg && <span className="text-[12px] text-content/75">{msg}</span>}
     </div>
   );
 }
