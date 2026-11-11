@@ -98,11 +98,15 @@ export default async function SociosPage() {
       )}
 
       {/* 3. Os três números da empresa */}
-      <section className="grid grid-cols-3 gap-px border border-content/15 bg-content/15">
+      {/* "Ainda a pagar" são as parcelas e contas fixas que vão vencer: já são
+          compromisso, mas o dinheiro ainda não saiu, então não entram no
+          capital de ninguém até cada um tocar em Pagar. */}
+      <section className="grid grid-cols-2 gap-px border border-content/15 bg-content/15 sm:grid-cols-4">
         {[
           { t: "Caixa da empresa", v: caixa.saldoCents },
           { t: "Sócios colocaram", v: resumo.capitalTotalCents },
           { t: "Gasto total", v: resumo.despesasTotalCents },
+          { t: "Ainda a pagar", v: resumo.previsto.totalCents },
         ].map((c) => (
           <div key={c.t} className="bg-surface px-3 py-3 sm:px-5">
             <p className="text-[10px] uppercase tracking-[0.12em] text-content/50">{c.t}</p>
