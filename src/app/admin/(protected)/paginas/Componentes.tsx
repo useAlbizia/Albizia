@@ -92,7 +92,7 @@ export function FormPagina(props: {
       </div>
       <p className="text-[12px] leading-relaxed text-content/60">
         A página só aparece com o olho <strong>ligado</strong>. Com datas, ela também respeita o período: ligada e com
-        "01/05 a 10/05", aparece no dia 1º e some depois do dia 10, sozinha.
+        &quot;01/05 a 10/05&quot;, aparece no dia 1º e some depois do dia 10, sozinha.
       </p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending} className="bg-content px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-surface disabled:opacity-50">

@@ -260,6 +260,13 @@
       "when": 1794492294970,
       "tag": "0036_famous_the_twelve",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1794492517042,
+      "tag": "0037_absent_inhumans",
+      "breakpoints": true
     }
   ]
 }

@@ -538,6 +538,24 @@ export const pushInscricoes = pgTable("push_inscricoes", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Campanhas de frete por região (lib/campanhas.ts tem a conta).
+export const campanhasFrete = pgTable("campanhas_frete", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  ativo: boolean("ativo").notNull().default(true),
+  inicio: date("inicio", { mode: "string" }),
+  fim: date("fim", { mode: "string" }),
+  // uf | cep
+  tipo: text("tipo").notNull(),
+  ufs: jsonb("ufs").$type<string[]>().notNull().default([]),
+  cepInicio: text("cep_inicio").notNull().default(""),
+  cepFim: text("cep_fim").notNull().default(""),
+  acao: text("acao").notNull(),
+  valor: integer("valor").notNull().default(0),
+  minimoCents: integer("minimo_cents").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Páginas especiais (Dia das Mães, Black Friday, Natal): montadas uma vez e
 // ligadas/desligadas pelo "olho" no painel, ou sozinhas por período. Ficam
 // em /especial/<slug>. `produtos` são slugs dos produtos em destaque.

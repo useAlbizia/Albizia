@@ -320,9 +320,12 @@ export function CheckoutClient({
                           ? "prazo informado pela transportadora"
                           : `até ${o.deliveryDays} ${o.deliveryDays === 1 ? "dia útil" : "dias úteis"}`}
                       </span>
+                      {o.campanha && (
+                        <span className="mt-0.5 block text-[12px] font-semibold text-content">Promoção: {o.campanha}</span>
+                      )}
                     </span>
                   </span>
-                  <span className="shrink-0">{money(o.priceCents / 100)}</span>
+                  <span className="shrink-0 font-medium">{o.priceCents === 0 ? "Grátis" : money(o.priceCents / 100)}</span>
                 </label>
               );
             })}

@@ -19,6 +19,8 @@ export type ShippingOption = {
   company: string; // "Correios", "Jadlog"
   priceCents: number;
   deliveryDays: number | null;
+  /** Nome da campanha de frete que baixou o preço (para o checkout mostrar). */
+  campanha?: string | null;
 };
 
 export function computeShipping(

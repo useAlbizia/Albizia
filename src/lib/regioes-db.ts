@@ -1,8 +1,18 @@
 import "server-only";
 import { and, asc, eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
-import { orders, regrasPrazo, retiradaConfig } from "@/lib/db/schema";
+import { campanhasFrete, orders, regrasPrazo, retiradaConfig } from "@/lib/db/schema";
+import type { Campanha } from "@/lib/campanhas";
 import { NOME_UF, prazoExtra, ufDoCep, type RegraPrazo } from "@/lib/regioes";
+
+/** Campanhas de frete ativas (o período é conferido na conta). Nunca falha. */
+export async function campanhasAtivas(): Promise<Campanha[]> {
+  try {
+    return (await db.select().from(campanhasFrete).where(eq(campanhasFrete.ativo, true))) as Campanha[];
+  } catch {
+    return [];
+  }
+}
 
 export async function listarRegrasPrazo() {
   try {

@@ -1,5 +1,7 @@
 import "server-only";
-import { diasExtraPara, ID_RETIRADA, opcaoRetirada } from "@/lib/regioes-db";
+import { campanhasAtivas, diasExtraPara, ID_RETIRADA, opcaoRetirada } from "@/lib/regioes-db";
+import { aplicarCampanhas } from "@/lib/campanhas";
+import { isoDay } from "@/lib/format";
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { siteSettings } from "./db/schema";
@@ -301,16 +303,23 @@ export async function quoteMelhorEnvio(
     }>;
     // Prazo extra por região (painel: Entrega e frete > Prazo por região),
     // somado ao prazo da transportadora no que o cliente vê.
-    const extra = await diasExtraPara(to);
+    const [extra, campanhas] = await Promise.all([diasExtraPara(to), campanhasAtivas()]);
+    const hoje = isoDay(new Date());
     return data
       .filter((o) => !o.error && o.price)
-      .map((o) => ({
-        id: o.id,
-        name: o.name,
-        company: o.company?.name ?? "",
-        priceCents: Math.round(parseFloat(o.price) * 100),
-        deliveryDays: o.delivery_time != null ? o.delivery_time + extra : null,
-      }))
+      .map((o) => {
+        // Campanha de frete por região (painel: Campanhas por região). O
+        // valor que o cliente paga já sai daqui, e é o mesmo que o pedido grava.
+        const c = aplicarCampanhas(Math.round(parseFloat(o.price) * 100), to, segurado, campanhas, hoje);
+        return {
+          id: o.id,
+          name: o.name,
+          company: o.company?.name ?? "",
+          priceCents: c.precoCents,
+          deliveryDays: o.delivery_time != null ? o.delivery_time + extra : null,
+          campanha: c.campanha,
+        };
+      })
       .sort((a, b) => a.priceCents - b.priceCents);
   } catch (err) {
     console.error("Melhor Envio quote error", err);

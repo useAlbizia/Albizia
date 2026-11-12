@@ -303,6 +303,30 @@ export default function ManualPage() {
           </p>
         </Tarefa>
 
+        <Tarefa titulo="Campanhas de frete por região">
+          <p>
+            <Link href="/admin/campanhas" className={link}>Campanhas por região</Link>: frete grátis, desconto ou acréscimo
+            no frete para estados, regiões inteiras (botões Norte, Sul...) ou faixa de CEP, com compra mínima e período
+            opcionais. O preço já sai certo no checkout, e o cliente vê o nome da campanha quando é desconto.
+          </p>
+        </Tarefa>
+
+        <Tarefa titulo="Páginas para datas comemorativas">
+          <p>
+            <Link href="/admin/paginas" className={link}>Páginas especiais</Link>: monte a página (capa, texto, produtos)
+            uma vez e use o olho para ligar e desligar. Com período, ela liga e desliga sozinha. Desligada, só quem
+            administra vê (prévia). Para o cliente chegar nela, coloque o link no Menu da loja, num banner ou no Instagram.
+          </p>
+        </Tarefa>
+
+        <Tarefa titulo="Aviso de pedido a caminho na loja">
+          <p>
+            Quem tem pedido enviado nos últimos 20 dias vê, ao entrar na loja, um aviso pequeno no canto: &quot;Seu pedido
+            está a caminho&quot;, com o botão de rastrear. Funciona para quem está logado ou para quem comprou naquele
+            aparelho. Não precisa configurar nada.
+          </p>
+        </Tarefa>
+
         <Tarefa titulo="Algo travou ou deu erro">
           <p>
             Abra <Link href="/admin/erros" className={link}>Erros do sistema</Link>. Tudo que dá erro, no servidor ou no
