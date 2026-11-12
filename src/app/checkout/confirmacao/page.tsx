@@ -13,7 +13,7 @@ export default async function ConfirmacaoPage(props: PageProps<"/checkout/confir
 
   return (
     <section className="mx-auto flex min-h-[70vh] max-w-xl flex-col items-center justify-center px-6 text-center">
-      <LimparCarrinho />
+      <LimparCarrinho numero={recibo?.orderNumber} email={recibo?.customerEmail} />
 
       <Symbol className="h-10 w-10" />
       <h1 className="mt-8 text-sm uppercase tracking-[0.3em] text-content/60">Pedido recebido</h1>
