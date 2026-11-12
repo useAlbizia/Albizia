@@ -49,6 +49,7 @@ const GROUPS: Group[] = [
       { href: "/admin/cupons", label: "Cupons" },
       { href: "/admin/avaliacoes", label: "Avaliações" },
       { href: "/admin/banners", label: "Banners" },
+      { href: "/admin/paginas", label: "Páginas especiais" },
       { href: "/admin/marketing", label: "Marketing" },
     ],
   },

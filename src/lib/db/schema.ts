@@ -538,6 +538,24 @@ export const pushInscricoes = pgTable("push_inscricoes", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Páginas especiais (Dia das Mães, Black Friday, Natal): montadas uma vez e
+// ligadas/desligadas pelo "olho" no painel, ou sozinhas por período. Ficam
+// em /especial/<slug>. `produtos` são slugs dos produtos em destaque.
+export const paginasEspeciais = pgTable("paginas_especiais", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  slug: text("slug").notNull().unique(),
+  titulo: text("titulo").notNull(),
+  subtitulo: text("subtitulo").notNull().default(""),
+  texto: text("texto").notNull().default(""),
+  imagemUrl: text("imagem_url").notNull().default(""),
+  produtos: jsonb("produtos").$type<string[]>().notNull().default([]),
+  ativo: boolean("ativo").notNull().default(false),
+  inicio: date("inicio", { mode: "string" }),
+  fim: date("fim", { mode: "string" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Guia de tamanhos editável no painel, um por MODELO (vale para todas as
 // cores). Colunas e linhas em JSON: ["Tamanho","Largura","Comprimento"] e
 // [["P","50 cm","70 cm"], ...].
