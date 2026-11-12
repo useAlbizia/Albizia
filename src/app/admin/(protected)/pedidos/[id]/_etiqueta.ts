@@ -227,6 +227,30 @@ export async function comprarEtiqueta(
   };
 }
 
+/**
+ * Um clique só: prepara (se ainda não estiver preparado), compra com o saldo
+ * da Melhor Carteira, gera e devolve o PDF com o rastreio.
+ *
+ * POR QUE: eram dois botões (Preparar e Comprar e gerar). O Jair clicou no
+ * primeiro, viu "envio aceito" e foi terminar no site do Melhor Envio,
+ * achando que o painel não emitia. Ninguém precisa abrir o Melhor Envio.
+ */
+export async function emitirEtiqueta(
+  orderId: string,
+  _prev: EtiquetaState,
+  formData: FormData,
+): Promise<EtiquetaState> {
+  await requireAdmin();
+  const atual = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
+  if (!atual) return { error: "Pedido não encontrado." };
+  if (atual.meStatus === "generated") return { error: "A etiqueta deste pedido já foi gerada." };
+  if (atual.meStatus !== "cart") {
+    const prep = await prepararEtiqueta(orderId, {}, formData);
+    if (prep.error) return prep;
+  }
+  return comprarEtiqueta(orderId, {}, formData);
+}
+
 export async function cancelarEtiqueta(
   orderId: string,
   _prev: EtiquetaState,

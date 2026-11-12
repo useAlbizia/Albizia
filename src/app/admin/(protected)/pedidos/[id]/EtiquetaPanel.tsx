@@ -5,7 +5,7 @@ import {
   avisarRastreio,
   buscarRastreio,
   cancelarEtiqueta,
-  comprarEtiqueta,
+  emitirEtiqueta,
   linkDeclaracao,
   prepararEtiqueta,
   type EtiquetaState,
@@ -46,8 +46,8 @@ function Aviso({ state }: { state: EtiquetaState }) {
 }
 
 export function EtiquetaPanel({ info }: { info: EtiquetaInfo }) {
-  const [prep, prepAction, prepando] = useActionState(prepararEtiqueta.bind(null, info.orderId), vazio);
-  const [comp, compAction, comprando] = useActionState(comprarEtiqueta.bind(null, info.orderId), vazio);
+  const [prep] = useActionState(prepararEtiqueta.bind(null, info.orderId), vazio);
+  const [comp, compAction, comprando] = useActionState(emitirEtiqueta.bind(null, info.orderId), vazio);
   const [canc, cancAction, cancelando] = useActionState(cancelarEtiqueta.bind(null, info.orderId), vazio);
   const [rast, rastAction, avisando] = useActionState(avisarRastreio.bind(null, info.orderId), vazio);
 
@@ -100,30 +100,36 @@ export function EtiquetaPanel({ info }: { info: EtiquetaInfo }) {
             </div>
           </div>
 
-          {!info.meStatus || info.meStatus === "canceled" ? (
-            <form action={prepAction} className="mt-5 flex flex-wrap items-center gap-4">
-              <button type="submit" disabled={prepando} className={botao}>
-                {prepando ? "Conferindo..." : "Preparar etiqueta"}
-              </button>
-              <span className="text-[11px] text-content/40">
-                Não cobra nada. Só confere se o Melhor Envio aceita e mostra o preço.
+          {/* Um botão só: prepara, compra, gera o PDF e traz o rastreio. Não
+              precisa abrir o site do Melhor Envio. */}
+          {(!info.meStatus || info.meStatus === "canceled" || noCarrinho) && (
+            <div className="mt-5 flex flex-col gap-2">
+              <form
+                action={compAction}
+                onSubmit={(e) => {
+                  // O Descartar está no mesmo formulário: não pergunta de compra.
+                  const quem = (e.nativeEvent as SubmitEvent).submitter as HTMLElement | null;
+                  if (quem?.dataset.acao === "descartar") return;
+                  const valor = info.custo ?? info.freteCobrado;
+                  if (!confirm(`Comprar a etiqueta ${info.servico ?? ""} agora? Vai debitar cerca de ${valor} do saldo da Carteira do Melhor Envio.`)) {
+                    e.preventDefault();
+                  }
+                }}
+                className="flex flex-wrap items-center gap-3"
+              >
+                <button type="submit" disabled={comprando} className="bg-content px-5 py-3 text-[12px] uppercase tracking-[0.15em] text-surface disabled:opacity-50">
+                  {comprando ? "Comprando e gerando..." : `Comprar e gerar etiqueta${info.custo ? ` · ${info.custo}` : ""}`}
+                </button>
+                {noCarrinho && (
+                  <button type="submit" formAction={cancAction} data-acao="descartar" disabled={cancelando} className={botaoFraco}>
+                    {cancelando ? "..." : "Descartar"}
+                  </button>
+                )}
+              </form>
+              <span className="text-[12px] text-content/60">
+                Um clique: compra com o saldo da Carteira do Melhor Envio, gera o PDF para imprimir e já traz o código de
+                rastreio. Não precisa abrir o site do Melhor Envio. Precisa ter saldo na Carteira.
               </span>
-            </form>
-          ) : null}
-
-          {noCarrinho && (
-            <div className="mt-5 flex flex-wrap items-center gap-3">
-              <form action={compAction}>
-                <button type="submit" disabled={comprando} className={botao}>
-                  {comprando ? "Comprando..." : `Comprar e gerar${info.custo ? ` · ${info.custo}` : ""}`}
-                </button>
-              </form>
-              <form action={cancAction}>
-                <button type="submit" disabled={cancelando} className={botaoFraco}>
-                  {cancelando ? "..." : "Descartar"}
-                </button>
-              </form>
-              <span className="text-[11px] text-content/40">Comprar debita da Melhor Carteira.</span>
             </div>
           )}
 
