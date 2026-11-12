@@ -13,7 +13,15 @@ export type CartItem = {
   quantity: number;
   /** First product photo URL, for the cart thumbnail (optional). */
   image?: string;
+  /** Estoque do tamanho quando foi adicionado: o carrinho não deixa passar
+   * disso (antes dava para pôr quantas quisesse e a compra falhava depois). */
+  estoque?: number;
 };
+
+/** Quantidade dentro do estoque conhecido (sem estoque informado, sem limite). */
+export function limitarAoEstoque(item: Pick<CartItem, "estoque">, quantidade: number): number {
+  return item.estoque != null && item.estoque > 0 ? Math.min(quantidade, item.estoque) : quantidade;
+}
 
 type CartContextValue = {
   items: CartItem[];
@@ -60,7 +68,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing) {
         return prev.map((i) =>
           i.slug === item.slug && i.size === item.size
-            ? { ...i, quantity: i.quantity + item.quantity }
+            ? { ...i, estoque: item.estoque ?? i.estoque, quantity: limitarAoEstoque({ estoque: item.estoque ?? i.estoque }, i.quantity + item.quantity) }
             : i
         );
       }
@@ -77,7 +85,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) =>
       quantity <= 0
         ? prev.filter((i) => !(i.slug === slug && i.size === size))
-        : prev.map((i) => (i.slug === slug && i.size === size ? { ...i, quantity } : i))
+        : prev.map((i) => (i.slug === slug && i.size === size ? { ...i, quantity: limitarAoEstoque(i, quantity) } : i))
     );
   }
 

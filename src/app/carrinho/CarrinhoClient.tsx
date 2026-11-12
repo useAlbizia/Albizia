@@ -102,12 +102,17 @@ export function CarrinhoClient({ shipping }: { shipping: ShippingConfig }) {
                   <span className="min-w-[2ch] text-center text-sm">{item.quantity}</span>
                   <button
                     onClick={() => setQuantity(item.slug, item.size, item.quantity + 1)}
+                    disabled={item.estoque != null && item.quantity >= item.estoque}
+                    title={item.estoque != null && item.quantity >= item.estoque ? `Só temos ${item.estoque} em estoque` : undefined}
                     aria-label="Aumentar"
-                    className="px-3 py-1.5 text-content/60 transition-colors hover:text-content"
+                    className="px-3 py-1.5 text-content/60 transition-colors hover:text-content disabled:opacity-30"
                   >
                     +
                   </button>
                 </div>
+{item.estoque != null && item.quantity >= item.estoque && (
+  <p className="mt-1 text-[11px] text-content/70">Máximo em estoque: {item.estoque}</p>
+)}
                 <button
                   onClick={() => removeItem(item.slug, item.size)}
                   aria-label={`Remover ${item.name}`}

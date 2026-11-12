@@ -1,15 +1,17 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { createClient } from "@/lib/supabase/client";
 import { addProductImage, removeProductImage } from "../_actions";
+import { enviarFotoProduto } from "./_foto";
+import { reduzirImagem } from "@/lib/reduzir-imagem";
 
 type ImageRow = { id: string; url: string; role: string | null };
 
-const ROLES: { key: string; label: string }[] = [
-  { key: "studio", label: "Estúdio (capa)" },
-  { key: "lifestyle", label: "Lifestyle" },
-  { key: "detail", label: "Detalhe" },
+// O que é cada foto (dúvida do Jair: "o que seria lifestyle e detalhe?").
+const ROLES: { key: string; label: string; dica: string }[] = [
+  { key: "studio", label: "Capa (estúdio)", dica: "A foto principal: peça inteira, fundo liso. É a que aparece na vitrine." },
+  { key: "lifestyle", label: "Vestida (lifestyle)", dica: "A peça no corpo, num ambiente. Mostra caimento e estilo." },
+  { key: "detail", label: "Detalhe", dica: "De perto: estampa, autorrelevo, tecido, etiqueta." },
 ];
 
 export function ImageUploader({
@@ -30,21 +32,17 @@ export function ImageUploader({
     setError(null);
     setUploadingRole(role);
     try {
-      const supabase = createClient();
-      const ext = file.name.split(".").pop() ?? "jpg";
-      // Runs only inside this event handler (file input onChange), never
-      // during render — safe despite the impure-function lint heuristic.
-      // eslint-disable-next-line react-hooks/purity
-      const path = `${slug}/${role}-${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("product-images")
-        .upload(path, file, { upsert: true });
-      if (uploadError) throw uploadError;
-
-      const {
-        data: { publicUrl },
-      } = supabase.storage.from("product-images").getPublicUrl(path);
+      // Reduz no aparelho (foto de celular passa do limite de envio) e
+      // grava pelo servidor (o envio direto era barrado pela segurança do
+      // armazenamento para quem não fosse o Nilson).
+      const menor = await reduzirImagem(file);
+      const fd = new FormData();
+      fd.append("foto", menor);
+      fd.append("slug", slug);
+      fd.append("papel", role);
+      const r = await enviarFotoProduto(fd);
+      if (!r.url) throw new Error(r.erro ?? "Falha no envio.");
+      const publicUrl = r.url;
 
       const existing = current.find((img) => img.role === role);
 
@@ -66,7 +64,7 @@ export function ImageUploader({
   }
 
   return (
-    <div className="grid grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       {ROLES.map(({ key, label }) => {
         const image = current.find((img) => img.role === key);
         return (
@@ -81,7 +79,8 @@ export function ImageUploader({
                 </div>
               )}
             </div>
-            <label className="cursor-pointer border border-content/30 px-2 py-2 text-center text-[11px] uppercase tracking-[0.1em] hover:border-content">
+            <p className="text-[11px] leading-snug text-content/65">{ROLES.find((r) => r.key === key)?.dica}</p>
+            <label className="btn-sec cursor-pointer text-center">
               {uploadingRole === key || pending ? "Enviando..." : label}
               <input
                 type="file"
@@ -97,7 +96,7 @@ export function ImageUploader({
           </div>
         );
       })}
-      {error && <p className="col-span-3 text-[12px] text-content/70">{error}</p>}
+      {error && <p className="col-span-3 text-[13px] font-semibold">{error}</p>}
     </div>
   );
 }

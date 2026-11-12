@@ -309,6 +309,8 @@ export const coupons = pgTable("coupons", {
   usedCount: integer("used_count").notNull().default(0),
   active: boolean("active").notNull().default(true),
   expiresAt: timestamp("expires_at", { withTimezone: true }),
+  // Cupom de boas-vindas: cada cliente (e-mail ou CPF) usa uma vez só.
+  umaVezPorCliente: boolean("uma_vez_por_cliente").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -534,6 +536,28 @@ export const pushInscricoes = pgTable("push_inscricoes", {
   auth: text("auth").notNull(),
   aparelho: text("aparelho").notNull().default(""),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Guia de tamanhos editável no painel, um por MODELO (vale para todas as
+// cores). Colunas e linhas em JSON: ["Tamanho","Largura","Comprimento"] e
+// [["P","50 cm","70 cm"], ...].
+export const guiasTamanho = pgTable("guias_tamanho", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  nome: text("nome").notNull(),
+  colunas: jsonb("colunas").$type<string[]>().notNull(),
+  linhas: jsonb("linhas").$type<string[][]>().notNull(),
+  observacao: text("observacao").notNull().default(""),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Qual guia cada produto usa. Tabela à parte para não mexer em products.
+export const produtoGuia = pgTable("produto_guia", {
+  productId: uuid("product_id")
+    .primaryKey()
+    .references(() => products.id, { onDelete: "cascade" }),
+  guiaId: uuid("guia_id")
+    .notNull()
+    .references(() => guiasTamanho.id, { onDelete: "cascade" }),
 });
 
 // Prazo extra de entrega por região, somado ao prazo que a transportadora

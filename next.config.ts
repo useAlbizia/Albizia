@@ -30,6 +30,12 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Fotos de banner e produto: o painel já reduz a imagem no aparelho antes de
+  // enviar, mas uma foto que o navegador não consiga reduzir ainda passa. O
+  // padrão (1 MB) quebrava a tela; 4 MB fica abaixo do teto da Vercel (4,5 MB).
+  experimental: {
+    serverActions: { bodySizeLimit: "4mb" },
+  },
   images: {
     remotePatterns: supabaseUrl
       ? [new URL(`${supabaseUrl}/storage/v1/object/public/product-images/**`)]

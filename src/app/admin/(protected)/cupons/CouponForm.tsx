@@ -39,17 +39,29 @@ export function CouponForm() {
         className={input}
       />
 
-      <div className="grid grid-cols-2 gap-3">
-        <input
-          name="maxUses"
-          type="number"
-          step="1"
-          min="1"
-          placeholder="Limite de usos (opcional)"
-          className={input}
-        />
-        <input name="expiresAt" type="date" className={input} title="Validade (opcional)" />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="flex flex-col gap-1 text-[13px]">
+          Limite total de usos (opcional)
+          <input name="maxUses" type="number" step="1" min="1" placeholder="Ex.: 10" className={input} />
+          <span className="text-[12px] leading-snug text-content/60">
+            Quantos pedidos pagos podem usar o cupom, somando todos os clientes. 10 = os 10 primeiros que comprarem.
+          </span>
+        </label>
+        <label className="flex flex-col gap-1 text-[13px]">
+          Válido até (opcional)
+          <input name="expiresAt" type="date" className={input} />
+          <span className="text-[12px] leading-snug text-content/60">Vale até 23h59 desse dia. No dia seguinte, deixa de valer sozinho.</span>
+        </label>
       </div>
+      <label className="flex items-start gap-3 text-[14px]">
+        <input type="checkbox" name="umaVezPorCliente" className="mt-1 h-5 w-5 accent-content" />
+        <span>
+          <strong>Uma vez por cliente</strong>
+          <span className="block text-[12px] text-content/60">
+            Cada e-mail ou CPF usa só uma vez. Ideal para cupom de boas-vindas.
+          </span>
+        </span>
+      </label>
 
       <div className="flex items-center gap-4">
         <button

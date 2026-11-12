@@ -1,7 +1,7 @@
 import "server-only";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { db } from "./db/client";
-import { coupons } from "./db/schema";
+import { coupons, orders } from "./db/schema";
 
 export function normalizeCode(code: string): string {
   return code.trim().toUpperCase();
@@ -16,7 +16,9 @@ export type CouponResult =
 // authoritative order creation call it, so they can never disagree.
 export async function validateCoupon(
   rawCode: string,
-  subtotalCents: number
+  subtotalCents: number,
+  /** No fechamento do pedido: para o cupom de uso único por cliente. */
+  cliente?: { email?: string; documento?: string }
 ): Promise<CouponResult> {
   const code = normalizeCode(rawCode);
   if (!code) return { ok: false, message: "Informe um cupom." };
@@ -29,6 +31,27 @@ export async function validateCoupon(
   }
   if (coupon.maxUses != null && coupon.usedCount >= coupon.maxUses) {
     return { ok: false, message: "Cupom esgotado." };
+  }
+  // Uso único por cliente: já existe pedido pago desse e-mail ou CPF com este
+  // cupom? (Pedido só pago conta: quem desistiu no pagamento pode tentar de novo.)
+  if (coupon.umaVezPorCliente && cliente && (cliente.email || cliente.documento)) {
+    const email = (cliente.email ?? "").trim().toLowerCase();
+    const doc = (cliente.documento ?? "").replace(/\D/g, "");
+    const [ja] = await db
+      .select({ id: orders.id })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.couponCode, coupon.code),
+          inArray(orders.status, ["paid", "shipped"]),
+          or(
+            email ? sql`lower(${orders.customerEmail}) = ${email}` : sql`false`,
+            doc.length >= 11 ? sql`regexp_replace(${orders.customerDocument}, '\\D', '', 'g') = ${doc}` : sql`false`,
+          ),
+        ),
+      )
+      .limit(1);
+    if (ja) return { ok: false, message: "Este cupom é de uso único e você já usou." };
   }
   if (subtotalCents < coupon.minSubtotalCents) {
     const min = (coupon.minSubtotalCents / 100).toLocaleString("pt-BR", {

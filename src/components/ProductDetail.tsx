@@ -5,15 +5,18 @@ import Link from "next/link";
 import type { Product, ColorOption } from "@/lib/products";
 import { useCart } from "@/lib/cart-context";
 import { ProductGallery } from "./ProductGallery";
-import { SizeGuide } from "./SizeGuide";
+import { SizeGuide, type TabelaGuia } from "./SizeGuide";
 import { track } from "@/lib/analytics-client";
 
 export function ProductDetail({
   product,
   colorOptions = [],
+  guia = null,
 }: {
   product: Product;
   colorOptions?: ColorOption[];
+  /** Guia de tamanhos do modelo, cadastrado no painel. */
+  guia?: TabelaGuia | null;
 }) {
   const inStock = product.variants.find((v) => v.stock > 0);
   const [size, setSize] = useState(inStock?.size ?? product.variants[0]?.size);
@@ -38,6 +41,7 @@ export function ProductDetail({
       variantId: selectedVariant.id,
       quantity: Math.min(qty, selectedVariant.stock),
       image: product.images[0]?.url,
+      estoque: selectedVariant.stock,
     });
     track({ type: "add_to_cart", productSlug: product.slug });
   }
@@ -87,7 +91,7 @@ export function ProductDetail({
         <div className="mt-10">
           <div className="mb-3 flex items-center justify-between">
             <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Tamanho</p>
-            <SizeGuide category={product.category} />
+            <SizeGuide category={product.category} tabela={guia} />
           </div>
           <div className="flex flex-wrap gap-2">
             {product.variants.map((v) => {
@@ -137,6 +141,12 @@ export function ProductDetail({
                 +
               </button>
             </div>
+            {/* Antes o + só parava, sem explicar (relato do Jair). */}
+            {qty >= maxQty && (
+              <p className="mt-2 text-[12px] text-content/70">
+                {maxQty === 1 ? "Só resta 1 peça" : `Só temos ${maxQty} peças`} deste tamanho em estoque.
+              </p>
+            )}
           </div>
         )}
 

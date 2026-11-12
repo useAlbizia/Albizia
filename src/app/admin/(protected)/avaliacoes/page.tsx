@@ -1,4 +1,5 @@
 import { desc, sql } from "drizzle-orm";
+import { BotaoExcluir } from "@/components/admin/BotaoExcluir";
 import { db } from "@/lib/db/client";
 import { reviews } from "@/lib/db/schema";
 import { Stars } from "@/components/Stars";
@@ -79,9 +80,7 @@ export default async function AvaliacoesPage() {
                 </form>
               )}
               <form action={deleteReview.bind(null, r.id)}>
-                <button className="btn-perigo">
-                  Excluir
-                </button>
+                <BotaoExcluir oQue="esta avaliação" />
               </form>
             </div>
           </div>

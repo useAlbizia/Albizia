@@ -1,0 +1,1 @@
+ALTER TABLE "coupons" ADD COLUMN "uma_vez_por_cliente" boolean DEFAULT false NOT NULL;

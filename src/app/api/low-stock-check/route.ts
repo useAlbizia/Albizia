@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { emailsDaEquipe } from "@/lib/destinatarios";
 import { getLowStockVariants } from "@/lib/metrics";
 import { getSiteSettings } from "@/lib/settings";
 import { sendEmail, emailShell } from "@/lib/email";
@@ -36,10 +37,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, low: 0, motivacao });
   }
 
-  const notify = (process.env.ORDER_NOTIFICATION_EMAIL ?? "")
-    .split(",")
-    .map((e) => e.trim())
-    .filter(Boolean);
+  const notify = await emailsDaEquipe();
 
   if (notify.length > 0) {
     const rows = low

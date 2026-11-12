@@ -1,6 +1,6 @@
 "use server";
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { opcaoRetirada } from "@/lib/regioes-db";
 import { z } from "zod";
 import { db } from "@/lib/db/client";
@@ -217,13 +217,30 @@ export async function createPendingOrder(
   let discountCents = 0;
   let couponCode: string | null = null;
   if (rawCoupon) {
-    const result = await validateCoupon(rawCoupon, subtotalCents);
+    const result = await validateCoupon(rawCoupon, subtotalCents, { email: data.email, documento: data.document });
     if (!result.ok) return { error: `Cupom: ${result.message}` };
     discountCents = result.discountCents;
     couponCode = result.code;
   }
 
   const totalCents = subtotalCents - discountCents + shippingCents;
+
+  // Cliente que volta e muda o carrinho gera um pedido novo. O pendente
+  // antigo do mesmo e-mail (ainda sem pagamento) é encerrado, senão a tela de
+  // Recuperação mostrava o carrinho velho, com o valor velho (relato do
+  // Jair). Só os das últimas 48 h e só os "aguardando pagamento".
+  await db
+    .update(orders)
+    .set({ status: "cancelled", updatedAt: new Date() })
+    .where(
+      and(
+        eq(orders.status, "pending"),
+        sql`lower(${orders.customerEmail}) = ${data.email.trim().toLowerCase()}`,
+        sql`${orders.createdAt} > now() - interval '48 hours'`,
+        isNull(orders.mpPaymentId),
+      ),
+    )
+    .catch(() => {});
 
   const [order] = await db
     .insert(orders)

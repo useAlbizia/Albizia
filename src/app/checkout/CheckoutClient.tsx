@@ -109,7 +109,23 @@ export function CheckoutClient({
 
   function calcFrete() {
     startFrete(async () => {
-      const r = await quoteFreteAction(zip, items);
+      // Sem isto, qualquer falha (internet caindo, site atualizado no meio da
+      // compra) fazia o botão "não fazer nada, nenhum erro" (relato do Jair).
+      let r: Awaited<ReturnType<typeof quoteFreteAction>>;
+      try {
+        r = await quoteFreteAction(zip, items);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/Server Action|failed-to-find|UnrecognizedAction/i.test(msg)) {
+          // O site foi atualizado com a página aberta: recarrega e o
+          // carrinho continua (ele fica guardado no aparelho).
+          setFreteMsg("O site acabou de ser atualizado. Recarregando a página...");
+          setTimeout(() => window.location.reload(), 1200);
+        } else {
+          setFreteMsg("Não consegui calcular o frete agora. Confira sua internet e toque em Calcular frete de novo.");
+        }
+        return;
+      }
       setFreteOptions(r.options);
       if (r.options.length > 0) {
         // Vem ordenado do mais barato para o mais caro, então o primeiro é o
@@ -135,8 +151,20 @@ export function CheckoutClient({
   }
 
   function handleApply() {
+    // Apertar Aplicar de novo com o mesmo cupom não duplica o desconto, e
+    // agora também avisa (pedido do Jair).
+    if (couponCode && couponInput.trim().toUpperCase() === couponCode) {
+      setCouponMsg(`O cupom ${couponCode} já está aplicado.`);
+      return;
+    }
     startCoupon(async () => {
-      const r = await applyCoupon(couponInput, subtotalCents);
+      let r: Awaited<ReturnType<typeof applyCoupon>>;
+      try {
+        r = await applyCoupon(couponInput, subtotalCents);
+      } catch {
+        setCouponMsg("Não consegui conferir o cupom agora. Tente de novo em instantes.");
+        return;
+      }
       if (r.ok) {
         setDiscountCents(r.discountCents);
         setCouponCode(r.code);
@@ -189,7 +217,7 @@ export function CheckoutClient({
       ) : (
       <form action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="couponCode" value={couponCode} />
-        <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Seus dados</p>
+        <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-content">1. Seus dados</p>
         <input name="name" placeholder="Nome completo" required className={inputClass} />
         <input
           name="email"
@@ -217,7 +245,7 @@ export function CheckoutClient({
           </p>
         </div>
 
-        <p className="mt-4 text-[11px] uppercase tracking-[0.2em] text-content/50">Entrega</p>
+        <p className="mt-6 text-[13px] font-semibold uppercase tracking-[0.16em] text-content">2. Endereço e frete</p>
         <div className="grid grid-cols-3 gap-3">
           <input name="street" placeholder="Endereço" required className={`${inputClass} col-span-2`} />
           <input name="number" placeholder="Número" required className={inputClass} />
@@ -241,16 +269,16 @@ export function CheckoutClient({
             }}
             placeholder="CEP"
             required
-            className={`${inputClass} flex-1`}
+            className={`${inputClass} min-w-0 flex-1`}
           />
           {isME && (
             <button
               type="button"
               onClick={calcFrete}
               disabled={fretePending || zip.replace(/\D/g, "").length !== 8}
-              className="shrink-0 border border-content px-4 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-40"
+              className="shrink-0 whitespace-nowrap border border-content bg-content px-4 text-[12px] uppercase tracking-[0.12em] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
             >
-              {fretePending ? "..." : "Calcular frete"}
+              {fretePending ? "Calculando..." : "Calcular frete"}
             </button>
           )}
         </div>
@@ -259,12 +287,12 @@ export function CheckoutClient({
             tem como comprar a etiqueta certa depois. */}
         <input type="hidden" name="shippingServiceId" value={serviceId ?? ""} />
 
-        {freteMsg && <p className="text-[12px] text-content/60">{freteMsg}</p>}
+        {freteMsg && <p className="text-[13px] font-medium text-content" role="alert">{freteMsg}</p>}
 
         {freteOptions.length > 0 && (
           <fieldset className="flex flex-col gap-2">
-            <legend className="mb-1 text-[11px] uppercase tracking-[0.2em] text-content/50">
-              Entrega
+            <legend className="mb-1 text-[13px] font-semibold uppercase tracking-[0.16em] text-content">
+              Escolha o frete
             </legend>
             {freteOptions.map((o) => {
               const ativo = o.id === serviceId;

@@ -1,4 +1,7 @@
 import { requireAdmin } from "@/lib/auth/dal";
+import { eq, sql } from "drizzle-orm";
+import { db } from "@/lib/db/client";
+import { reviews } from "@/lib/db/schema";
 import { countRecoveryQueue } from "@/lib/recovery";
 import { contarNaoLidos } from "@/lib/emails";
 import { ChangePasswordForm } from "@/components/admin/ChangePasswordForm";
@@ -34,7 +37,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const eu = await socioPorEmail(user.email).catch(() => null);
   const hoje = isoDay(new Date());
   const [recuperacao, emailsNaoLidos, aprovar, minhasContas, demo] = await Promise.all([
-    countRecoveryQueue().catch(() => ({ total: 0, valorCents: 0 })),
+    countRecoveryQueue().catch(() => ({ total: 0, valorCents: 0, ultimo: null as string | null })),
     contarNaoLidos().catch(() => 0),
     eu ? pendentesDe(eu.id).then((l) => l.length).catch(() => 0) : 0,
     // Partes DESTE sócio que vencem hoje ou já venceram e não foram pagas.
@@ -45,10 +48,23 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       : [],
     demoAtivo(),
   ]);
+  // Avaliações esperando aprovação: número no menu até alguém aprovar ou rejeitar.
+  const [avaliacoes] = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(reviews)
+    .where(eq(reviews.status, "pending"))
+    .catch(() => [{ n: 0 }]);
 
   return (
     <div className="painel min-h-screen bg-surface text-content md:flex">
-      <AdminNav email={user.email} alertas={recuperacao.total} emails={emailsNaoLidos} aprovar={aprovar} />
+      <AdminNav
+        email={user.email}
+        alertas={recuperacao.total}
+        recuperacaoUltimo={recuperacao.ultimo}
+        emails={emailsNaoLidos}
+        aprovar={aprovar}
+        avaliacoes={avaliacoes?.n ?? 0}
+      />
       <NovaVersaoAviso />
       <ErrosNavegador />
       <TourPainel />

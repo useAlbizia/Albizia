@@ -2,6 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element -- admin banner thumbnails */
 import { useActionState, useTransition } from "react";
+import { reduzirNoInput } from "@/lib/reduzir-imagem";
 import {
   createBanner,
   updateBanner,
@@ -51,7 +52,11 @@ export function AddBannerForm() {
   return (
     <form action={action} className="flex flex-col gap-3 border border-content/15 p-5">
       <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Novo banner</p>
-      <input type="file" name="image" accept="image/*" required className={file} />
+      <input type="file" name="image" accept="image/*" required className={file} onChange={(e) => void reduzirNoInput(e.currentTarget)} />
+      <p className="text-[12px] leading-relaxed text-content/65">
+        Tamanho ideal: <strong>1920 × 1080</strong> (deitada, 16:9). Foto em outro formato é cortada nesse tamanho,
+        mantendo o centro da imagem. Pode mandar a foto direto do celular: ela é reduzida antes de enviar.
+      </p>
       <Fields />
       <div className="flex items-center gap-4">
         <button disabled={pending} className="border border-content px-5 py-2 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50">
@@ -77,7 +82,7 @@ export function BannerEditor({ banner }: { banner: Banner }) {
           <input name="sortOrder" type="number" defaultValue={banner.sortOrder} className={`${input} w-24`} title="Ordem" />
           <label className={file}>
             Trocar imagem
-            <input type="file" name="image" accept="image/*" className="hidden" />
+            <input type="file" name="image" accept="image/*" className="hidden" onChange={(e) => void reduzirNoInput(e.currentTarget)} />
           </label>
           <button disabled={pending} className="border border-content px-5 py-2 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50">
             {pending ? "Salvando..." : "Salvar"}
@@ -85,7 +90,14 @@ export function BannerEditor({ banner }: { banner: Banner }) {
           <button type="button" onClick={() => start(() => toggleBanner(banner.id, !banner.active))} disabled={busy} className="btn-sec">
             {banner.active ? "Ativo" : "Inativo"}
           </button>
-          <button type="button" onClick={() => start(() => deleteBanner(banner.id))} disabled={busy} className="btn-perigo">
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm("Excluir este banner? Não dá para desfazer.")) start(() => deleteBanner(banner.id));
+            }}
+            disabled={busy}
+            className="btn-perigo"
+          >
             Excluir
           </button>
           {state.ok && <span className="text-[12px] text-content/50">Salvo ✓</span>}

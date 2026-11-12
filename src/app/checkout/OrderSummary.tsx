@@ -126,23 +126,26 @@ export function OrderSummary(props: SummaryProps) {
   return (
     <>
       {/* Celular: barra que abre. O total fica sempre visível na barra. */}
-      <div className="border border-content/10 lg:hidden">
+      <div className="border-[1.5px] border-content/40 lg:hidden">
         <button
           type="button"
           onClick={() => setAbertoNoMobile((v) => !v)}
           aria-expanded={abertoNoMobile}
           className="flex w-full items-center justify-between px-4 py-3.5"
         >
-          <span className="flex items-center gap-2 text-[12px] uppercase tracking-[0.15em] text-content/60">
-            Resumo
-            <span className="text-content/35">
-              ({qtd} {qtd === 1 ? "item" : "itens"})
+          {/* Antes dizia só "Resumo", apagado: na hora de pagar, quem estava
+              comprando não achava os produtos (relato do Jair). */}
+          <span className="flex min-w-0 flex-col items-start text-left">
+            <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-content">
+              {abertoNoMobile ? "Esconder produtos" : "Ver produtos"} ({qtd} {qtd === 1 ? "item" : "itens"})
+              <span className={`text-base transition-transform duration-200 ${abertoNoMobile ? "rotate-45" : ""}`}>+</span>
             </span>
-            <span
-              className={`text-content/40 transition-transform duration-200 ${abertoNoMobile ? "rotate-45" : ""}`}
-            >
-              +
-            </span>
+            {!abertoNoMobile && props.items[0] && (
+              <span className="mt-0.5 max-w-[60vw] truncate text-[12px] text-content/65">
+                {props.items[0].name} ({props.items[0].size})
+                {props.items.length > 1 ? ` e mais ${props.items.length - 1}` : ""}
+              </span>
+            )}
           </span>
           <span className="text-base">{money(props.totalCents)}</span>
         </button>

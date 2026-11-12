@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { logout } from "./actions";
 import { ThemeToggle } from "./ThemeToggle";
 import { InstalarApp } from "./InstalarApp";
@@ -45,6 +45,7 @@ const GROUPS: Group[] = [
     items: [
       { href: "/admin/produtos", label: "Produtos" },
       { href: "/admin/insumos", label: "Insumos" },
+      { href: "/admin/guias", label: "Guias de tamanho" },
       { href: "/admin/cupons", label: "Cupons" },
       { href: "/admin/avaliacoes", label: "Avaliações" },
       { href: "/admin/banners", label: "Banners" },
@@ -78,7 +79,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-type Contadores = { alertas: number; emails: number; aprovar: number };
+type Contadores = { alertas: number; emails: number; aprovar: number; avaliacoes: number };
 
 /** O número que aparece ao lado de cada item, e o que ele quer dizer. */
 function contadorDe(href: string, c: Contadores): { n: number; rotulo: string } {
@@ -87,6 +88,7 @@ function contadorDe(href: string, c: Contadores): { n: number; rotulo: string } 
   // admin, não só para quem lembra de abrir a fila.
   if (href === "/admin/carrinhos") return { n: c.alertas, rotulo: "venda(s) parada(s)" };
   if (href === "/admin/emails") return { n: c.emails, rotulo: "e-mail(s) não lido(s)" };
+  if (href === "/admin/avaliacoes") return { n: c.avaliacoes, rotulo: "avaliação(ões) para aprovar" };
   return { n: 0, rotulo: "" };
 }
 
@@ -192,6 +194,8 @@ export function AdminNav({
   alertas = 0,
   emails = 0,
   aprovar = 0,
+  avaliacoes = 0,
+  recuperacaoUltimo = null,
 }: {
   email: string | undefined;
   alertas?: number;
@@ -199,11 +203,34 @@ export function AdminNav({
   emails?: number;
   /** Lançamentos esperando a aprovação de quem está logado. */
   aprovar?: number;
+  /** Avaliações de clientes esperando aprovação. */
+  avaliacoes?: number;
+  /** Quando entrou o carrinho abandonado mais recente. */
+  recuperacaoUltimo?: string | null;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
-  const contadores: Contadores = { alertas, emails, aprovar };
-  const algoPendente = aprovar > 0 || alertas > 0 || emails > 0;
+  // Recuperação: o número some depois que a pessoa abre a tela, e só volta
+  // quando entra carrinho abandonado NOVO (guardado neste aparelho).
+  const [vistoRecuperacao, setVistoRecuperacao] = useState<string | null>(null);
+  // Lê o aparelho só depois de montar (no servidor não existe localStorage).
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    try {
+      if (pathname.startsWith("/admin/carrinhos")) {
+        const agora = new Date().toISOString();
+        localStorage.setItem("albizia-visto-recuperacao", agora);
+        setVistoRecuperacao(agora);
+      } else {
+        setVistoRecuperacao(localStorage.getItem("albizia-visto-recuperacao"));
+      }
+    } catch {}
+  }, [pathname]);
+  /* eslint-enable react-hooks/set-state-in-effect */
+  const recuperacaoNova =
+    alertas > 0 && (!vistoRecuperacao || !recuperacaoUltimo || new Date(recuperacaoUltimo) > new Date(vistoRecuperacao));
+  const contadores: Contadores = { alertas: recuperacaoNova ? alertas : 0, emails, aprovar, avaliacoes };
+  const algoPendente = aprovar > 0 || contadores.alertas > 0 || emails > 0 || avaliacoes > 0;
 
   return (
     <>

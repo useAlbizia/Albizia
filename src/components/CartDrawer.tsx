@@ -107,12 +107,17 @@ export function CartDrawer() {
                             <span className="min-w-[2ch] text-center text-sm">{item.quantity}</span>
                             <button
                               onClick={() => setQuantity(item.slug, item.size, item.quantity + 1)}
+                    disabled={item.estoque != null && item.quantity >= item.estoque}
+                    title={item.estoque != null && item.quantity >= item.estoque ? `Só temos ${item.estoque} em estoque` : undefined}
                               aria-label="Aumentar"
                               className="px-2.5 py-1 text-content/60 transition-colors hover:text-content"
                             >
                               +
                             </button>
                           </div>
+{item.estoque != null && item.quantity >= item.estoque && (
+  <p className="mt-1 text-[11px] text-content/70">Máximo em estoque: {item.estoque}</p>
+)}
                           <span className="text-sm text-content/70">
                             {money(item.price * item.quantity)}
                           </span>

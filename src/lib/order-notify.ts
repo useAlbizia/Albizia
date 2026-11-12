@@ -1,4 +1,5 @@
 import "server-only";
+import { emailsDaEquipe } from "@/lib/destinatarios";
 import { eq } from "drizzle-orm";
 import { db } from "./db/client";
 import { orders } from "./db/schema";
@@ -87,10 +88,7 @@ export async function sendOrderPaidEmails(orderId: string): Promise<void> {
 
   // Founder alert. ORDER_NOTIFICATION_EMAIL may list several recipients,
   // comma-separated (e.g. both founders).
-  const notify = (process.env.ORDER_NOTIFICATION_EMAIL ?? "")
-    .split(",")
-    .map((e) => e.trim())
-    .filter(Boolean);
+  const notify = await emailsDaEquipe();
   if (notify.length > 0) {
     const addr = order.shippingAddress as Record<string, string>;
     await sendEmail({

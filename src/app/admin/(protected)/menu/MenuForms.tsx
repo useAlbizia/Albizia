@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useTransition } from "react";
+import { BotaoExcluir } from "@/components/admin/BotaoExcluir";
 import {
   createMenuItem,
   updateMenuItem,
@@ -59,13 +60,14 @@ export function MenuItemEditor({ item }: { item: Item }) {
           >
             {item.active ? "Ativo" : "Inativo"}
           </button>
-          <button
-            onClick={() => startTransition(() => deleteMenuItem(item.id))}
+          {/* Item do menu leva junto os links de dentro: pede para digitar EXCLUIR. */}
+          <BotaoExcluir
+            oQue={`o item "${item.label}" do menu da loja`}
+            palavra="EXCLUIR"
+            rotulo="Excluir item"
             disabled={busy}
-            className="btn-perigo"
-          >
-            Excluir item
-          </button>
+            onConfirmar={() => startTransition(() => deleteMenuItem(item.id))}
+          />
         </div>
       </div>
 
@@ -97,13 +99,12 @@ export function MenuItemEditor({ item }: { item: Item }) {
                   {l.columnTitle && <span className="text-content/40">{l.columnTitle} · </span>}
                   {l.label} <span className="text-content/40">→ {l.href}</span>
                 </span>
-                <button
-                  onClick={() => startTransition(() => deleteMenuLink(l.id))}
+                <BotaoExcluir
+                  oQue={`o link "${l.label}"`}
+                  rotulo="Remover"
                   disabled={busy}
-                  className="btn-perigo"
-                >
-                  remover
-                </button>
+                  onConfirmar={() => startTransition(() => deleteMenuLink(l.id))}
+                />
               </div>
             ))}
           </div>

@@ -8,11 +8,13 @@ import { EditProductForm } from "./EditProductForm";
 import { VariantsEditor } from "./VariantsEditor";
 import { ImageUploader } from "./ImageUploader";
 import { FichaEditor } from "./FichaEditor";
+import { EscolherGuia } from "./EscolherGuia";
+import { guiaIdDoProduto, listarGuias } from "@/lib/guias";
 
 export default async function EditProdutoPage(props: PageProps<"/admin/produtos/[id]">) {
   const { id } = await props.params;
 
-  const [product, collections, ficha, insumos, outros] = await Promise.all([
+  const [product, collections, ficha, insumos, outros, guias, guiaAtual] = await Promise.all([
     db.query.products.findFirst({
       where: eq(products.id, id),
       with: { collection: true, variants: true, images: true },
@@ -21,6 +23,8 @@ export default async function EditProdutoPage(props: PageProps<"/admin/produtos/
     fichaDoProduto(id),
     listarInsumos(),
     db.select({ id: products.id, nome: products.name }).from(products).where(ne(products.id, id)).orderBy(asc(products.name)),
+    listarGuias(),
+    guiaIdDoProduto(id),
   ]);
 
   if (!product) notFound();
@@ -48,6 +52,16 @@ export default async function EditProdutoPage(props: PageProps<"/admin/produtos/
               Estoque por tamanho
             </p>
             <VariantsEditor productId={product.id} variants={product.variants} />
+          </div>
+
+          <div>
+            <p className="mb-3 text-[11px] uppercase tracking-[0.2em] text-content/50">Guia de tamanhos</p>
+            <EscolherGuia
+              productId={product.id}
+              atual={guiaAtual}
+              guias={guias.map((g) => ({ id: g.id, nome: g.nome }))}
+              temCores={!!product.colorGroup}
+            />
           </div>
 
           <div>

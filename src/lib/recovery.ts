@@ -32,7 +32,7 @@ export async function getRecoverySettings(): Promise<RecoverySettings> {
 // Contagem enxuta para o aviso no menu. O menu aparece em toda página do
 // admin, então aqui não se carrega item nem se classifica urgência: é um
 // COUNT e nada mais.
-export async function countRecoveryQueue(): Promise<{ total: number; valorCents: number }> {
+export async function countRecoveryQueue(): Promise<{ total: number; valorCents: number; ultimo: string | null }> {
   const settings = await getRecoverySettings();
   const cutoff = new Date(Date.now() - settings.minutes * 60000);
 
@@ -40,11 +40,14 @@ export async function countRecoveryQueue(): Promise<{ total: number; valorCents:
     .select({
       total: sql<number>`count(*)::int`,
       valorCents: sql<number>`coalesce(sum(${orders.totalCents}), 0)::int`,
+      // O mais recente, para o número do menu sumir depois de visto e só
+      // voltar quando chegar carrinho NOVO.
+      ultimo: sql<string | null>`max(${orders.createdAt})::text`,
     })
     .from(orders)
     .where(and(eq(orders.status, "pending"), lt(orders.createdAt, cutoff)));
 
-  return { total: row?.total ?? 0, valorCents: row?.valorCents ?? 0 };
+  return { total: row?.total ?? 0, valorCents: row?.valorCents ?? 0, ultimo: row?.ultimo ?? null };
 }
 
 // "agora" = a janela de pagamento está fechando ou acabou de falhar.

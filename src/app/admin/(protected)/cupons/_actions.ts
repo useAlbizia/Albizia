@@ -55,6 +55,7 @@ export async function createCoupon(_prev: CouponState, formData: FormData): Prom
     minSubtotalCents: Math.round(d.minSubtotal * 100),
     maxUses,
     expiresAt,
+    umaVezPorCliente: formData.get("umaVezPorCliente") === "on",
   });
 
   await logAudit({ action: "coupon.create", entity: "coupon", entityId: code });

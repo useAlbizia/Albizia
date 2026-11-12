@@ -8,7 +8,7 @@ import { chatAction } from "@/lib/chat";
 import type { ChatMessage } from "@/lib/ai";
 
 const GREETING =
-  "Olá! Sou a assistente da ALBIZIA. Posso ajudar a escolher uma peça, tirar dúvidas de tamanho, frete ou trocas. Como posso ajudar?";
+  "Olá! Sou a Albi, assistente da ALBIZIA. Posso ajudar a escolher uma peça, tirar dúvidas de tamanho, frete ou trocas. Como posso ajudar?";
 
 // Turns /produto/... and /colecoes/... paths inside the reply into clickable links.
 function renderText(text: string, onNavigate: () => void) {
@@ -83,8 +83,8 @@ export function ChatWidget() {
             className="fixed bottom-20 right-5 z-40 flex h-[70vh] max-h-[520px] w-[calc(100vw-2.5rem)] max-w-sm flex-col border border-content/15 bg-surface shadow-2xl"
           >
             <div className="border-b border-content/10 px-5 py-4">
-              <p className="text-[13px] uppercase tracking-[0.25em]">Atendimento</p>
-              <p className="text-[11px] text-content/40">Assistente ALBIZIA · IA</p>
+              <p className="text-[13px] uppercase tracking-[0.25em]">Albi</p>
+              <p className="text-[11px] text-content/40">Assistente da ALBIZIA · IA</p>
             </div>
 
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">

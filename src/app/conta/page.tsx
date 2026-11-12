@@ -52,7 +52,7 @@ export default async function ContaPage(props: PageProps<"/conta">) {
         <form action={customerSignOut}>
           <button
             type="submit"
-            className="text-[12px] uppercase tracking-[0.15em] text-content/50 hover:text-content"
+            className="border border-content px-4 py-2 text-[12px] uppercase tracking-[0.15em] hover:bg-content hover:text-surface"
           >
             Sair
           </button>
@@ -83,15 +83,33 @@ export default async function ContaPage(props: PageProps<"/conta">) {
       ) : (
         <div className="divide-y divide-content/10 border-y border-content/10">
           {orders.map((o) => (
-            <div key={o.id} className="flex items-center justify-between py-4 text-sm">
-              <div>
-                <p>Pedido #{o.orderNumber}</p>
-                <p className="text-[12px] text-content/50">
-                  {shortDate(o.createdAt)} · {o.statusLabel}
-                  {o.trackingCode ? ` · rastreio ${o.trackingCode}` : ""}
-                </p>
-              </div>
-              <span className="text-content/70">{brl(o.totalCents)}</span>
+            // Cada pedido abre o acompanhamento já preenchido, e quem tem
+            // rastreio ganha o botão de rastrear (sugestão do Jair).
+            <div key={o.id} className="flex flex-col gap-2 py-4 text-sm">
+              <Link
+                href={`/acompanhar?numero=${o.orderNumber}&email=${encodeURIComponent(user.email ?? "")}`}
+                className="flex items-center justify-between gap-3"
+              >
+                <span>
+                  <span className="block font-medium">Pedido #{o.orderNumber}</span>
+                  <span className="block text-[12px] text-content/60">
+                    {shortDate(o.createdAt)} · {o.statusLabel}
+                  </span>
+                </span>
+                <span className="flex items-center gap-2 text-content/80">
+                  {brl(o.totalCents)} <span aria-hidden="true" className="text-lg">›</span>
+                </span>
+              </Link>
+              {o.trackingCode && (
+                <a
+                  href={`https://www.melhorrastreio.com.br/app/${encodeURIComponent(o.trackingCode)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="self-start border border-content px-3 py-1.5 text-[11px] uppercase tracking-[0.12em]"
+                >
+                  Rastrear entrega · {o.trackingCode}
+                </a>
+              )}
             </div>
           ))}
         </div>

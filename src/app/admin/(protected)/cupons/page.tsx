@@ -1,4 +1,5 @@
 import { desc } from "drizzle-orm";
+import { BotaoExcluir } from "@/components/admin/BotaoExcluir";
 import { db } from "@/lib/db/client";
 import { coupons } from "@/lib/db/schema";
 import { brl, shortDate } from "@/lib/format";
@@ -58,12 +59,7 @@ export default async function CuponsPage() {
                       </button>
                     </form>
                     <form action={deleteCoupon.bind(null, c.id)}>
-                      <button
-                        type="submit"
-                        className="btn-perigo"
-                      >
-                        Excluir
-                      </button>
+                      <BotaoExcluir oQue={`o cupom ${c.code}`} />
                     </form>
                   </div>
                 </td>

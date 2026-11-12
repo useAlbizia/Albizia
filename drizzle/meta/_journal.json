@@ -239,6 +239,20 @@
       "when": 1794358822828,
       "tag": "0033_bouncy_marrow",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794490761271,
+      "tag": "0034_reflective_zaladane",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794490964535,
+      "tag": "0035_lean_viper",
+      "breakpoints": true
     }
   ]
 }

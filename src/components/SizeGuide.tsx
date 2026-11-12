@@ -24,9 +24,13 @@ const MODA_PRAIA = {
   ],
 };
 
-export function SizeGuide({ category }: { category: string }) {
+export type TabelaGuia = { cols: string[]; rows: string[][]; obs?: string };
+
+// `tabela` vem do guia escolhido no painel (Guias de tamanho). Sem guia, usa a
+// tabela padrão abaixo.
+export function SizeGuide({ category, tabela }: { category: string; tabela?: TabelaGuia | null }) {
   const [open, setOpen] = useState(false);
-  const table = category === "moda-praia" ? MODA_PRAIA : CAMISETA;
+  const table = tabela ?? (category === "moda-praia" ? MODA_PRAIA : CAMISETA);
 
   return (
     <>
@@ -81,8 +85,8 @@ export function SizeGuide({ category }: { category: string }) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-content/10">
-                  {table.rows.map((r) => (
-                    <tr key={r[0]}>
+                  {table.rows.map((r, idx) => (
+                    <tr key={`${r[0]}-${idx}`}>
                       {r.map((cell, i) => (
                         <td key={i} className={`py-2.5 pr-4 ${i === 0 ? "" : "text-content/70"}`}>
                           {cell}
@@ -94,8 +98,8 @@ export function SizeGuide({ category }: { category: string }) {
               </table>
 
               <p className="mt-6 text-[12px] leading-relaxed text-content/50">
-                Medidas da peça (não do corpo), com variação de ±2 cm. Na dúvida entre dois
-                tamanhos, escolha o maior para um caimento mais solto.
+                {tabela?.obs ||
+                  "Medidas da peça (não do corpo), com variação de ±2 cm. Na dúvida entre dois tamanhos, escolha o maior para um caimento mais solto."}
               </p>
             </motion.div>
           </>
