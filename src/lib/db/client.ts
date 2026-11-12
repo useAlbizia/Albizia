@@ -1,35 +1,39 @@
 import { loadEnvConfig } from "@next/env";
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
 import * as schema from "./schema";
 
 loadEnvConfig(process.cwd());
 
-// Conexão com o banco. Lição de 10/11/2026, quando o painel inteiro travou
-// para todo mundo ao abrir o Fechamento do mês:
+// Conexão com o banco. Histórico, para ninguém repetir:
 //
-// 1. MODO SESSÃO, não transação. O pooler do Supabase na porta 6543 (modo
-//    transação) trava a conexão para sempre quando várias consultas esperam
-//    na fila ao mesmo tempo (o Fechamento dispara umas 11 de uma vez).
-//    Testado: no modo transação, 6 fechamentos simultâneos nunca terminaram,
-//    nem com 20 conexões; no modo sessão (porta 5432, mesmo servidor),
-//    terminaram em 0,5 s com 2 conexões. Por isso a porta é trocada aqui,
-//    qualquer que seja a que estiver na variável da Vercel.
-// 2. Poucas conexões por servidor e devolvidas logo: no modo sessão cada
-//    conexão ocupa uma vaga fixa no Supabase, então nada de deixar paradas.
-const url = process.env.DATABASE_URL!.replace(/(\.pooler\.supabase\.com):6543\//, "$1:5432/");
+// - 10/11/2026: com a biblioteca postgres.js no pooler do Supabase em modo
+//   TRANSAÇÃO (porta 6543), a conexão travava para sempre quando várias
+//   consultas esperavam na fila (o Fechamento dispara ~11 de uma vez) e o
+//   painel inteiro parava para todo mundo.
+// - Paliativo: modo SESSÃO (5432). Resolveu o travamento, mas esse modo só
+//   aceita 15 conexões no total, somando todos os servidores: o build passou
+//   a falhar (EMAXCONNSESSION) e um dia de movimento derrubaria a loja.
+// - Solução: node-postgres (pg), que é o driver indicado para o pooler em
+//   modo transação. Ele não empilha consultas na mesma conexão, então a fila
+//   funciona, e o modo transação aceita centenas de clientes. Testado com o
+//   mesmo estresse que travava antes.
+const url = process.env.DATABASE_URL!.replace(/(\.pooler\.supabase\.com):5432\//, "$1:6543/");
 
-const client = postgres(url, {
-  prepare: false,
-  // Poucas por servidor; o resto espera na fila, em ordem (no modo sessão a
-  // fila funciona).
-  max: Number(process.env.DB_MAX_TESTE ?? 3),
-  // Conexão parada volta para o Supabase em 10 s.
-  idle_timeout: 10,
-  // Nenhuma conexão fica pendurada mais de 5 minutos.
-  max_lifetime: 60 * 5,
-  // Banco sem responder em 10 s: a tela mostra erro em vez de girar para sempre.
-  connect_timeout: 10,
+const pool = new Pool({
+  connectionString: url,
+  // SSL: igual à conexão anterior (postgres.js também não ligava). Melhoria
+  // pendente: ligar SSL VERIFICADO com o certificado do Supabase
+  // (Database > SSL Configuration > Download certificate).
+  // Conexões por servidor. No modo transação cada uma só ocupa o banco
+  // durante a consulta, então dá para ter mais sem lotar o Supabase.
+  max: Number(process.env.DB_MAX_TESTE ?? 6),
+  // Conexão parada fecha em 10 s.
+  idleTimeoutMillis: 10_000,
+  // Banco sem responder em 10 s: erro na tela em vez de girar para sempre.
+  connectionTimeoutMillis: 10_000,
+  // Nenhuma consulta fica presa mais de 30 s segurando a conexão.
+  query_timeout: 30_000,
 });
 
-export const db = drizzle(client, { schema });
+export const db = drizzle(pool, { schema });

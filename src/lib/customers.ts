@@ -30,7 +30,9 @@ export async function getCustomers(): Promise<CustomerSummary[]> {
     order by total_spent desc, last_order_at desc
   `);
 
-  const rows = result as unknown as Array<{
+  // node-postgres devolve { rows }; postgres.js devolvia a lista direto.
+  const bruto = result as unknown as { rows?: unknown[] } | unknown[];
+  const rows = (Array.isArray(bruto) ? bruto : (bruto.rows ?? [])) as Array<{
     email: string;
     name: string;
     phone: string;

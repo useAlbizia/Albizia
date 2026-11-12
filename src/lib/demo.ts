@@ -119,7 +119,7 @@ export async function gerarDemo(dias = 40): Promise<{ pedidos: number; lancament
         const etiqueta = status === "shipped" || status === "refunded" ? frete - 300 + Math.floor(r() * 400) : null;
         const email = `${nome.toLowerCase().normalize("NFD").replace(/[^a-z ]/g, "").replace(/ /g, ".")}.${numero}@${DOMINIO_DEMO}`;
 
-        const [pedido] = await tx.execute<{ id: string }>(sql`
+        const resp = await tx.execute<{ id: string }>(sql`
           insert into orders (
             order_number, status, customer_name, customer_email, customer_phone, customer_document,
             shipping_address, subtotal_cents, shipping_cents, discount_cents, total_cents,
@@ -137,6 +137,8 @@ export async function gerarDemo(dias = 40): Promise<{ pedidos: number; lancament
             ${pago ? new Date(quando.getTime() + (pix ? 0 : 14 * 86_400_000)).toISOString() : null}, ${quando.toISOString()},
             ${pago ? 250 : 0}, ${pago ? quando.toISOString() : null}, ${quando.toISOString()}, ${quando.toISOString()}
           ) returning id`);
+        // node-postgres devolve { rows }; postgres.js devolvia a lista direto.
+        const pedido = (Array.isArray(resp) ? resp[0] : (resp as unknown as { rows: { id: string }[] }).rows[0]) as { id: string };
         for (const i of itens) {
           await tx.execute(sql`
             insert into order_items (order_id, product_id, product_variant_id, product_name, size, unit_price_cents, quantity, unit_cost_cents)
