@@ -150,6 +150,18 @@ export async function registrarErro(e: NovoErro): Promise<void> {
     jaAvisado = gravidade !== "critica";
   }
 
+  // No máximo 10 e-mails de aviso por dia: passando disso, os erros seguem
+  // registrados, aparecem no balão vermelho do painel e no resumo diário,
+  // sem lotar a caixa de ninguém.
+  if (intervalo && !jaAvisado) {
+    const [hoje] = await db
+      .select({ n: sql<number>`count(*)::int` })
+      .from(errosSistema)
+      .where(and(eq(errosSistema.notificado, true), gt(errosSistema.criadoEm, sql`now() - interval '24 hours'`)))
+      .catch(() => [{ n: 0 }]);
+    if ((hoje?.n ?? 0) >= 10) jaAvisado = true;
+  }
+
   if (intervalo && !jaAvisado) {
     await avisarPorEmail({ gravidade, area, caminho, mensagem, detalhe: corta(e.detalhe, 1500), repeticoes });
     if (id) await db.update(errosSistema).set({ notificado: true }).where(eq(errosSistema.id, id)).catch(() => {});

@@ -64,11 +64,11 @@ export function gravidadeDe(e: { origem: string; tipo: string; area: Area }): Gr
   const { origem, tipo, area } = e;
   if (tipo === "seguranca") return "alta";
   if (tipo === "lentidao") return area === "compra" || area === "pagamento" ? "media" : "baixa";
-  if (origem === "aparelho") {
-    if (area === "compra" || area === "pagamento") return "alta";
-    if (area === "painel" || area === "frete") return "baixa";
-    return "media";
-  }
+  // Erro no aparelho de quem usa (navegador antigo, extensão, internet
+  // caindo) quase nunca é algo que dê para corrigir no site: fica registrado
+  // para ver se repete, sem e-mail. Se o SITE falhou, o erro aparece também
+  // do lado do servidor, e esse sim é grave.
+  if (origem === "aparelho") return "baixa";
   // Servidor.
   if (area === "compra" || area === "pagamento") return "critica";
   if (tipo === "banco" && (area === "loja" || area === "cadastro")) return "critica";

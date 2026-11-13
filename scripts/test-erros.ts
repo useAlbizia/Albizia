@@ -26,8 +26,8 @@ ok("banco fora no painel: médio", g("servidor", "banco", "/admin/fechamento"), 
 ok("página da loja quebrou: alto", g("servidor", "tela", "/produtos"), "alta");
 ok("etiqueta falhou: alto", g("servidor", "acao", "POST /admin/pedidos/1"), "alta");
 ok("segurança: alto", g("servidor", "seguranca", "POST /api/mercadopago/webhook"), "alta");
-ok("erro no aparelho do cliente no checkout: alto", g("aparelho", "navegador", "/checkout"), "alta");
-ok("erro no aparelho do cliente na loja: médio", g("aparelho", "navegador", "/produtos"), "media");
+ok("erro no aparelho do cliente no checkout: baixo (não é do site)", g("aparelho", "navegador", "/checkout"), "baixa");
+ok("erro no aparelho do cliente na loja: baixo", g("aparelho", "navegador", "/produtos"), "baixa");
 ok("erro no aparelho no painel: baixo", g("aparelho", "navegador", "/admin/socios"), "baixa");
 ok("lentidão no painel: baixo", g("aparelho", "lentidao", "/admin/socios"), "baixa");
 

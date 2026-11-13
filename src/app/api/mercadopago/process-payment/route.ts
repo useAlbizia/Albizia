@@ -117,9 +117,13 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("Mercado Pago payment failed", err);
-    // Recusa normal do cartão NÃO cai aqui (vem como status rejected): isto
-    // é falha ao falar com o Mercado Pago ou erro nosso. Venda em risco.
-    await registrarErro({
+    // Recusa do cartão NÃO cai aqui (vem como status rejected). E erro 4xx do
+    // Mercado Pago é dado do cliente (cartão, CPF, token vencido): não é
+    // falha nossa, então não vira log nem e-mail. Só 5xx, rede ou bug nosso.
+    const e = err as { status?: unknown; statusCode?: unknown; cause?: unknown };
+    const st = Number(e?.status ?? e?.statusCode ?? NaN);
+    const doCliente = st >= 400 && st < 500;
+    if (!doCliente) await registrarErro({
       origem: "servidor",
       area: "pagamento",
       gravidade: "critica",

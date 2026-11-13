@@ -84,23 +84,23 @@ function isActive(pathname: string, href: string): boolean {
 type Contadores = { alertas: number; emails: number; aprovar: number; avaliacoes: number; erros: number };
 
 /** O número que aparece ao lado de cada item, e o que ele quer dizer. */
-function contadorDe(href: string, c: Contadores): { n: number; rotulo: string } {
+function contadorDe(href: string, c: Contadores): { n: number; rotulo: string; urgente?: boolean } {
   if (href === "/admin/lancamentos") return { n: c.aprovar, rotulo: "para você aprovar" };
   // Venda parada é dinheiro esperando: o número aparece no menu inteiro do
   // admin, não só para quem lembra de abrir a fila.
   if (href === "/admin/carrinhos") return { n: c.alertas, rotulo: "venda(s) parada(s)" };
   if (href === "/admin/emails") return { n: c.emails, rotulo: "e-mail(s) não lido(s)" };
   if (href === "/admin/avaliacoes") return { n: c.avaliacoes, rotulo: "avaliação(ões) para aprovar" };
-  if (href === "/admin/erros") return { n: c.erros, rotulo: "erro(s) crítico(s) ou alto(s) em aberto" };
+  if (href === "/admin/erros") return { n: c.erros, rotulo: "erro(s) crítico(s) ou alto(s) em aberto", urgente: true };
   return { n: 0, rotulo: "" };
 }
 
-function Contador({ n, rotulo }: { n: number; rotulo: string }) {
+function Contador({ n, rotulo, urgente }: { n: number; rotulo: string; urgente?: boolean }) {
   if (n <= 0) return null;
   return (
     <span
       aria-label={`${n} ${rotulo}`}
-      className="flex h-5 min-w-5 items-center justify-center rounded-full bg-content px-1.5 text-[11px] font-medium leading-none text-surface"
+      className={`flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[11px] font-medium leading-none ${urgente ? "bg-red-600 text-white" : "bg-content text-surface"}`}
     >
       {n > 99 ? "99+" : n}
     </span>
@@ -259,7 +259,7 @@ export function AdminNav({
           <span className="h-px w-5 bg-content" />
           {/* Ponto de aviso: tem algo esperando dentro do menu. */}
           {algoPendente && !open && (
-            <span aria-hidden="true" className="absolute right-1 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-content" />
+            <span aria-hidden="true" className={`absolute right-1 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${errosGraves > 0 ? "bg-red-600" : "bg-content"}`} />
           )}
         </button>
         </div>
