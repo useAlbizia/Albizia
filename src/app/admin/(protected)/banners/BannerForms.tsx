@@ -1,7 +1,7 @@
 "use client";
 
 /* eslint-disable @next/next/no-img-element -- admin banner thumbnails */
-import { useActionState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { reduzirNoInput } from "@/lib/reduzir-imagem";
 import {
   createBanner,
@@ -49,8 +49,19 @@ function Fields({ b }: { b?: Banner }) {
 
 export function AddBannerForm() {
   const [state, action, pending] = useActionState(createBanner, initial);
+  const form = useRef<HTMLFormElement>(null);
+  const [aviso, setAviso] = useState("");
+  // Criou: limpa o formulário para o próximo e o "Criado" some sozinho
+  // (antes ficava preso na tela, relato do Jair).
+  useEffect(() => {
+    if (!state.ok) return;
+    form.current?.reset();
+    setAviso("Banner criado e já está no site.");
+    const t = setTimeout(() => setAviso(""), 4000);
+    return () => clearTimeout(t);
+  }, [state]);
   return (
-    <form action={action} className="flex flex-col gap-3 border border-content/15 p-5">
+    <form ref={form} action={action} className="flex flex-col gap-3 border border-content/15 p-5">
       <p className="text-[11px] uppercase tracking-[0.2em] text-content/50">Novo banner</p>
       <input type="file" name="image" accept="image/*" required className={file} onChange={(e) => void reduzirNoInput(e.currentTarget)} />
       <p className="text-[12px] leading-relaxed text-content/65">
@@ -62,8 +73,8 @@ export function AddBannerForm() {
         <button disabled={pending} className="border border-content px-5 py-2 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50">
           {pending ? "Enviando..." : "Adicionar banner"}
         </button>
-        {state.ok && <span className="text-[12px] text-content/50">Criado ✓</span>}
-        {state.error && <span className="text-[12px] text-content/70">{state.error}</span>}
+        {aviso && <span className="text-[13px] font-medium">{aviso}</span>}
+        {state.error && <span className="text-[13px] font-semibold">{state.error}</span>}
       </div>
     </form>
   );
@@ -87,8 +98,20 @@ export function BannerEditor({ banner }: { banner: Banner }) {
           <button disabled={pending} className="border border-content px-5 py-2 text-[12px] uppercase tracking-[0.15em] transition-colors hover:bg-content hover:text-surface disabled:opacity-50">
             {pending ? "Salvando..." : "Salvar"}
           </button>
-          <button type="button" onClick={() => start(() => toggleBanner(banner.id, !banner.active))} disabled={busy} className="btn-sec">
-            {banner.active ? "Ativo" : "Inativo"}
+          {/* Antes dizia só "Ativo/Inativo" e parecia um rótulo: um toque
+              desligava o banner e ele sumia do site sem ninguém entender. */}
+          <button
+            type="button"
+            onClick={() => start(() => toggleBanner(banner.id, !banner.active))}
+            disabled={busy}
+            title={banner.active ? "Tocar tira este banner do site" : "Tocar mostra este banner no site"}
+            className={banner.active ? "flex items-center gap-2 bg-content px-4 py-2 text-[12px] uppercase tracking-[0.12em] text-surface" : "btn-sec"}
+          >
+            <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+              {banner.active ? <circle cx="12" cy="12" r="3" /> : <path d="M4 4l16 16" />}
+            </svg>
+            {banner.active ? "No site" : "Fora do site: tocar para mostrar"}
           </button>
           <button
             type="button"

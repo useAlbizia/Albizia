@@ -91,6 +91,8 @@ export async function updateBanner(id: string, _prev: BannerState, formData: For
 export async function toggleBanner(id: string, active: boolean) {
   await requireAdmin();
   await db.update(banners).set({ active }).where(eq(banners.id, id));
+  // Fica na auditoria: um banner "sumido" do site agora tem explicação.
+  await logAudit({ action: active ? "banner.mostrar" : "banner.esconder", entity: "banner", entityId: id });
   refresh();
 }
 

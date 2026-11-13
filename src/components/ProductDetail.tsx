@@ -21,6 +21,9 @@ export function ProductDetail({
   const inStock = product.variants.find((v) => v.stock > 0);
   const [size, setSize] = useState(inStock?.size ?? product.variants[0]?.size);
   const [qty, setQty] = useState(1);
+  // Aviso só quando a pessoa TENTA passar do estoque (pedido do Jair: ao
+  // chegar no máximo não precisa avisar; ao tentar o seguinte, sim).
+  const [passouEstoque, setPassouEstoque] = useState(false);
   const { addItem } = useCart();
 
   useEffect(() => {
@@ -123,7 +126,10 @@ export function ProductDetail({
             <div className="inline-flex items-center border border-content/30">
               <button
                 type="button"
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                onClick={() => {
+                  setPassouEstoque(false);
+                  setQty((q) => Math.max(1, q - 1));
+                }}
                 aria-label="Diminuir quantidade"
                 className="px-4 py-2.5 text-content/60 transition-colors hover:text-content disabled:opacity-30"
                 disabled={qty <= 1}
@@ -133,16 +139,18 @@ export function ProductDetail({
               <span className="min-w-[3ch] text-center text-sm">{qty}</span>
               <button
                 type="button"
-                onClick={() => setQty((q) => Math.min(maxQty, q + 1))}
+                onClick={() => {
+                  if (qty >= maxQty) setPassouEstoque(true);
+                  else setQty((q) => q + 1);
+                }}
                 aria-label="Aumentar quantidade"
-                className="px-4 py-2.5 text-content/60 transition-colors hover:text-content disabled:opacity-30"
-                disabled={qty >= maxQty}
+                className="px-4 py-2.5 text-content/60 transition-colors hover:text-content"
               >
                 +
               </button>
             </div>
             {/* Antes o + só parava, sem explicar (relato do Jair). */}
-            {qty >= maxQty && (
+            {passouEstoque && qty >= maxQty && (
               <p className="mt-2 text-[12px] text-content/70">
                 {maxQty === 1 ? "Só resta 1 peça" : `Só temos ${maxQty} peças`} deste tamanho em estoque.
               </p>

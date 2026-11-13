@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useCart } from "@/lib/cart-context";
 import { type ShippingConfig } from "@/lib/shipping-calc";
@@ -38,6 +39,8 @@ function FreeShippingBar({ subtotalCents, shipping }: { subtotalCents: number; s
 
 export function CarrinhoClient({ shipping }: { shipping: ShippingConfig }) {
   const { items, removeItem, setQuantity, totalPrice } = useCart();
+  // Item em que a pessoa tentou passar do estoque (para mostrar o aviso só nele).
+  const [passou, setPassou] = useState<string | null>(null);
 
   if (items.length === 0) {
     return (
@@ -93,7 +96,10 @@ export function CarrinhoClient({ shipping }: { shipping: ShippingConfig }) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center border border-content/20">
                   <button
-                    onClick={() => setQuantity(item.slug, item.size, item.quantity - 1)}
+                    onClick={() => {
+                      setPassou(null);
+                      setQuantity(item.slug, item.size, item.quantity - 1);
+                    }}
                     aria-label="Diminuir"
                     className="px-3 py-1.5 text-content/60 transition-colors hover:text-content"
                   >
@@ -101,17 +107,19 @@ export function CarrinhoClient({ shipping }: { shipping: ShippingConfig }) {
                   </button>
                   <span className="min-w-[2ch] text-center text-sm">{item.quantity}</span>
                   <button
-                    onClick={() => setQuantity(item.slug, item.size, item.quantity + 1)}
-                    disabled={item.estoque != null && item.quantity >= item.estoque}
-                    title={item.estoque != null && item.quantity >= item.estoque ? `Só temos ${item.estoque} em estoque` : undefined}
+                    onClick={() => {
+                      // No máximo: avisa em vez de somar (o aviso só aparece ao tentar passar).
+                      if (item.estoque != null && item.quantity >= item.estoque) setPassou(`${item.slug}|${item.size}`);
+                      else setQuantity(item.slug, item.size, item.quantity + 1);
+                    }}
                     aria-label="Aumentar"
                     className="px-3 py-1.5 text-content/60 transition-colors hover:text-content disabled:opacity-30"
                   >
                     +
                   </button>
                 </div>
-{item.estoque != null && item.quantity >= item.estoque && (
-  <p className="mt-1 text-[11px] text-content/70">Máximo em estoque: {item.estoque}</p>
+{passou === `${item.slug}|${item.size}` && item.estoque != null && item.quantity >= item.estoque && (
+  <p className="mt-1 text-[12px] font-medium">Só temos {item.estoque} deste tamanho em estoque.</p>
 )}
                 <button
                   onClick={() => removeItem(item.slug, item.size)}
