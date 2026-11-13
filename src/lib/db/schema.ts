@@ -637,6 +637,14 @@ export const errosSistema = pgTable("erros_sistema", {
   codigo: text("codigo").notNull().default(""),
   usuario: text("usuario").notNull().default(""),
   aparelho: text("aparelho").notNull().default(""),
+  // critica | alta | media | baixa (lib/erros.ts decide)
+  gravidade: text("gravidade").notNull().default("media"),
+  // compra | pagamento | cadastro | estoque | frete | email | seguranca | painel | loja | sistema
+  area: text("area").notNull().default(""),
+  // Mesma chave = mesmo erro repetido: agrupa e segura o e-mail de aviso.
+  chave: text("chave").notNull().default(""),
+  notificado: boolean("notificado").notNull().default(false),
+  resolvido: boolean("resolvido").notNull().default(false),
 });
 
 export const lancamentos = pgTable("lancamentos", {

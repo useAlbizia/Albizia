@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { registrarErro, resumoDiarioErros } from "@/lib/erros";
 import { emailsDaEquipe } from "@/lib/destinatarios";
 import { getLowStockVariants } from "@/lib/metrics";
 import { getSiteSettings } from "@/lib/settings";
@@ -21,13 +22,24 @@ export async function GET(request: NextRequest) {
   // Carona no agendamento diário, cada uma isolada para nunca impedir o
   // aviso de estoque: o lembrete de quem tem parte de parcela vencendo hoje
   // ou atrasada, e a mensagem de motivação (no máximo uma por dia).
-  await lembrarVencimentos().catch((err) => console.error("lembretes falharam", err));
+  const falhaTarefa = (nome: string) => (err: unknown) =>
+    registrarErro({
+      origem: "servidor",
+      area: "sistema",
+      gravidade: "alta",
+      caminho: `tarefa diária: ${nome}`,
+      mensagem: `A tarefa automática "${nome}" falhou: ${err instanceof Error ? err.message : String(err)}`.slice(0, 500),
+    }).catch(() => {});
+  await lembrarVencimentos().catch(falhaTarefa("lembretes de contas"));
+  // Resumo diário dos erros médios para os administradores.
+  await resumoDiarioErros().catch(falhaTarefa("resumo de erros"));
 
   let motivacao: unknown = null;
   try {
     motivacao = await enviarMotivacao();
   } catch (err) {
     console.error("motivacao falhou", err);
+    await falhaTarefa("motivação")(err);
   }
 
   const settings = await getSiteSettings();

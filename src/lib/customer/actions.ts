@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { registrarErro } from "@/lib/erros";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { sendBrandedRecoveryEmail, sendBrandedSignupEmail } from "@/lib/auth-email";
@@ -42,6 +43,13 @@ export async function customerSignUp(_prev: AuthState, formData: FormData): Prom
   }
   if (gerado.error || !gerado.tokenHash) {
     console.error("Cadastro de cliente falhou", gerado.error);
+    await registrarErro({
+      origem: "servidor",
+      area: "cadastro",
+      gravidade: "alta",
+      caminho: "POST /conta (criar conta)",
+      mensagem: `Cliente não conseguiu criar conta: ${gerado.error ?? "sem código de confirmação"}`.slice(0, 500),
+    }).catch(() => {});
     return { error: "Não foi possível criar a conta agora. Tente de novo em instantes." };
   }
 

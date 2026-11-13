@@ -14,6 +14,8 @@ type SendArgs = {
   /** Cabeçalhos extras, como In-Reply-To, para a resposta entrar na conversa. */
   headers?: Record<string, string>;
   text?: string;
+  /** Não registrar a falha em Erros do sistema (o próprio aviso de erro usa). */
+  semRegistrarFalha?: boolean;
 };
 
 export type SendResult = { ok: true; id?: string } | { ok: false; reason: string };
@@ -23,7 +25,30 @@ export type SendResult = { ok: true; id?: string } | { ok: false; reason: string
 // se o domínio não está verificado ou se o Resend recusou o destinatário.
 // Fluxos voltados ao cliente continuam usando sendEmail(), que só devolve
 // true/false e nunca vaza detalhe de infraestrutura.
-export async function sendEmailDetailed({
+export async function sendEmailDetailed(args: SendArgs): Promise<SendResult> {
+  const r = await enviarResend(args);
+  // E-mail que não saiu (confirmação de pedido, recuperação de senha, aviso
+  // aos sócios) vai para Erros do sistema como "alto". O aviso de erro em si
+  // não registra a própria falha, para não virar um laço.
+  if (!r.ok && !args.semRegistrarFalha) {
+    void import("./erros")
+      .then(({ registrarErro }) =>
+        registrarErro({
+          origem: "servidor",
+          tipo: "email",
+          area: "email",
+          gravidade: "alta",
+          caminho: `e-mail: ${args.subject.slice(0, 120)}`,
+          mensagem: `E-mail não enviado: ${r.reason}`,
+          detalhe: `Para: ${[args.to].flat().join(", ")}`,
+        }),
+      )
+      .catch(() => {});
+  }
+  return r;
+}
+
+async function enviarResend({
   to,
   subject,
   html,

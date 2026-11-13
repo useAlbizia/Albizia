@@ -8,6 +8,7 @@ import { AnnouncementBar } from "@/components/AnnouncementBar";
 import { CookieConsent } from "@/components/CookieConsent";
 import { ChatWidget } from "@/components/ChatWidget";
 import { PedidoACaminho } from "@/components/PedidoACaminho";
+import { ErrosLoja } from "@/components/ErrosLoja";
 import { CartProvider } from "@/lib/cart-context";
 import { ThemeProvider } from "@/lib/theme";
 import { getSiteSettings } from "@/lib/settings";
@@ -83,6 +84,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <CookieConsent />
             <ChatWidget />
             <PedidoACaminho />
+            <ErrosLoja />
           </CartProvider>
         </ThemeProvider>
       </body>

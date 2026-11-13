@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { limparErrosAntigos } from "./_actions";
+import { limparErrosAntigos, marcarResolvido } from "./_actions";
 
 export function CopiarErro({ texto }: { texto: string }) {
   const [ok, setOk] = useState(false);
@@ -20,6 +20,15 @@ export function CopiarErro({ texto }: { texto: string }) {
       className="btn-sec shrink-0"
     >
       {ok ? "Copiado" : "Copiar"}
+    </button>
+  );
+}
+
+export function ResolverErro({ id }: { id: string }) {
+  const [pending, start] = useTransition();
+  return (
+    <button type="button" disabled={pending} onClick={() => start(() => marcarResolvido(id))} className="btn-sec">
+      {pending ? "..." : "Resolvido"}
     </button>
   );
 }

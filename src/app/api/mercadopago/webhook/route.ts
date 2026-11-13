@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { and, eq, ne, sql } from "drizzle-orm";
+import { registrarErro } from "@/lib/erros";
+import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
 import {
   MercadoPagoConfig,
   Payment,
@@ -34,6 +35,17 @@ export async function POST(request: NextRequest) {
     } catch (err) {
       if (err instanceof InvalidWebhookSignatureError) {
         console.error("Webhook signature rejected", err.reason, err.requestId);
+        // Aviso de pagamento com assinatura que não bate: alguém tentando se
+        // passar pelo Mercado Pago, ou a chave secreta trocada na Vercel.
+        await registrarErro({
+          origem: "servidor",
+          tipo: "seguranca",
+          area: "seguranca",
+          gravidade: "alta",
+          caminho: "POST /api/mercadopago/webhook",
+          mensagem: `Aviso de pagamento recusado: assinatura inválida (${err.reason}).`,
+          detalhe: `data.id ${dataId ?? "?"} · ip ${request.headers.get("x-forwarded-for") ?? "?"}`,
+        });
         return NextResponse.json({ error: "invalid signature" }, { status: 401 });
       }
       throw err;
@@ -54,6 +66,14 @@ export async function POST(request: NextRequest) {
   const { accessToken } = await getPaymentSettings();
   if (!accessToken) {
     console.error("Webhook received but no Mercado Pago access token is configured");
+    await registrarErro({
+      origem: "servidor",
+      area: "pagamento",
+      gravidade: "critica",
+      caminho: "POST /api/mercadopago/webhook",
+      mensagem: "Chegou aviso de pagamento, mas o Mercado Pago não está conectado: o pedido não foi baixado.",
+      detalhe: `data.id ${dataId}`,
+    });
     return NextResponse.json({ ok: true });
   }
   const mpClient = new MercadoPagoConfig({ accessToken });
@@ -64,6 +84,17 @@ export async function POST(request: NextRequest) {
     // Unknown/invalid id, or a transient MP API error — nothing we can act
     // on. Respond 200 so MP doesn't retry a lookup that will never resolve.
     console.error("Mercado Pago payment lookup failed", dataId, err);
+    // Se for um pagamento real, ele fica sem baixar (o pedido não vira
+    // "pago"). A conferência automática da tela Sócios tenta de novo, mas
+    // vale olhar no Mercado Pago.
+    await registrarErro({
+      origem: "servidor",
+      area: "pagamento",
+      gravidade: "critica",
+      caminho: "POST /api/mercadopago/webhook",
+      mensagem: `Não consegui consultar um pagamento avisado pelo Mercado Pago (id ${dataId}).`,
+      detalhe: err instanceof Error ? (err.stack ?? err.message) : JSON.stringify(err).slice(0, 1500),
+    });
     return NextResponse.json({ ok: true });
   }
 
@@ -77,6 +108,16 @@ export async function POST(request: NextRequest) {
     with: { items: true },
   });
   if (!order) {
+    if (payment.status === "approved") {
+      await registrarErro({
+        origem: "servidor",
+        area: "pagamento",
+        gravidade: "critica",
+        caminho: "POST /api/mercadopago/webhook",
+        mensagem: `Pagamento APROVADO de um pedido que não existe no site (referência ${orderId}).`,
+        detalhe: `pagamento ${payment.id} · valor ${payment.transaction_amount ?? "?"}`,
+      });
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -118,6 +159,29 @@ export async function POST(request: NextRequest) {
       }
       return true;
     });
+
+    // Estoque ficou negativo: vendeu peça que não tinha. Precisa repor ou
+    // falar com o cliente antes de prometer prazo.
+    if (justPaid) {
+      const ids = order.items.map((i) => i.productVariantId).filter((v): v is string => !!v);
+      if (ids.length) {
+        const negativos = await db
+          .select({ id: productVariants.id, tamanho: productVariants.size, estoque: productVariants.stock })
+          .from(productVariants)
+          .where(and(inArray(productVariants.id, ids), lt(productVariants.stock, 0)))
+          .catch(() => []);
+        if (negativos.length) {
+          await registrarErro({
+            origem: "servidor",
+            area: "estoque",
+            gravidade: "critica",
+            caminho: "POST /api/mercadopago/webhook",
+            mensagem: `Pedido #${order.orderNumber} foi pago, mas faltou estoque (${negativos.map((n) => `${n.tamanho}: ${n.estoque}`).join(", ")}).`,
+            detalhe: `Pedido ${order.id}. Reponha o estoque ou fale com o cliente.`,
+          });
+        }
+      }
+    }
 
     // Send confirmation emails only on the first transition to paid, and
     // outside the DB transaction (email must never hold or fail the tx).

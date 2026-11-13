@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { registrarErro } from "@/lib/erros";
 import { eq } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
@@ -244,11 +245,24 @@ export async function emitirEtiqueta(
   const atual = await db.query.orders.findFirst({ where: eq(orders.id, orderId) });
   if (!atual) return { error: "Pedido não encontrado." };
   if (atual.meStatus === "generated") return { error: "A etiqueta deste pedido já foi gerada." };
+  const falhou = async (etapa: string, motivo: string) =>
+    registrarErro({
+      origem: "servidor",
+      area: "frete",
+      gravidade: "alta",
+      caminho: `etiqueta: ${etapa}`,
+      mensagem: `Etiqueta do pedido #${atual.orderNumber} não saiu (${etapa}): ${motivo}`.slice(0, 500),
+    }).catch(() => {});
   if (atual.meStatus !== "cart") {
     const prep = await prepararEtiqueta(orderId, {}, formData);
-    if (prep.error) return prep;
+    if (prep.error) {
+      await falhou("preparar", prep.error);
+      return prep;
+    }
   }
-  return comprarEtiqueta(orderId, {}, formData);
+  const r = await comprarEtiqueta(orderId, {}, formData);
+  if (r.error) await falhou("comprar e gerar", r.error);
+  return r;
 }
 
 export async function cancelarEtiqueta(

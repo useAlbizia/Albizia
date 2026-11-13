@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth/dal";
+import { contarErrosGraves } from "@/lib/erros";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/lib/db/client";
 import { reviews } from "@/lib/db/schema";
@@ -48,6 +49,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       : [],
     demoAtivo(),
   ]);
+  const errosGraves = await contarErrosGraves();
   // Avaliações esperando aprovação: número no menu até alguém aprovar ou rejeitar.
   const [avaliacoes] = await db
     .select({ n: sql<number>`count(*)::int` })
@@ -64,6 +66,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         emails={emailsNaoLidos}
         aprovar={aprovar}
         avaliacoes={avaliacoes?.n ?? 0}
+        errosGraves={errosGraves}
       />
       <NovaVersaoAviso />
       <ErrosNavegador />

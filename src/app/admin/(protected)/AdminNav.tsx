@@ -81,7 +81,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-type Contadores = { alertas: number; emails: number; aprovar: number; avaliacoes: number };
+type Contadores = { alertas: number; emails: number; aprovar: number; avaliacoes: number; erros: number };
 
 /** O número que aparece ao lado de cada item, e o que ele quer dizer. */
 function contadorDe(href: string, c: Contadores): { n: number; rotulo: string } {
@@ -91,6 +91,7 @@ function contadorDe(href: string, c: Contadores): { n: number; rotulo: string } 
   if (href === "/admin/carrinhos") return { n: c.alertas, rotulo: "venda(s) parada(s)" };
   if (href === "/admin/emails") return { n: c.emails, rotulo: "e-mail(s) não lido(s)" };
   if (href === "/admin/avaliacoes") return { n: c.avaliacoes, rotulo: "avaliação(ões) para aprovar" };
+  if (href === "/admin/erros") return { n: c.erros, rotulo: "erro(s) crítico(s) ou alto(s) em aberto" };
   return { n: 0, rotulo: "" };
 }
 
@@ -198,6 +199,7 @@ export function AdminNav({
   aprovar = 0,
   avaliacoes = 0,
   recuperacaoUltimo = null,
+  errosGraves = 0,
 }: {
   email: string | undefined;
   alertas?: number;
@@ -209,6 +211,8 @@ export function AdminNav({
   avaliacoes?: number;
   /** Quando entrou o carrinho abandonado mais recente. */
   recuperacaoUltimo?: string | null;
+  /** Erros críticos e altos em aberto (últimos 7 dias). */
+  errosGraves?: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -231,8 +235,8 @@ export function AdminNav({
   /* eslint-enable react-hooks/set-state-in-effect */
   const recuperacaoNova =
     alertas > 0 && (!vistoRecuperacao || !recuperacaoUltimo || new Date(recuperacaoUltimo) > new Date(vistoRecuperacao));
-  const contadores: Contadores = { alertas: recuperacaoNova ? alertas : 0, emails, aprovar, avaliacoes };
-  const algoPendente = aprovar > 0 || contadores.alertas > 0 || emails > 0 || avaliacoes > 0;
+  const contadores: Contadores = { alertas: recuperacaoNova ? alertas : 0, emails, aprovar, avaliacoes, erros: errosGraves };
+  const algoPendente = aprovar > 0 || contadores.alertas > 0 || emails > 0 || avaliacoes > 0 || errosGraves > 0;
 
   return (
     <>

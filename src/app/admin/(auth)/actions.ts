@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { alertarTentativas } from "@/lib/seguranca";
 import { createClient } from "@/lib/supabase/server";
 import { sendBrandedRecoveryEmail } from "@/lib/auth-email";
 import { traduzirErroLogin } from "@/lib/auth-erros";
@@ -22,7 +23,14 @@ export async function login(_prevState: LoginState, formData: FormData): Promise
 
   // O e-mail volta para a tela: sem isso o campo esvaziava a cada erro e a
   // pessoa tinha que digitar tudo de novo.
-  if (error) return { ...traduzirErroLogin(error), email };
+  if (error) {
+    // Senha errada repetida no PAINEL é sinal de alguém tentando adivinhar.
+    // Cada erro conta; na 5ª em 15 minutos para o mesmo e-mail, vira aviso.
+    if (/invalid|credenciais|credentials/i.test(error.message)) {
+      void alertarTentativas(email).catch(() => {});
+    }
+    return { ...traduzirErroLogin(error), email };
+  }
 
   redirect("/admin");
 }

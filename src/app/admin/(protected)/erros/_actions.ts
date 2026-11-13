@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { requireAdmin } from "@/lib/auth/dal";
-import { limparErros, registrarErro } from "@/lib/erros";
+import { limparErros, registrarErro, resolverErro } from "@/lib/erros";
 
 /** Erro que aconteceu no aparelho (celular ou computador) de quem usa o painel. */
 export async function registrarErroAparelho(dados: {
@@ -27,6 +27,12 @@ export async function registrarErroAparelho(dados: {
     usuario: user.email ?? "",
     aparelho: h.get("user-agent") ?? "",
   });
+}
+
+export async function marcarResolvido(id: string): Promise<void> {
+  await requireAdmin();
+  await resolverErro(id);
+  revalidatePath("/admin", "layout");
 }
 
 export async function limparErrosAntigos(): Promise<void> {

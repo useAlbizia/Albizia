@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { registrarErro } from "@/lib/erros";
 import { eq } from "drizzle-orm";
 import { MercadoPagoConfig, Payment } from "mercadopago";
 import { db } from "@/lib/db/client";
@@ -51,6 +52,13 @@ export async function POST(request: NextRequest) {
   const { accessToken } = await getPaymentSettings();
   if (!accessToken) {
     console.error("Mercado Pago access token is not configured");
+    await registrarErro({
+      origem: "servidor",
+      area: "pagamento",
+      gravidade: "critica",
+      caminho: "POST /api/mercadopago/process-payment",
+      mensagem: "Cliente tentou pagar, mas o Mercado Pago não está conectado (sem chave de acesso).",
+    });
     return NextResponse.json({ error: "Pagamento indisponível no momento." }, { status: 503 });
   }
 
@@ -109,6 +117,17 @@ export async function POST(request: NextRequest) {
     });
   } catch (err) {
     console.error("Mercado Pago payment failed", err);
+    // Recusa normal do cartão NÃO cai aqui (vem como status rejected): isto
+    // é falha ao falar com o Mercado Pago ou erro nosso. Venda em risco.
+    await registrarErro({
+      origem: "servidor",
+      area: "pagamento",
+      gravidade: "critica",
+      caminho: "POST /api/mercadopago/process-payment",
+      mensagem: `Pagamento falhou no nosso lado: ${err instanceof Error ? err.message : String(err)}`.slice(0, 500),
+      detalhe: `Pedido ${body?.orderId ?? "?"}
+${err instanceof Error ? (err.stack ?? "") : JSON.stringify(err).slice(0, 1500)}`,
+    });
     return NextResponse.json(
       { error: "Não foi possível processar o pagamento. Confira os dados e tente novamente." },
       { status: 502 },

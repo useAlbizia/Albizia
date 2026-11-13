@@ -110,6 +110,37 @@ export type CheckoutState = {
 // amount we're about to charge.
 export async function createPendingOrder(
   items: CartItem[],
+  prevState: CheckoutState,
+  formData: FormData
+): Promise<CheckoutState> {
+  // Qualquer erro de programa ou de banco aqui é venda perdida: o cliente
+  // preencheu tudo e não conseguiu fechar. Vira erro CRÍTICO (e-mail na hora
+  // para os administradores) e o cliente recebe uma mensagem clara.
+  try {
+    return await criarPedidoPendente(items, prevState, formData);
+  } catch (err) {
+    const { registrarErro, tipoDoErro } = await import("@/lib/erros");
+    const msg = err instanceof Error ? err.message : String(err);
+    await registrarErro({
+      origem: "servidor",
+      tipo: tipoDoErro(msg, "acao"),
+      area: "compra",
+      gravidade: "critica",
+      caminho: "POST /checkout (criar pedido)",
+      mensagem: `Cliente não conseguiu finalizar a compra: ${msg}`.slice(0, 500),
+      detalhe: `Itens: ${items.map((i) => `${i.quantity}x ${i.slug} (${i.size})`).join(", ")}
+E-mail: ${String(formData.get("email") ?? "")}
+${err instanceof Error ? (err.stack ?? "") : ""}`,
+    });
+    return {
+      error:
+        "Não conseguimos registrar seu pedido agora. Nada foi cobrado. Tente de novo em instantes ou fale com a gente pelo chat.",
+    };
+  }
+}
+
+async function criarPedidoPendente(
+  items: CartItem[],
   _prevState: CheckoutState,
   formData: FormData
 ): Promise<CheckoutState> {

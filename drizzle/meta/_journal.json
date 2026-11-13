@@ -267,6 +267,13 @@
       "when": 1794492517042,
       "tag": "0037_absent_inhumans",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1794577403102,
+      "tag": "0038_wild_sentry",
+      "breakpoints": true
     }
   ]
 }
