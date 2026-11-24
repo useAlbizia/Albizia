@@ -1,6 +1,7 @@
 "use server";
 
-import { assistantReply, type ChatMessage, type AiText } from "./ai";
+import { type ChatMessage, type AiText } from "./ai";
+import { assistantReply } from "./assistente";
 
 // Public chat endpoint for the storefront assistant. Trims history + bounds
 // message size before calling the model.

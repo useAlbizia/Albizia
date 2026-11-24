@@ -7,7 +7,7 @@ import { getSiteSettings } from "./settings";
 // Quando o assistente não consegue responder, o cliente recebe um caminho
 // real (o e-mail da loja) em vez de "tente novamente", e a falha vai para
 // Erros do sistema: chave inválida ou crédito acabado é problema NOSSO.
-async function chatForaDoAr(motivo: string): Promise<AiText> {
+export async function chatForaDoAr(motivo: string): Promise<AiText> {
   await registrarErro({
     origem: "servidor",
     area: "loja",
@@ -22,15 +22,15 @@ async function chatForaDoAr(motivo: string): Promise<AiText> {
 // Central Claude client for the store's AI features. The key lives only in the
 // environment (never in code/git).
 // - MODEL: best quality, for the low-volume admin description generator.
-// - MODEL_FAST: Haiku — ~25x cheaper, for the high-volume customer-facing
-//   features (search + chat), where near-zero cost per call matters more than
-//   maximum quality. Note: Haiku 4.5 rejects output_config.effort, so the fast
-//   calls omit it.
+// - MODEL_FAST: Claude Haiku 5.5, for the high-volume customer-facing
+//   features (chat + search + insight): melhor e mais barato que o Haiku 4.5
+//   (US$ 0,10 / 0,50 por milhão de tokens). Roda com effort "low": resposta
+//   rápida importa mais que raciocínio longo nessas telas.
 const MODEL = "claude-opus-5";
-const MODEL_FAST = "claude-haiku-4-5";
+export const MODEL_FAST = "claude-haiku-5-5";
 
 let cached: Anthropic | null = null;
-function getClient(): Anthropic | null {
+export function clienteClaude(): Anthropic | null {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   cached ??= new Anthropic({ apiKey });
@@ -69,7 +69,7 @@ export async function generateProductDescription(input: {
   collection: string;
   fabric: string;
 }): Promise<AiText> {
-  const client = getClient();
+  const client = clienteClaude();
   if (!client) return { error: "IA não configurada (ANTHROPIC_API_KEY ausente)." };
 
   const categoria = input.category === "moda-praia" ? "short de praia" : "camiseta";
@@ -108,12 +108,13 @@ export async function generateProductDescription(input: {
 // A short, plain-language reading of the analytics for the founders (for ads &
 // improvements). Uses the cheap model; returns "" if unavailable.
 export async function analyticsInsight(data: unknown): Promise<string> {
-  const client = getClient();
+  const client = clienteClaude();
   if (!client) return "";
   try {
     const res = await client.messages.create({
       model: MODEL_FAST,
-      max_tokens: 400,
+      max_tokens: 1000,
+      output_config: { effort: "low" },
       system:
         "Você é analista de dados de uma loja de moda (ALBIZIA). Receberá métricas de tráfego em JSON. Escreva em português do Brasil um resumo curto e objetivo (2 a 4 frases) com o que os dados dizem e 1 sugestão prática para anúncios ou melhoria. Sem saudação, sem travessões, sem repetir todos os números, apenas o que importa. Se os dados forem escassos, diga que ainda há poucos dados.",
       messages: [{ role: "user", content: JSON.stringify(data) }],
@@ -150,93 +151,13 @@ export function sanitizeReply(text: string): string {
   );
 }
 
-// The storefront concierge/assistant. Recommends real products, answers size/
-// shipping/returns/payment questions, in the brand voice. History is trimmed to
-// the last turns to bound cost.
-export async function assistantReply(history: ChatMessage[]): Promise<AiText> {
-  const client = getClient();
-  if (!client) return chatForaDoAr("ANTHROPIC_API_KEY não configurada na Vercel");
-  if (history.length === 0 || history[history.length - 1].role !== "user") {
-    return { error: "Envie uma mensagem." };
-  }
-
-  const rows = await db.query.products.findMany({
-    where: (p, { eq }) => eq(p.active, true),
-    with: { collection: true, images: { limit: 1 }, variants: true },
-  });
-
-  // O catálogo é remontado a cada mensagem, direto do banco: produto novo,
-  // cor nova e mudança de estoque entram sozinhos, sem redeploy.
-  //
-  // Inclui tamanhos DISPONÍVEIS de propósito. Sem isso a assistente
-  // recomendava peça esgotada com toda a confiança do mundo, o que é pior
-  // que não recomendar nada.
-  const catalog = rows
-    .filter((r) => r.images.length > 0)
-    .map((r) => {
-      const emEstoque = r.variants.filter((v) => v.stock > 0).map((v) => v.size);
-      const disponibilidade =
-        emEstoque.length === 0
-          ? "ESGOTADO (não recomende)"
-          : `tamanhos disponíveis: ${emEstoque.join(", ")}`;
-      const linha = r.collection?.name ? `, linha ${r.collection.name}` : "";
-      const tecido = r.fabric ? `, ${r.fabric}` : "";
-      return `- ${r.name}, cor ${r.colorName}${linha}, ${r.category}${tecido}, R$${(r.priceCents / 100).toFixed(0)}, ${disponibilidade} → /produto/${r.slug}`;
-    })
-    .join("\n");
-
-  const system = `Você é a Albi, assistente virtual da ALBIZIA (se perguntarem seu nome, diga Albi), marca brasileira de moda masculina premium ("quiet luxury": peças essenciais, atemporais, de alto padrão). Fale em português do Brasil, de forma cordial, breve e sofisticada (sem gírias, sem exageros, sem travessões e sem pontos de exclamação em excesso).
-
-Você ajuda o cliente a encontrar peças, tirar dúvidas e recomendar produtos do catálogo abaixo. Ao sugerir uma peça, cite o nome e inclua o link exatamente como está (ex.: /produto/camiseta-essential-preta) para o cliente clicar. Recomende SOMENTE produtos do catálogo.
-
-CATÁLOGO:
-${catalog}
-
-REGRAS SOBRE ESTOQUE (importante):
-- Só recomende peça que tenha tamanho disponível. Nunca sugira o que está marcado como ESGOTADO.
-- Se o cliente pedir um tamanho que não está na lista daquela peça, diga com franqueza que aquele tamanho está indisponível e ofereça outro tamanho ou outra peça parecida. Nunca invente disponibilidade.
-
-INFORMAÇÕES DA LOJA:
-- Tamanhos: P, M, G, GG (há um "Guia de tamanhos" em cada página de produto).
-- Pagamento: Pix, cartão de crédito e boleto, processado pelo Mercado Pago dentro do próprio site.
-- Parcelamento existe APENAS no cartão de crédito. Pix e boleto são à vista, em pagamento único. Nunca diga que boleto ou Pix parcelam. Se perguntarem o número exato de parcelas, diga que as condições aparecem no checkout, sem prometer um número.
-- Não escreva em markdown (nada de ** ou *): o chat mostra texto puro.
-- Frete: calculado no checkout por CEP (Correios e transportadoras via Melhor Envio), podendo haver frete grátis acima de um valor.
-- Trocas e devoluções: até 7 dias após o recebimento (direito de arrependimento).
-- Acompanhar pedido: página "Acompanhar" com número do pedido e e-mail.
-
-Nunca invente preço, prazo, cupom, promoção ou característica que não esteja acima. Se não souber, diga que não sabe e ofereça o caminho certo (página do produto, "Acompanhar", ou o contato da loja).
-
-Se perguntarem algo fora do universo da loja (notícias, conhecimentos gerais, outros assuntos), NÃO responda a pergunta: diga com simpatia que você é a assistente da ALBIZIA e só consegue ajudar com as peças e o pedido, e ofereça ajuda com isso. Mantenha as respostas curtas (2 a 4 frases).`;
-
-  try {
-    const res = await client.messages.create({
-      model: MODEL_FAST,
-      max_tokens: 800,
-      system,
-      messages: history.slice(-10).map((m) => ({ role: m.role, content: m.content })),
-    });
-    const text = sanitizeReply(textOf(res));
-    return text ? { text } : { error: "Não consegui responder agora. Tente novamente." };
-  } catch (err) {
-    if (err instanceof Anthropic.RateLimitError) return { error: "Muitas mensagens agora. Tente em instantes." };
-    console.error("assistantReply failed", err);
-    const st = err instanceof Anthropic.APIError ? err.status : undefined;
-    const motivo =
-      st === 401
-        ? "chave da Anthropic inválida (ANTHROPIC_API_KEY na Vercel)"
-        : st === 400 && /credit|billing/i.test(String((err as Error).message))
-          ? "crédito da Anthropic acabou"
-          : `${st ?? "sem status"}: ${err instanceof Error ? err.message : String(err)}`;
-    return chatForaDoAr(motivo);
-  }
-}
+// O assistente do chat da loja fica em ./assistente.ts.
 
 // Semantic product search: Claude reads the (small) catalog and the shopper's
 // natural query and returns the most relevant product slugs, best first.
 // Returns null when AI is unavailable so the caller can fall back to text match.
 export async function aiSearchProducts(query: string): Promise<string[] | null> {
-  const client = getClient();
+  const client = clienteClaude();
   if (!client || !query.trim()) return null;
 
   const rows = await db.query.products.findMany({
@@ -259,7 +180,8 @@ export async function aiSearchProducts(query: string): Promise<string[] | null> 
   try {
     const res = await client.messages.create({
       model: MODEL_FAST,
-      max_tokens: 500,
+      max_tokens: 1000,
+      output_config: { effort: "low" },
       system:
         'Você é a busca inteligente da loja de moda ALBIZIA. Dada a consulta do cliente e o catálogo (JSON), devolva os slugs dos produtos RELEVANTES, do mais ao menos relevante, considerando cor, tipo de peça, ocasião, clima e estilo. Inclua só o que faz sentido para a consulta (pode ser vazio). Responda SOMENTE com um array JSON de slugs, ex.: ["slug-a","slug-b"].',
       messages: [

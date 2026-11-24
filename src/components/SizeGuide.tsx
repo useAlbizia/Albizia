@@ -3,26 +3,7 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-// Reference measurements (cm). Founders can fine-tune later; shown as a guide.
-const CAMISETA = {
-  cols: ["Tamanho", "Largura (peito)", "Comprimento", "Ombro"],
-  rows: [
-    ["P", "50 cm", "70 cm", "43 cm"],
-    ["M", "53 cm", "72 cm", "45 cm"],
-    ["G", "56 cm", "74 cm", "47 cm"],
-    ["GG", "59 cm", "76 cm", "49 cm"],
-  ],
-};
-
-const MODA_PRAIA = {
-  cols: ["Tamanho", "Cintura (elástico)", "Comprimento"],
-  rows: [
-    ["P", "38–44 cm", "44 cm"],
-    ["M", "42–48 cm", "46 cm"],
-    ["G", "46–52 cm", "48 cm"],
-    ["GG", "50–56 cm", "50 cm"],
-  ],
-};
+import { GUIA_CAMISETA as CAMISETA, GUIA_MODA_PRAIA as MODA_PRAIA } from "@/lib/guia-padrao";
 
 export type TabelaGuia = { cols: string[]; rows: string[][]; obs?: string };
 

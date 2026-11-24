@@ -10,18 +10,30 @@ import type { ChatMessage } from "@/lib/ai";
 const GREETING =
   "Olá! Sou a Albi, assistente da ALBIZIA. Posso ajudar a escolher uma peça, tirar dúvidas de tamanho, frete ou trocas. Como posso ajudar?";
 
-// Turns /produto/... and /colecoes/... paths inside the reply into clickable links.
+// Caminhos do site (/produto/..., /colecoes/..., /especial/..., /acompanhar,
+// /trocas...) e links https (rastreio) viram links clicáveis na resposta.
+const LINK =
+  /(https:\/\/[^\s<>"]+[^\s<>".,;:!?)]|\/(?:produto|colecoes|especial)\/[a-z0-9-]+|\/(?:produtos|colecoes|acompanhar|conta|trocas|termos|privacidade|sobre)(?![a-z0-9/-]))/gi;
+
 function renderText(text: string, onNavigate: () => void) {
-  const parts = text.split(/(\/(?:produto|colecoes)\/[a-z0-9-]+)/gi);
-  return parts.map((p, i) =>
-    /^\/(?:produto|colecoes)\/[a-z0-9-]+$/i.test(p) ? (
-      <Link key={i} href={p} onClick={onNavigate} className="underline underline-offset-2 hover:opacity-80">
-        {p}
-      </Link>
-    ) : (
-      <span key={i}>{p}</span>
-    )
-  );
+  const parts = text.split(LINK);
+  return parts.map((p, i) => {
+    if (i % 2 === 1 && p.startsWith("https://")) {
+      return (
+        <a key={i} href={p} target="_blank" rel="noopener noreferrer" className="break-all underline underline-offset-2 hover:opacity-80">
+          {p}
+        </a>
+      );
+    }
+    if (i % 2 === 1) {
+      return (
+        <Link key={i} href={p} onClick={onNavigate} className="underline underline-offset-2 hover:opacity-80">
+          {p}
+        </Link>
+      );
+    }
+    return <span key={i}>{p}</span>;
+  });
 }
 
 export function ChatWidget() {
