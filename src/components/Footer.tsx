@@ -96,6 +96,7 @@ export function Footer({ settings }: { settings: SiteSettings }) {
         <Column title="Atendimento">
           <Link href="/acompanhar" className={linkClass}>Acompanhar pedido</Link>
           <Link href="/trocas" className={linkClass}>Trocas e Devoluções</Link>
+          <Link href="/atendimento" className={linkClass}>Atendimento</Link>
           <Link href="/termos" className={linkClass}>Termos de Uso</Link>
           <Link href="/privacidade" className={linkClass}>Privacidade</Link>
           {settings.contactEmail && (

@@ -274,6 +274,20 @@
       "when": 1794577403102,
       "tag": "0038_wild_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1794612553273,
+      "tag": "0039_admin_order_cancellation",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795550024163,
+      "tag": "0040_atendimento",
+      "breakpoints": true
     }
   ]
 }

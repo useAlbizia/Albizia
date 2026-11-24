@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { chatAction } from "@/lib/chat";
-import type { ChatMessage } from "@/lib/ai";
+import type { ChatMessage, Encaminhamento } from "@/lib/ai";
+import { FormAtendimento } from "./FormAtendimento";
 
 const GREETING =
   "Olá! Sou a Albi, assistente da ALBIZIA. Posso ajudar a escolher uma peça, tirar dúvidas de tamanho, frete ou trocas. Como posso ajudar?";
@@ -13,7 +14,7 @@ const GREETING =
 // Caminhos do site (/produto/..., /colecoes/..., /especial/..., /acompanhar,
 // /trocas...) e links https (rastreio) viram links clicáveis na resposta.
 const LINK =
-  /(https:\/\/[^\s<>"]+[^\s<>".,;:!?)]|\/(?:produto|colecoes|especial)\/[a-z0-9-]+|\/(?:produtos|colecoes|acompanhar|conta|trocas|termos|privacidade|sobre)(?![a-z0-9/-]))/gi;
+  /(https:\/\/[^\s<>"]+[^\s<>".,;:!?)]|\/(?:produto|colecoes|especial)\/[a-z0-9-]+|\/(?:produtos|colecoes|acompanhar|atendimento|conta|trocas|termos|privacidade|sobre)(?![a-z0-9/-]))/gi;
 
 function renderText(text: string, onNavigate: () => void) {
   const parts = text.split(LINK);
@@ -42,11 +43,14 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([{ role: "assistant", content: GREETING }]);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
+  // Quando a Albi encaminha para a equipe, o formulário de protocolo aparece
+  // no fim da conversa, já preenchido com o resumo do caso.
+  const [encaminhar, setEncaminhar] = useState<Encaminhamento | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, pending, open]);
+  }, [messages, pending, open, encaminhar]);
 
   if (pathname?.startsWith("/admin")) return null;
 
@@ -58,9 +62,10 @@ export function ChatWidget() {
     setInput("");
     setPending(true);
     try {
-      const r = await chatAction(next);
+      const r = await chatAction(next, !!encaminhar);
       const reply = "text" in r ? r.text : r.error;
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
+      if (r.encaminhar) setEncaminhar(r.encaminhar);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: "Tive um problema agora. Tente novamente." }]);
     } finally {
@@ -94,9 +99,20 @@ export function ChatWidget() {
             transition={{ duration: 0.2 }}
             className="fixed bottom-20 right-5 z-40 flex h-[70vh] max-h-[520px] w-[calc(100vw-2.5rem)] max-w-sm flex-col border border-content/15 bg-surface shadow-2xl"
           >
-            <div className="border-b border-content/10 px-5 py-4">
-              <p className="text-[13px] uppercase tracking-[0.25em]">Albi</p>
-              <p className="text-[11px] text-content/40">Assistente da ALBIZIA · IA</p>
+            <div className="flex items-start justify-between gap-3 border-b border-content/10 px-5 py-4">
+              <div>
+                <p className="text-[13px] uppercase tracking-[0.25em]">Albi</p>
+                <p className="text-[11px] text-content/40">Assistente da ALBIZIA · IA</p>
+              </div>
+              {!encaminhar && (
+                <button
+                  type="button"
+                  onClick={() => setEncaminhar({ motivo: "", resumo: "" })}
+                  className="text-[11px] text-content/50 underline underline-offset-2 hover:text-content"
+                >
+                  Falar com a equipe
+                </button>
+              )}
             </div>
 
             <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
@@ -118,6 +134,20 @@ export function ChatWidget() {
                   <div className="border border-content/10 bg-surface-soft px-3.5 py-2.5 text-[13px] text-content/40">
                     digitando…
                   </div>
+                </div>
+              )}
+              {encaminhar && (
+                <div className="pt-1">
+                  <FormAtendimento
+                    compacto
+                    origem="chat"
+                    inicial={{ motivo: encaminhar.motivo, mensagem: encaminhar.resumo, pedido: encaminhar.pedido }}
+                    conversa={messages
+                      .slice(1)
+                      .map((m) => `${m.role === "user" ? "Cliente" : "Albi"}: ${m.content}`)
+                      .join("\n\n")
+                      .slice(-18000)}
+                  />
                 </div>
               )}
             </div>

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import { requireAdmin } from "@/lib/auth/dal";
 import { db } from "@/lib/db/client";
-import { orders } from "@/lib/db/schema";
+import { orderItems, orders, productVariants } from "@/lib/db/schema";
 import { sendEmail, emailShell, esc } from "@/lib/email";
 import { logAudit } from "@/lib/audit";
 import { resendCustomerReceipt } from "@/lib/order-notify";
@@ -16,7 +16,41 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   await requireAdmin();
   if (!VALID_STATUSES.includes(status)) return;
 
-  await db.update(orders).set({ status, updatedAt: new Date() }).where(eq(orders.id, orderId));
+  const changed = await db.transaction(async (tx) => {
+    const [order] = await tx.select({
+      status: orders.status,
+      paidAt: orders.paidAt,
+      trackingCode: orders.trackingCode,
+      adminCancelledAt: orders.adminCancelledAt,
+    }).from(orders).where(eq(orders.id, orderId)).for("update");
+    if (!order) return false;
+
+    const now = new Date();
+    const firstAdminCancellation = status === "cancelled" && !order.adminCancelledAt;
+    if (order.status === status && !firstAdminCancellation) return false;
+
+    if (firstAdminCancellation && order.status === "paid" && order.paidAt && !order.trackingCode) {
+      const items = await tx.select({
+        variantId: orderItems.productVariantId,
+        quantity: orderItems.quantity,
+      }).from(orderItems).where(eq(orderItems.orderId, orderId)).orderBy(asc(orderItems.productVariantId));
+
+      for (const item of items) {
+        if (!item.variantId) continue;
+        await tx.update(productVariants)
+          .set({ stock: sql`${productVariants.stock} + ${item.quantity}` })
+          .where(eq(productVariants.id, item.variantId));
+      }
+    }
+
+    await tx.update(orders).set({
+      status,
+      updatedAt: now,
+      ...(firstAdminCancellation ? { adminCancelledAt: now } : {}),
+    }).where(eq(orders.id, orderId));
+    return true;
+  });
+  if (!changed) return;
   await logAudit({ action: "order.status", entity: "order", entityId: orderId, detail: { status } });
   revalidatePath("/admin/pedidos");
   revalidatePath(`/admin/pedidos/${orderId}`);

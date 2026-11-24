@@ -54,6 +54,10 @@ Responda apenas com a descrição, sem título, aspas ou comentários.`;
 
 export type AiText = { text: string } | { error: string };
 
+/** Quando a Albi chega ao limite do chat: o widget abre o formulário de protocolo já preenchido. */
+export type Encaminhamento = { motivo: string; resumo: string; pedido?: string };
+export type ChatReply = ({ text: string } | { error: string }) & { encaminhar?: Encaminhamento };
+
 // Extracts the plain text from a Claude response (ignores thinking blocks).
 function textOf(res: Anthropic.Message): string {
   return res.content

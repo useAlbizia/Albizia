@@ -6,6 +6,7 @@ import { getSiteSettings } from "@/lib/settings";
 import { sendEmail, emailShell } from "@/lib/email";
 import { enviarMotivacao } from "@/lib/motivacao";
 import { lembrarVencimentos } from "@/lib/lembretes";
+import { cobrarChamadosVencidos } from "@/lib/chamados";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +34,8 @@ export async function GET(request: NextRequest) {
   await lembrarVencimentos().catch(falhaTarefa("lembretes de contas"));
   // Resumo diário dos erros médios para os administradores.
   await resumoDiarioErros().catch(falhaTarefa("resumo de erros"));
+  // Cobrança dos protocolos de atendimento vencidos e não resolvidos.
+  await cobrarChamadosVencidos().catch(falhaTarefa("cobrança de atendimento"));
 
   let motivacao: unknown = null;
   try {

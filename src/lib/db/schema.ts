@@ -9,6 +9,8 @@ import {
   pgEnum,
   unique,
   date,
+  serial,
+  primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -172,6 +174,7 @@ export const orders = pgTable("orders", {
   // tipo "embalagem do pedido"). Entra no resultado do mês, não no caixa.
   embalagemCents: integer("embalagem_cents").notNull().default(0),
   paidAt: timestamp("paid_at", { withTimezone: true }),
+  adminCancelledAt: timestamp("admin_cancelled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -293,6 +296,8 @@ export const siteSettings = pgTable("site_settings", {
   // A variant at or below this stock count is flagged "low" on the dashboard
   // and in the daily low-stock alert email.
   lowStockThreshold: integer("low_stock_threshold").notNull().default(3),
+  // Prazo para a equipe responder um protocolo de atendimento, em dias úteis.
+  atendimentoPrazoDias: integer("atendimento_prazo_dias").notNull().default(2),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -821,3 +826,41 @@ export const emailMensagens = pgTable("email_mensagens", {
   enviadoPor: text("enviado_por"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// Protocolos de atendimento: o cliente abre pelo site (ou pelo chat, quando a
+// Albi não resolve sozinha). O número é o protocolo que ele recebe por e-mail.
+export const chamados = pgTable("chamados", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  numero: serial("numero").notNull().unique(),
+  nome: text("nome").notNull(),
+  email: text("email").notNull(),
+  telefone: text("telefone").notNull().default(""),
+  pedidoNumero: integer("pedido_numero"),
+  // produto | troca | entrega | pagamento | outro
+  motivo: text("motivo").notNull(),
+  mensagem: text("mensagem").notNull(),
+  // Conversa do chat que levou ao protocolo, quando veio de lá.
+  conversa: text("conversa").notNull().default(""),
+  // site | chat
+  origem: text("origem").notNull().default("site"),
+  // aberto | andamento | resolvido
+  status: text("status").notNull().default("aberto"),
+  prazoEm: timestamp("prazo_em", { withTimezone: true }).notNull(),
+  resolvidoEm: timestamp("resolvido_em", { withTimezone: true }),
+  // [{ quando, quem, tipo: "resposta" | "nota" | "status", texto }]
+  historico: jsonb("historico").notNull().default([]),
+  criadoEm: timestamp("criado_em", { withTimezone: true }).notNull().defaultNow(),
+  atualizadoEm: timestamp("atualizado_em", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Contador por janela de tempo (limite de uso do chat e do formulário), no
+// banco porque cada acesso pode cair num servidor diferente da Vercel.
+export const limitesUso = pgTable(
+  "limites_uso",
+  {
+    chave: text("chave").notNull(),
+    janela: timestamp("janela", { withTimezone: true }).notNull(),
+    contagem: integer("contagem").notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.chave, t.janela] })],
+);

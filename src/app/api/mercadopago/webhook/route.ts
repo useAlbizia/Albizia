@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { registrarErro } from "@/lib/erros";
-import { and, eq, inArray, lt, ne, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import {
   MercadoPagoConfig,
   Payment,
@@ -8,7 +8,7 @@ import {
   InvalidWebhookSignatureError,
 } from "mercadopago";
 import { db } from "@/lib/db/client";
-import { orders, productVariants, analyticsEvents } from "@/lib/db/schema";
+import { orders, orderItems, productVariants, analyticsEvents } from "@/lib/db/schema";
 import { sendOrderPaidEmails } from "@/lib/order-notify";
 import { incrementCouponUse } from "@/lib/coupons";
 import { getPaymentSettings } from "@/lib/payments";
@@ -145,12 +145,19 @@ export async function POST(request: NextRequest) {
           paymentMethod: payment.payment_method_id ?? null,
           updatedAt: new Date(),
         })
-        .where(and(eq(orders.id, order.id), ne(orders.status, "paid")))
+        .where(and(
+          eq(orders.id, order.id),
+          inArray(orders.status, ["pending", "cancelled"]),
+          isNull(orders.paidAt),
+          isNull(orders.adminCancelledAt),
+        ))
         .returning({ id: orders.id });
 
-      if (updated.length === 0) return false; // already marked paid by a prior delivery
+      if (updated.length === 0) return false;
 
-      for (const item of order.items) {
+      const items = await tx.select().from(orderItems)
+        .where(eq(orderItems.orderId, order.id)).orderBy(asc(orderItems.productVariantId));
+      for (const item of items) {
         if (!item.productVariantId) continue;
         await tx
           .update(productVariants)

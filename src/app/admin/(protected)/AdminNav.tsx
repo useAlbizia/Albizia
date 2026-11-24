@@ -33,6 +33,7 @@ const GROUPS: Group[] = [
   {
     title: "Clientes",
     items: [
+      { href: "/admin/atendimento", label: "Atendimento" },
       { href: "/admin/clientes", label: "Clientes" },
       { href: "/admin/carrinhos", label: "Recuperação" },
       { href: "/admin/emails", label: "E-mails" },
@@ -81,7 +82,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-type Contadores = { alertas: number; emails: number; aprovar: number; avaliacoes: number; erros: number };
+type Contadores = { alertas: number; emails: number; aprovar: number; avaliacoes: number; erros: number; chamados: number; chamadosAtrasados: number };
 
 /** O número que aparece ao lado de cada item, e o que ele quer dizer. */
 function contadorDe(href: string, c: Contadores): { n: number; rotulo: string; urgente?: boolean } {
@@ -91,6 +92,9 @@ function contadorDe(href: string, c: Contadores): { n: number; rotulo: string; u
   if (href === "/admin/carrinhos") return { n: c.alertas, rotulo: "venda(s) parada(s)" };
   if (href === "/admin/emails") return { n: c.emails, rotulo: "e-mail(s) não lido(s)" };
   if (href === "/admin/avaliacoes") return { n: c.avaliacoes, rotulo: "avaliação(ões) para aprovar" };
+  // Protocolo vencido deixa o número vermelho: cliente esperando além do prometido.
+  if (href === "/admin/atendimento")
+    return { n: c.chamados, rotulo: c.chamadosAtrasados > 0 ? `atendimento(s) em aberto, ${c.chamadosAtrasados} com prazo vencido` : "atendimento(s) em aberto", urgente: c.chamadosAtrasados > 0 };
   if (href === "/admin/erros") return { n: c.erros, rotulo: "erro(s) crítico(s) ou alto(s) em aberto", urgente: true };
   return { n: 0, rotulo: "" };
 }
@@ -200,6 +204,8 @@ export function AdminNav({
   avaliacoes = 0,
   recuperacaoUltimo = null,
   errosGraves = 0,
+  chamados = 0,
+  chamadosAtrasados = 0,
 }: {
   email: string | undefined;
   alertas?: number;
@@ -213,6 +219,9 @@ export function AdminNav({
   recuperacaoUltimo?: string | null;
   /** Erros críticos e altos em aberto (últimos 7 dias). */
   errosGraves?: number;
+  /** Protocolos de atendimento em aberto, e quantos passaram do prazo. */
+  chamados?: number;
+  chamadosAtrasados?: number;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -235,8 +244,8 @@ export function AdminNav({
   /* eslint-enable react-hooks/set-state-in-effect */
   const recuperacaoNova =
     alertas > 0 && (!vistoRecuperacao || !recuperacaoUltimo || new Date(recuperacaoUltimo) > new Date(vistoRecuperacao));
-  const contadores: Contadores = { alertas: recuperacaoNova ? alertas : 0, emails, aprovar, avaliacoes, erros: errosGraves };
-  const algoPendente = aprovar > 0 || contadores.alertas > 0 || emails > 0 || avaliacoes > 0 || errosGraves > 0;
+  const contadores: Contadores = { alertas: recuperacaoNova ? alertas : 0, emails, aprovar, avaliacoes, erros: errosGraves, chamados, chamadosAtrasados };
+  const algoPendente = aprovar > 0 || contadores.alertas > 0 || emails > 0 || avaliacoes > 0 || errosGraves > 0 || chamados > 0;
 
   return (
     <>
@@ -259,7 +268,7 @@ export function AdminNav({
           <span className="h-px w-5 bg-content" />
           {/* Ponto de aviso: tem algo esperando dentro do menu. */}
           {algoPendente && !open && (
-            <span aria-hidden="true" className={`absolute right-1 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${errosGraves > 0 ? "bg-red-600" : "bg-content"}`} />
+            <span aria-hidden="true" className={`absolute right-1 top-1.5 h-2.5 w-2.5 rounded-full border-2 border-surface ${errosGraves > 0 || chamadosAtrasados > 0 ? "bg-red-600" : "bg-content"}`} />
           )}
         </button>
         </div>
