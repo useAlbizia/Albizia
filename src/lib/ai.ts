@@ -1,6 +1,23 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { db } from "./db/client";
+import { registrarErro } from "./erros";
+import { getSiteSettings } from "./settings";
+
+// Quando o assistente não consegue responder, o cliente recebe um caminho
+// real (o e-mail da loja) em vez de "tente novamente", e a falha vai para
+// Erros do sistema: chave inválida ou crédito acabado é problema NOSSO.
+async function chatForaDoAr(motivo: string): Promise<AiText> {
+  await registrarErro({
+    origem: "servidor",
+    area: "loja",
+    gravidade: "alta",
+    caminho: "chat da loja (assistente)",
+    mensagem: `O assistente do site não respondeu: ${motivo}`.slice(0, 500),
+  }).catch(() => {});
+  const contato = (await getSiteSettings().catch(() => null))?.contactEmail || "contato@usealbizia.com.br";
+  return { error: `Nosso assistente está fora do ar agora. Fale com a gente pelo e-mail ${contato} que respondemos rapidinho.` };
+}
 
 // Central Claude client for the store's AI features. The key lives only in the
 // environment (never in code/git).
@@ -138,7 +155,7 @@ export function sanitizeReply(text: string): string {
 // the last turns to bound cost.
 export async function assistantReply(history: ChatMessage[]): Promise<AiText> {
   const client = getClient();
-  if (!client) return { error: "Assistente indisponível no momento." };
+  if (!client) return chatForaDoAr("ANTHROPIC_API_KEY não configurada na Vercel");
   if (history.length === 0 || history[history.length - 1].role !== "user") {
     return { error: "Envie uma mensagem." };
   }
@@ -204,7 +221,14 @@ Se perguntarem algo fora do universo da loja (notícias, conhecimentos gerais, o
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) return { error: "Muitas mensagens agora. Tente em instantes." };
     console.error("assistantReply failed", err);
-    return { error: "Não consegui responder agora. Tente novamente." };
+    const st = err instanceof Anthropic.APIError ? err.status : undefined;
+    const motivo =
+      st === 401
+        ? "chave da Anthropic inválida (ANTHROPIC_API_KEY na Vercel)"
+        : st === 400 && /credit|billing/i.test(String((err as Error).message))
+          ? "crédito da Anthropic acabou"
+          : `${st ?? "sem status"}: ${err instanceof Error ? err.message : String(err)}`;
+    return chatForaDoAr(motivo);
   }
 }
 

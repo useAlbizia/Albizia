@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useCart } from "@/lib/cart-context";
 import {
   createPendingOrder,
@@ -67,6 +67,8 @@ export function CheckoutClient({
   const [couponPending, startCoupon] = useTransition();
 
   const [zip, setZip] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
+  const [buscandoCep, setBuscandoCep] = useState(false);
   // As opções reais da transportadora, para o cliente escolher entre pagar
   // menos e receber antes. Antes disso a loja escolhia sozinha a mais barata
   // e nem guardava qual era, o que impedia emitir a etiqueta depois.
@@ -107,13 +109,44 @@ export function CheckoutClient({
   // The order exists: the customer moves from "seus dados" to paying in place.
   const paying = !!state.orderId;
 
-  function calcFrete() {
+  // CEP completo: preenche rua, bairro, cidade e UF pelos Correios (ViaCEP,
+  // público e gratuito) e já calcula o frete. Menos digitação, menos
+  // desistência no checkout. Se falhar, o cliente só digita como antes.
+  async function preencherPeloCep(cep: string) {
+    const f = formRef.current;
+    if (!f) return;
+    setBuscandoCep(true);
+    try {
+      const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+      const d = (await r.json()) as { erro?: boolean; logradouro?: string; bairro?: string; localidade?: string; uf?: string };
+      if (!d.erro) {
+        const pos: Record<string, string | undefined> = {
+          street: d.logradouro,
+          neighborhood: d.bairro,
+          city: d.localidade,
+          state: d.uf,
+        };
+        for (const [nome, valor] of Object.entries(pos)) {
+          const el = f.elements.namedItem(nome) as HTMLInputElement | null;
+          if (el && valor && !el.value.trim()) el.value = valor;
+        }
+        (f.elements.namedItem(d.logradouro ? "number" : "street") as HTMLInputElement | null)?.focus();
+      }
+    } catch {
+      // sem problema: o cliente preenche à mão
+    } finally {
+      setBuscandoCep(false);
+    }
+  }
+
+  function calcFrete(cepInformado?: string) {
+    const cep = cepInformado ?? zip;
     startFrete(async () => {
       // Sem isto, qualquer falha (internet caindo, site atualizado no meio da
       // compra) fazia o botão "não fazer nada, nenhum erro" (relato do Jair).
       let r: Awaited<ReturnType<typeof quoteFreteAction>>;
       try {
-        r = await quoteFreteAction(zip, items);
+        r = await quoteFreteAction(cep, items);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         if (/Server Action|failed-to-find|UnrecognizedAction/i.test(msg)) {
@@ -215,20 +248,21 @@ export function CheckoutClient({
           />
         </div>
       ) : (
-      <form action={formAction} className="flex flex-col gap-4">
+      <form ref={formRef} action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="couponCode" value={couponCode} />
         <p className="text-[13px] font-semibold uppercase tracking-[0.16em] text-content">1. Seus dados</p>
-        <input name="name" placeholder="Nome completo" required className={inputClass} />
+        <input name="name" autoComplete="name" placeholder="Nome completo" required className={inputClass} />
         <input
           name="email"
           type="email"
+          autoComplete="email"
           placeholder="E-mail"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className={inputClass}
         />
-        <input name="phone" placeholder="Telefone" required className={inputClass} />
+        <input name="phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="Telefone (com DDD)" required className={inputClass} />
         <div className="flex flex-col gap-1">
           <input
             name="document"
@@ -241,48 +275,57 @@ export function CheckoutClient({
             className={inputClass}
           />
           <p className="text-[11px] text-content/40">
-            Necessário para emitir a nota fiscal do seu pedido.
+            Necessário para a nota e o envio do seu pedido.
           </p>
         </div>
 
         <p className="mt-6 text-[13px] font-semibold uppercase tracking-[0.16em] text-content">2. Endereço e frete</p>
-        <div className="grid grid-cols-3 gap-3">
-          <input name="street" placeholder="Endereço" required className={`${inputClass} col-span-2`} />
-          <input name="number" placeholder="Número" required className={inputClass} />
-        </div>
-        <input name="complement" placeholder="Complemento (opcional)" className={inputClass} />
-        <input name="neighborhood" placeholder="Bairro" required className={inputClass} />
-        <div className="grid grid-cols-3 gap-3">
-          <input name="city" placeholder="Cidade" required className={`${inputClass} col-span-2`} />
-          <input name="state" placeholder="UF" maxLength={2} required className={inputClass} />
-        </div>
         <div className="flex gap-2">
           <input
             name="zip"
             value={zip}
+            inputMode="numeric"
+            autoComplete="postal-code"
+            maxLength={9}
             onChange={(e) => {
-              setZip(e.target.value);
+              const v = e.target.value;
+              setZip(v);
+              const digitos = v.replace(/\D/g, "");
+              if (digitos.length === 8) {
+                void preencherPeloCep(digitos);
+                if (isME) calcFrete(digitos);
+              }
               setQuotedCents(null);
               setFreteOptions([]);
               setServiceId(null);
               setFreteMsg(null);
             }}
-            placeholder="CEP"
+            placeholder="CEP (preenche o endereço)"
             required
             className={`${inputClass} min-w-0 flex-1`}
           />
           {isME && (
             <button
               type="button"
-              onClick={calcFrete}
+              onClick={() => calcFrete()}
               disabled={fretePending || zip.replace(/\D/g, "").length !== 8}
               className="shrink-0 whitespace-nowrap border border-content bg-content px-4 text-[12px] uppercase tracking-[0.12em] text-surface transition-opacity hover:opacity-85 disabled:opacity-40"
             >
-              {fretePending ? "Calculando..." : "Calcular frete"}
+              {fretePending || buscandoCep ? "Calculando..." : "Calcular frete"}
             </button>
           )}
         </div>
 
+        <div className="grid grid-cols-3 gap-3">
+          <input name="street" autoComplete="address-line1" placeholder="Endereço" required className={`${inputClass} col-span-2`} />
+          <input name="number" placeholder="Número" required className={inputClass} />
+        </div>
+        <input name="complement" placeholder="Complemento (opcional)" className={inputClass} />
+        <input name="neighborhood" autoComplete="address-level3" placeholder="Bairro" required className={inputClass} />
+        <div className="grid grid-cols-3 gap-3">
+          <input name="city" autoComplete="address-level2" placeholder="Cidade" required className={`${inputClass} col-span-2`} />
+          <input name="state" autoComplete="address-level1" placeholder="UF" maxLength={2} required className={inputClass} />
+        </div>
         {/* O serviço escolhido viaja junto com o pedido. Sem ele o painel não
             tem como comprar a etiqueta certa depois. */}
         <input type="hidden" name="shippingServiceId" value={serviceId ?? ""} />

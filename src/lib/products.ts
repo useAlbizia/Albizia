@@ -43,6 +43,18 @@ export type CollectionInfo = {
   coverUrl?: string;
 };
 
+
+// Tamanhos sempre na ordem de vestir (PP, P, M, G, GG...), não na ordem em
+// que foram cadastrados. Tamanho desconhecido vai para o fim.
+const ORDEM_TAMANHOS = ["PP", "P", "M", "G", "GG", "XG", "XGG", "EG", "EGG"];
+export function ordenarTamanhos<T extends { size: string }>(v: T[]): T[] {
+  const pos = (s: string) => {
+    const i = ORDEM_TAMANHOS.indexOf(s.trim().toUpperCase());
+    return i === -1 ? 100 + (Number.parseInt(s, 10) || 0) : i;
+  };
+  return [...v].sort((a, b) => pos(a.size) - pos(b.size));
+}
+
 function toProduct(row: {
   id: string;
   slug: string;
@@ -72,7 +84,7 @@ function toProduct(row: {
     colorGroup: row.colorGroup,
     colorName: row.colorName,
     colorHex: row.colorHex,
-    variants: row.variants,
+    variants: ordenarTamanhos(row.variants),
     images: [...row.images].sort((a, b) => a.sortOrder - b.sortOrder),
   };
 }
